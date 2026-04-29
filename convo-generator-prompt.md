@@ -1,12 +1,17 @@
-You are helping me create controlled JLPT N5 listening practice.
+You are helping create controlled JLPT N5 listening practice.
 
 Goal:
-Generate mini Japanese conversations for listening practice using only the vocabulary I have already learned.
+Generate mini Japanese conversations for listening practice using only vocabulary the learner has already reached.
 
-Current stage: Set 1
+Current stage:
+Set {{setNumber}}
 
 Allowed content vocabulary:
-Use only words from Set 1 in the attached sheet.
+Use only words from Set 1 through Set {{setNumber}} in the vocabulary table below.
+Allowed vocabulary count: {{allowedVocabularyCount}}
+
+Allowed vocabulary table:
+{{allowedVocabularyTable}}
 
 Allowed grammar/function whitelist:
 
@@ -20,14 +25,14 @@ Basic grammar:
 て-form, ください, ましょう, たいです, から, そして, でも, もう, まだ
 
 Question words:
-Question words are allowed only if they are in the vocabulary list.
+Question words are allowed only if they are in the allowed vocabulary table.
 
 Conjugations:
 Conjugations of learned verbs/adjectives are allowed and do not count as new words.
 
 Important rules:
-1. Do not use content words outside the allowed vocabulary list.
-2. Only common Japanese names are allowed. They can be outside the vocabulary list.
+1. Do not use Japanese content words outside the allowed vocabulary table.
+2. Common Japanese personal names are allowed and do not count as vocabulary.
 3. Do not introduce new nouns, verbs, adjectives, or adverbs otherwise.
 4. Do not include romaji.
 5. Keep the Japanese natural but beginner-friendly.
@@ -35,99 +40,98 @@ Important rules:
 7. Avoid advanced grammar.
 8. Avoid long sentences.
 9. Reuse vocabulary naturally across conversations for repeated listening exposure.
-10. Across all 20 conversations, every word in Set 1 should be used at least once overall.
-11. The combined list of all vocabulary used across the 20 conversations should be a superset of Set 1.
-12. Before finalizing, audit every Japanese line and make sure all content words are from Set 1.
+10. Prefer current Set {{setNumber}} words when possible, while using earlier set words for natural glue.
+11. If the requested number of conversations is too small to cover all allowed words, maximize useful variety instead of forcing unnatural lines.
+12. Before finalizing, audit every Japanese line and make sure all content words are from Set <= {{setNumber}}.
+13. Speaker 1 is always female. If she is named or referred to by name, use a common Japanese female name.
+14. Speaker 2 is always male. If he is named or referred to by name, use a common Japanese male name.
+15. Do not give Speaker 1 male names or masculine self-reference. Do not give Speaker 2 female names or feminine self-reference.
 
 Delivery tag rules:
-1. Every spoken line must include bracketed delivery tags immediately after the speaker label.
+1. Every spoken line must include delivery tags.
 2. Tags describe emotion, tone, pace, or feeling for TTS delivery.
-3. Multiple tags are allowed, separated by commas.
-4. Every tag list must end with slow.
+3. Multiple tags are allowed.
+4. Every tag list must end with "slow".
 5. Tags are not Japanese vocabulary and do not count toward the vocabulary restriction.
 6. Keep tags simple and useful, such as:
-   [friendly, slow], [curious, excited, slow], [polite, apologetic, slow], [gentle, calm, slow], [sleepy, soft, slow]
+   friendly, curious, excited, polite, apologetic, gentle, calm, sleepy, soft, slow
 
 Task:
-Create 20 mini conversations in Japanese.
+Create exactly {{conversationCount}} mini conversations in Japanese.
 
 Conversation requirements:
 1. Each conversation should be around 20-40 seconds when spoken naturally.
-2. Each conversation should have 4-8 short lines.
+2. Each conversation should have 6-10 spoken lines.
 3. Use natural beginner Japanese, not robotic textbook fragments.
 4. Each conversation should have a clear everyday situation.
 5. Use only Speaker 1 and Speaker 2.
-6. Do not use English inside the Japanese spoken lines, except for the bracketed delivery tags.
-7. Use simple everyday themes that fit the Set 1 vocabulary.
+6. Do not use English inside Japanese spoken lines.
+7. Use simple everyday themes that fit the allowed vocabulary.
+8. Each conversation must include 4-6 listening questions.
+9. Each listening question must have a matching answer-key entry in the same order.
 
-Themes to use:
-self-introduction, greetings, family, school, teacher/student, simple classroom, food/drink, waking up, sleeping, colors, numbers, simple directions, likes/dislikes, simple questions, coming/going, looking/listening/speaking.
+Theme ideas:
+self-introduction, greetings, family, school, teacher/student, simple classroom, food/drink, waking up, sleeping, colors, numbers, simple directions, likes/dislikes, simple questions, coming/going, looking/listening/speaking, weather, shopping, health, transport, and social plans when the selected set allows them.
 
-For each conversation, output in this exact format:
+Return only valid JSON with this exact top-level shape:
 
-Conversation [number]
-
-Title:
-[Short English title]
-
-Scene:
-[One short English sentence describing the scene.]
-
-Sample Context:
-[One short English sentence describing what is happening before the dialogue or how the speakers should sound.]
-
-Text:
-Speaker 1: [tag, slow] Japanese line
-Speaker 2: [tag, slow] Japanese line
-Speaker 1: [tag, tag, slow] Japanese line
-Speaker 2: [tag, tag, slow] Japanese line
-
-Listening questions:
-1. [Question in English]
-2. [Question in English]
-3. [Optional question in English]
-
-Answer key:
-1. [Answer in English]
-2. [Answer in English]
-3. [Answer in English, if question 3 exists]
-
-English translation:
-Speaker 1: [English translation]
-Speaker 2: [English translation]
-Speaker 1: [English translation]
-Speaker 2: [English translation]
-
-Vocabulary used:
-[List all Set 1 content words used in this conversation]
-
-Out-of-vocabulary audit:
-[List any Japanese content word used that was not in the allowed vocabulary. If none, say “None.”]
-
-Simpler replacement suggestions:
-If any out-of-vocabulary word was used, rewrite the line using only allowed vocabulary. If none, say “None.”
-
-After all 20 conversations, include this final section:
-
-Overall Set 1 coverage audit:
-
-1. Set 1 words successfully used:
-[List all Set 1 words that appeared at least once across the 20 conversations]
-
-2. Set 1 words not yet used:
-[List any Set 1 words that did not appear. If all were used, say “None.”]
-
-3. Out-of-vocabulary words used anywhere:
-[List any Japanese content words outside Set 1. If none, say “None.”]
-
-4. Replacement fixes:
-If any out-of-vocabulary words were found, provide corrected lines using only Set 1 vocabulary. If none, say “None.”
-
+{
+  "conversations": [
+    {
+      "title": "Short English title",
+      "scene": "One short English sentence describing the scene.",
+      "sampleContext": "One short English sentence describing what is happening before the dialogue or how the speakers should sound.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": ["friendly", "slow"],
+          "japanese": "Japanese line"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": ["curious", "slow"],
+          "japanese": "Japanese line"
+        }
+      ],
+      "listeningQuestions": [
+        "Question in English",
+        "Question in English",
+        "Question in English",
+        "Question in English"
+      ],
+      "answerKey": [
+        "Answer in English",
+        "Answer in English",
+        "Answer in English",
+        "Answer in English"
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "English translation"
+        }
+      ],
+      "vocabularyUsed": [
+        "Japanese content word from allowed table"
+      ],
+      "outOfVocabularyAudit": [
+        "None"
+      ],
+      "simplerReplacementSuggestions": [
+        "None"
+      ]
+    }
+  ]
+}
 
 Final self-check before answering:
 1. Did every spoken line include delivery tags?
 2. Did every delivery tag list end with slow?
-3. Did every Japanese content word come from Set 1?
-4. Were all Set 1 words used at least once across the 20 conversations?
-5. Are the conversations natural, short, and suitable for beginner listening practice?
+3. Did every Japanese content word come from Set <= {{setNumber}}?
+4. Does every conversation have 6-10 spoken lines?
+5. Does every conversation have 4-6 listening questions and matching answers?
+6. Are Speaker 1 names/references female and Speaker 2 names/references male?
+7. Are the conversations natural, short, and suitable for beginner listening practice?
 
+Important audit instruction:
+If you used any Japanese content word outside Set <= {{setNumber}}, put each extra word as a separate string in outOfVocabularyAudit. If none, use exactly ["None"].

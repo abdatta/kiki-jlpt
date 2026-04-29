@@ -1,0 +1,533 @@
+:root {
+  color: #1f2a2e;
+  background: #f7f4ed;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.appShell {
+  display: grid;
+  grid-template-columns: 330px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sideBar {
+  background: #fffaf0;
+  border-right: 1px solid #ded8ca;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand svg {
+  color: #d35635;
+}
+
+.brand h1,
+.topBar h2,
+.conversationCard h3,
+.blankState h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.brand h1 {
+  font-size: 22px;
+}
+
+.brand p,
+.emptyText,
+.setMeta span,
+.runButton small,
+.sceneText,
+.blankState p {
+  color: #687477;
+}
+
+.brand p {
+  margin: 3px 0 0;
+  font-size: 13px;
+}
+
+.generatorPanel,
+.runList {
+  display: grid;
+  gap: 14px;
+}
+
+label {
+  display: grid;
+  gap: 7px;
+}
+
+label span,
+.sectionHeader,
+.conversationNumber,
+.detailStrip span,
+.eyebrow {
+  color: #637066;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+select,
+input,
+textarea {
+  width: 100%;
+  border: 1px solid #cfc7b8;
+  background: #fffdf8;
+  border-radius: 8px;
+  color: #1f2a2e;
+  padding: 11px 12px;
+  outline: none;
+}
+
+textarea {
+  resize: vertical;
+  line-height: 1.55;
+}
+
+select:focus,
+input:focus,
+textarea:focus {
+  border-color: #3b7c79;
+  box-shadow: 0 0 0 3px rgba(59, 124, 121, 0.14);
+}
+
+.setMeta {
+  border: 1px solid #ded8ca;
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 4px;
+  background: #fbf6ea;
+}
+
+.primaryButton,
+.secondaryButton,
+.iconButton,
+.runButton,
+.playLink {
+  border-radius: 8px;
+  min-height: 40px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.primaryButton {
+  background: #1f6f68;
+  color: #ffffff;
+  padding: 0 15px;
+  font-weight: 800;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover,
+.runButton:hover,
+.playLink:hover {
+  transform: translateY(-1px);
+}
+
+.primaryButton:disabled,
+.secondaryButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+.primaryButton.compact,
+.secondaryButton {
+  min-height: 38px;
+}
+
+.secondaryButton,
+.playLink {
+  background: #ffffff;
+  border-color: #d9d0c1;
+  color: #243236;
+  padding: 0 12px;
+  font-weight: 750;
+}
+
+.secondaryButton.positive {
+  border-color: #8eb7a5;
+  color: #17634f;
+}
+
+.iconButton {
+  width: 38px;
+  min-height: 38px;
+  border-color: #ded8ca;
+  background: #fffdf8;
+  color: #314042;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.runButton {
+  width: 100%;
+  align-items: flex-start;
+  flex-direction: column;
+  background: transparent;
+  border-color: #ded8ca;
+  padding: 11px 12px;
+  color: #1f2a2e;
+}
+
+.runButton.active {
+  background: #e9f2ef;
+  border-color: #8eb7a5;
+}
+
+.workspace {
+  padding: 28px;
+  display: grid;
+  align-content: start;
+  gap: 20px;
+}
+
+.topBar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+}
+
+.topBar h2 {
+  font-size: 30px;
+}
+
+.runStats {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.runStats span,
+.statusPill,
+.vocabChips span,
+.miniChips span {
+  border-radius: 999px;
+  border: 1px solid #d9d0c1;
+  background: #fffdf8;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.errorBanner,
+.conversationError {
+  background: #fff0ea;
+  border: 1px solid #ecb19c;
+  color: #8f3218;
+}
+
+.errorBanner {
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+
+.blankState {
+  min-height: 420px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  border: 1px dashed #cfc7b8;
+  border-radius: 8px;
+  background: #fffdf8;
+  text-align: center;
+}
+
+.blankState svg {
+  color: #d35635;
+}
+
+.analyticsPanel {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.analyticsCard {
+  background: #fffdf8;
+  border: 1px solid #ddd4c4;
+  border-radius: 8px;
+  padding: 16px;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+}
+
+.analyticsCard > span {
+  color: #637066;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analyticsCard strong {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.analyticsCard p {
+  margin: 0;
+  color: #687477;
+  line-height: 1.45;
+}
+
+.miniChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 96px;
+  overflow: auto;
+}
+
+.miniChips span {
+  padding: 5px 8px;
+  font-size: 12px;
+  background: #f8f1e3;
+}
+
+.miniChips.warning span {
+  background: #fff0ea;
+  border-color: #ecb19c;
+  color: #8f3218;
+}
+
+.conversationGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 18px;
+}
+
+.conversationCard {
+  background: #fffdf8;
+  border: 1px solid #ddd4c4;
+  border-radius: 8px;
+  padding: 18px;
+  display: grid;
+  gap: 15px;
+  box-shadow: 0 14px 40px rgba(73, 62, 44, 0.07);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.conversationCard h3 {
+  font-size: 20px;
+  margin-top: 3px;
+}
+
+.statusPill {
+  white-space: nowrap;
+}
+
+.statusPill.approved,
+.statusPill.audio_ready {
+  border-color: #8eb7a5;
+  color: #17634f;
+  background: #edf7f0;
+}
+
+.statusPill.rejected,
+.statusPill.audio_failed {
+  border-color: #ecb19c;
+  color: #8f3218;
+  background: #fff0ea;
+}
+
+.statusPill.audio_generating {
+  border-color: #9fc3cf;
+  color: #225c71;
+  background: #edf7fb;
+}
+
+.sceneText {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.transcriptBlock {
+  display: grid;
+  gap: 9px;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.transcriptBlock p {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 82px 120px minmax(0, 1fr);
+  gap: 9px;
+  align-items: baseline;
+}
+
+.transcriptBlock span {
+  color: #a04e2e;
+  font-size: 13px;
+}
+
+.detailStrip {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(160px, 0.7fr);
+  gap: 16px;
+  border-top: 1px solid #ece5d8;
+  border-bottom: 1px solid #ece5d8;
+  padding: 13px 0;
+}
+
+.detailStrip ol,
+.detailStrip p {
+  margin: 7px 0 0;
+  color: #354548;
+  line-height: 1.5;
+}
+
+.detailStrip ol {
+  padding-left: 20px;
+}
+
+.vocabChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.vocabChips span {
+  padding: 5px 9px;
+  background: #f8f1e3;
+}
+
+.conversationError {
+  margin: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+audio {
+  width: 100%;
+}
+
+.buttonRow {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.editForm {
+  display: grid;
+  gap: 12px;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 900px) {
+  .appShell {
+    grid-template-columns: 1fr;
+  }
+
+  .sideBar {
+    border-right: 0;
+    border-bottom: 1px solid #ded8ca;
+  }
+
+  .topBar {
+    flex-direction: column;
+  }
+
+  .runStats {
+    justify-content: flex-start;
+  }
+
+  .conversationGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .analyticsPanel {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .workspace,
+  .sideBar {
+    padding: 16px;
+  }
+
+  .topBar h2 {
+    font-size: 24px;
+  }
+
+  .transcriptBlock p {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .detailStrip {
+    grid-template-columns: 1fr;
+  }
+}

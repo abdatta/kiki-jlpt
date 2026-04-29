@@ -1,0 +1,42 @@
+{
+  "name": "jlpt-listener",
+  "version": "1.0.0",
+  "description": "Local JLPT N5 listening-practice generator with review and Gemini TTS.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently -n api,ui -c cyan,green \"npm:dev:api\" \"npm:dev:ui\"",
+    "dev:api": "tsx watch server/index.ts",
+    "dev:ui": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "start": "tsx server/index.ts",
+    "tts": "tsx generate-audio.ts",
+    "test": "npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/genai": "^1.50.1",
+    "@vitejs/plugin-react": "^6.0.1",
+    "cors": "^2.8.6",
+    "csv-parse": "^6.2.1",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "lucide-react": "^1.12.0",
+    "mime": "^4.1.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "vite": "^8.0.10"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  }
+}
