@@ -1,6 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, CircleAlert, Disc3, FileAudio, ListMusic, Pencil, Play, RefreshCw, Save, Sparkles, X } from 'lucide-react';
-import type { ApiError, PracticeConversation, PracticeRun, SetSummary } from '../shared/types.ts';
+import {
+  Bot,
+  Check,
+  CircleAlert,
+  Disc3,
+  Eye,
+  FileAudio,
+  Languages,
+  LoaderCircle,
+  ListMusic,
+  Pencil,
+  Play,
+  RefreshCw,
+  Save,
+  Sparkles,
+  X
+} from 'lucide-react';
+import type { ApiError, LlmExchange, PracticeConversation, PracticeRun, SetSummary, TextModelInfo } from '../shared/types.ts';
 
 type BusyAction = 'generate' | `approve:${string}` | `reject:${string}` | `audio:${string}` | `save:${string}` | null;
 
@@ -10,6 +26,20 @@ interface EditState {
   scene: string;
   sampleContext: string;
   transcript: string;
+}
+
+type GenerationSessionStatus = 'running' | 'complete' | 'failed';
+
+interface GenerationSession {
+  id: string;
+  setNumber: number;
+  conversationCount: number;
+  textModelLabel: string;
+  startedAt: string;
+  completedAt?: string;
+  status: GenerationSessionStatus;
+  exchange?: LlmExchange;
+  error?: string;
 }
 
 async function api<T>(url: string, options?: RequestInit): Promise<T> {
@@ -37,25 +67,148 @@ function statusLabel(status: PracticeConversation['status']): string {
   return status.replaceAll('_', ' ');
 }
 
+function makeSessionId(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `generation-${Date.now()}`;
+}
+
+function formatAuditTime(value?: string): string {
+  return value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Pending';
+}
+
+function formatAuditOutput(value?: string): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return JSON.stringify(parsed, null, 2);
+  } catch {
+    return value;
+  }
+}
+
+function AuditLog({ exchange, fallbackLabel }: { exchange?: LlmExchange; fallbackLabel?: string }) {
+  const output = formatAuditOutput(exchange?.output);
+  const outputError = exchange?.status === 'failed' ? exchange.error : undefined;
+  const isWaitingForOutput = !output && !outputError;
+
+  return (
+    <details className="auditLog">
+      <summary>
+        <span>LLM exchange audit</span>
+        <small>{exchange ? `${exchange.label} - ${exchange.status}` : `${fallbackLabel ?? 'LLM'} - preparing prompt`}</small>
+      </summary>
+      <div className="auditGrid">
+        <div className="auditMeta">
+          <span>Provider</span>
+          <strong>{exchange?.provider ?? 'Pending'}</strong>
+        </div>
+        <div className="auditMeta">
+          <span>Model</span>
+          <strong>{exchange?.model ?? fallbackLabel ?? 'Pending'}</strong>
+        </div>
+        <div className="auditMeta">
+          <span>Sent</span>
+          <strong>{formatAuditTime(exchange?.requestedAt)}</strong>
+        </div>
+        <div className="auditMeta">
+          <span>Received</span>
+          <strong>{formatAuditTime(exchange?.receivedAt)}</strong>
+        </div>
+      </div>
+
+      {exchange?.instructions ? (
+        <div className="auditBlock">
+          <span>Instructions</span>
+          <pre>{exchange.instructions}</pre>
+        </div>
+      ) : null}
+
+      <div className="auditBlock">
+        <span>Prompt</span>
+        <pre>{exchange?.prompt ?? 'Preparing the exact prompt on the server.'}</pre>
+      </div>
+
+      <div className="auditBlock">
+        <span>Output</span>
+        {isWaitingForOutput ? (
+          <div className="auditPending" role="status">
+            <LoaderCircle className="spin" size={18} />
+            <strong>Waiting for LLM response</strong>
+          </div>
+        ) : (
+          <pre>{output ?? outputError ?? 'No output returned.'}</pre>
+        )}
+      </div>
+
+      {exchange?.stats ? (
+        <div className="auditBlock">
+          <span>Stats</span>
+          <pre>{JSON.stringify(exchange.stats, null, 2)}</pre>
+        </div>
+      ) : null}
+    </details>
+  );
+}
+
+function LoadingPanel({ session }: { session: GenerationSession }) {
+  return (
+    <section className={`agentPanel ${session.status}`} aria-live="polite">
+      <div className="agentHero">
+        <div className="agentAvatar">
+          {session.status === 'failed' ? <CircleAlert size={24} /> : <Bot size={24} />}
+        </div>
+        <div>
+          <p className="eyebrow">Generation request</p>
+          <h3>{session.status === 'failed' ? 'Generation failed' : 'Generating a new listening set'}</h3>
+          <p>Set {session.setNumber} - {session.conversationCount} conversations - {session.textModelLabel}</p>
+        </div>
+        <span className={`agentStatus ${session.status}`}>
+          {session.status === 'running' ? <LoaderCircle className="spin" size={15} /> : <CircleAlert size={15} />}
+          {session.status}
+        </span>
+      </div>
+      <div className="loaderStrip">
+        {session.status === 'running' ? <LoaderCircle className="spin" size={22} /> : <CircleAlert size={22} />}
+        <span>{session.status === 'running' ? 'Waiting for the LLM response and saving the generated run.' : session.error}</span>
+      </div>
+      <AuditLog exchange={session.exchange} fallbackLabel={session.textModelLabel} />
+    </section>
+  );
+}
+
 export function App() {
   const [sets, setSets] = useState<SetSummary[]>([]);
   const [runs, setRuns] = useState<PracticeRun[]>([]);
   const [currentRun, setCurrentRun] = useState<PracticeRun | null>(null);
+  const [textModels, setTextModels] = useState<TextModelInfo[]>([]);
+  const [textModelId, setTextModelId] = useState('gemini');
   const [setNumber, setSetNumber] = useState(1);
   const [conversationCount, setConversationCount] = useState(4);
   const [busy, setBusy] = useState<BusyAction>(null);
   const [error, setError] = useState<string | null>(null);
   const [edit, setEdit] = useState<EditState | null>(null);
+  const [generationSession, setGenerationSession] = useState<GenerationSession | null>(null);
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [revealedAnswers, setRevealedAnswers] = useState<Record<string, boolean>>({});
+  const [revealedTranslations, setRevealedTranslations] = useState<Record<string, boolean>>({});
 
   const currentSet = useMemo(() => sets.find((item) => item.set === setNumber), [sets, setNumber]);
+  const currentTextModel = useMemo(() => textModels.find((model) => model.id === textModelId), [textModels, textModelId]);
+  const showRunContent = Boolean(currentRun && !generationSession);
+  const currentExchange = currentRun?.llmExchanges?.[0];
 
   async function loadInitial() {
-    const [setPayload, runPayload] = await Promise.all([
+    const [setPayload, runPayload, modelPayload] = await Promise.all([
       api<{ sets: SetSummary[] }>('/api/sets'),
-      api<{ runs: PracticeRun[] }>('/api/runs')
+      api<{ runs: PracticeRun[] }>('/api/runs'),
+      api<{ models: TextModelInfo[] }>('/api/text-models')
     ]);
     setSets(setPayload.sets);
     setRuns(runPayload.runs);
+    setTextModels(modelPayload.models);
+    setTextModelId((previous) => modelPayload.models.some((model) => model.id === previous) ? previous : 'gemini');
     setCurrentRun((previous) => previous ?? runPayload.runs[0] ?? null);
   }
 
@@ -63,18 +216,78 @@ export function App() {
     loadInitial().catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
   }, []);
 
+  useEffect(() => {
+    setRevealedAnswers({});
+    setRevealedTranslations({});
+  }, [currentRun?.id]);
+
+  function answerKey(conversationId: string, questionIndex: number): string {
+    return `${conversationId}:${questionIndex}`;
+  }
+
+  function toggleAnswer(conversationId: string, questionIndex: number) {
+    const key = answerKey(conversationId, questionIndex);
+    setRevealedAnswers((previous) => ({
+      ...previous,
+      [key]: !previous[key]
+    }));
+  }
+
+  function translationKey(conversationId: string, lineIndex: number): string {
+    return `${conversationId}:${lineIndex}`;
+  }
+
+  function toggleTranslation(conversationId: string, lineIndex: number) {
+    const key = translationKey(conversationId, lineIndex);
+    setRevealedTranslations((previous) => ({
+      ...previous,
+      [key]: !previous[key]
+    }));
+  }
+
   async function generate() {
+    const sessionId = makeSessionId();
+    const modelLabel = currentTextModel?.label ?? (textModelId === 'gemini' ? 'Gemini' : textModelId);
+    const requestBody = { setNumber, conversationCount, textModelId };
     setBusy('generate');
     setError(null);
+    setEdit(null);
+    setAuditOpen(false);
+    setCurrentRun(null);
+    setGenerationSession({
+      id: sessionId,
+      setNumber,
+      conversationCount,
+      textModelLabel: modelLabel,
+      startedAt: new Date().toISOString(),
+      status: 'running'
+    });
     try {
+      const preview = await api<{ exchange: LlmExchange }>('/api/generate/preview', {
+        method: 'POST',
+        body: JSON.stringify(requestBody)
+      });
+      setGenerationSession((previous) => previous?.id === sessionId ? { ...previous, exchange: preview.exchange } : previous);
+
       const payload = await api<{ run: PracticeRun }>('/api/generate', {
         method: 'POST',
-        body: JSON.stringify({ setNumber, conversationCount })
+        body: JSON.stringify(requestBody)
       });
       setCurrentRun(payload.run);
+      setGenerationSession(null);
       await loadInitial();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
+      const message = caught instanceof Error ? caught.message : String(caught);
+      setError(message);
+      setGenerationSession((previous) => previous?.id === sessionId
+        ? {
+            ...previous,
+            status: 'failed',
+            exchange: previous.exchange ? { ...previous.exchange, status: 'failed', error: message, receivedAt: new Date().toISOString() } : undefined,
+            error: message,
+            completedAt: new Date().toISOString()
+          }
+        : previous);
     } finally {
       setBusy(null);
     }
@@ -157,6 +370,18 @@ export function App() {
             <input min={4} max={30} type="number" value={conversationCount} onChange={(event) => setConversationCount(Number(event.target.value))} />
           </label>
 
+          <label>
+            <span>Text model</span>
+            <select value={textModelId} onChange={(event) => setTextModelId(event.target.value)}>
+              {textModels.length === 0 ? <option value="gemini">Gemini</option> : null}
+              {textModels.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <div className="setMeta">
             <strong>{currentSet?.theme ?? 'Vocabulary set'}</strong>
             <span>{currentSet ? `${currentSet.cumulativeCount} allowed words through Set ${currentSet.set}` : 'Loading vocab'}</span>
@@ -180,10 +405,14 @@ export function App() {
             <button
               key={run.id}
               className={`runButton ${currentRun?.id === run.id ? 'active' : ''}`}
-              onClick={() => refreshRun(run.id)}
+              onClick={() => {
+                setGenerationSession(null);
+                setAuditOpen(false);
+                refreshRun(run.id);
+              }}
             >
               <span>Set {run.setNumber}</span>
-              <small>{run.conversations.length} conversations</small>
+              <small>{run.conversations.length} conversations - {run.textModel.label}</small>
             </button>
           ))}
         </section>
@@ -192,13 +421,26 @@ export function App() {
       <section className="workspace">
         <header className="topBar">
           <div>
-            <p className="eyebrow">Approve, then synthesize</p>
-            <h2>{currentRun ? `Set ${currentRun.setNumber} practice run` : 'Create a listening batch'}</h2>
+            <p className="eyebrow">{generationSession ? 'Generate, inspect, review' : 'Approve, then synthesize'}</p>
+            <h2>{generationSession ? `Set ${generationSession.setNumber} generation` : currentRun ? `Set ${currentRun.setNumber} practice run` : 'Create a listening batch'}</h2>
           </div>
-          {currentRun ? (
+          {generationSession ? (
+            <div className="runStats">
+              <span>{generationSession.conversationCount} requested</span>
+              <span>{generationSession.textModelLabel}</span>
+              <span>{generationSession.status}</span>
+            </div>
+          ) : currentRun ? (
             <div className="runStats">
               <span>{currentRun.allowedVocabCount} allowed words</span>
+              <span>{currentRun.textModel.label}</span>
               <span>{currentRun.status}</span>
+              {currentExchange ? (
+                <button className="auditToggle" onClick={() => setAuditOpen((open) => !open)}>
+                  <Eye size={15} />
+                  LLM audit
+                </button>
+              ) : null}
             </div>
           ) : null}
         </header>
@@ -210,7 +452,11 @@ export function App() {
           </div>
         ) : null}
 
-        {currentRun ? (
+        {generationSession ? <LoadingPanel session={generationSession} /> : null}
+
+        {!generationSession && auditOpen && currentExchange ? <AuditLog exchange={currentExchange} /> : null}
+
+        {showRunContent && currentRun ? (
           <section className="analyticsPanel" aria-label="Generation analytics">
             <div className="analyticsCard">
               <span>Current Set Missing</span>
@@ -245,13 +491,13 @@ export function App() {
           </section>
         ) : null}
 
-        {!currentRun ? (
+        {!generationSession && !currentRun ? (
           <div className="blankState">
             <Disc3 size={42} />
             <h3>No batch selected</h3>
             <p>Choose a set and conversation count, then generate a review queue.</p>
           </div>
-        ) : (
+        ) : showRunContent && currentRun ? (
           <div className="conversationGrid">
             {currentRun.conversations.map((conversation) => {
               const isEditing = edit?.conversationId === conversation.id;
@@ -298,35 +544,81 @@ export function App() {
                     <>
                       <p className="sceneText">{conversation.scene}</p>
                       <div className="transcriptBlock">
-                        {conversation.text.map((line, index) => (
-                          <p key={`${conversation.id}-${index}`}>
-                            <strong>{line.speaker}</strong>
-                            <span>[{line.tags.join(', ')}]</span>
-                            {line.japanese}
-                          </p>
-                        ))}
+                        {conversation.text.map((line, index) => {
+                          const key = translationKey(conversation.id, index);
+                          const isRevealed = Boolean(revealedTranslations[key]);
+                          return (
+                            <div className="transcriptLine" key={key}>
+                              <strong>{line.speaker}</strong>
+                              <span>[{line.tags.join(', ')}]</span>
+                              <div className={isRevealed ? 'translationCard revealed' : 'translationCard'}>
+                                <div className="translationCardInner">
+                                  <span className="translationFace japaneseFace">{line.japanese}</span>
+                                  <span className="translationFace englishFace">{conversation.englishTranslation[index]?.english ?? 'No translation provided'}</span>
+                                </div>
+                              </div>
+                              <button
+                                aria-label={`${isRevealed ? 'Hide' : 'Show'} translation for line ${index + 1}`}
+                                aria-pressed={isRevealed}
+                                className={isRevealed ? 'translationToggle active' : 'translationToggle'}
+                                onClick={() => toggleTranslation(conversation.id, index)}
+                                title={`${isRevealed ? 'Hide' : 'Show'} translation`}
+                                type="button"
+                              >
+                                <Languages size={16} />
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
 
                       <div className="detailStrip">
                         <div>
                           <span>Questions</span>
                           <ol>
-                            {conversation.listeningQuestions.map((question) => (
-                              <li key={question}>{question}</li>
-                            ))}
+                            {conversation.listeningQuestions.map((question, questionIndex) => {
+                              const key = answerKey(conversation.id, questionIndex);
+                              const isRevealed = Boolean(revealedAnswers[key]);
+                              return (
+                                <li className={isRevealed ? 'answerCard revealed' : 'answerCard'} key={key}>
+                                  <div className="answerCardInner">
+                                    <span className="answerFace questionFace">{question}</span>
+                                    <span className="answerFace answerFaceBack">{conversation.answerKey[questionIndex] ?? 'No answer provided'}</span>
+                                  </div>
+                                </li>
+                              );
+                            })}
                           </ol>
                         </div>
-                        <div>
-                          <span>Audit</span>
-                          <p>{conversation.outOfVocabularyAudit.join(', ') || 'None'}</p>
+                        <div className="answerToggleColumn">
+                          <span>Show Answers</span>
+                          <div className="answerButtons">
+                            {conversation.listeningQuestions.map((question, questionIndex) => {
+                              const key = answerKey(conversation.id, questionIndex);
+                              const isRevealed = Boolean(revealedAnswers[key]);
+                              return (
+                                <button
+                                  aria-label={`${isRevealed ? 'Hide' : 'Show'} answer for question ${questionIndex + 1}`}
+                                  aria-pressed={isRevealed}
+                                  className={isRevealed ? 'answerToggle active' : 'answerToggle'}
+                                  key={key}
+                                  onClick={() => toggleAnswer(conversation.id, questionIndex)}
+                                  title={`${isRevealed ? 'Hide' : 'Show'} answer`}
+                                  type="button"
+                                >
+                                  <Eye size={17} />
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="vocabChips">
-                        {conversation.vocabularyUsed.slice(0, 18).map((word) => (
+                      <div className="vocabChips warning">
+                        {conversation.outOfVocabularyAudit.length === 0 ? <span>None</span> : null}
+                        {conversation.outOfVocabularyAudit.map((word) => (
                           <span key={word}>{word}</span>
                         ))}
-                        {conversation.vocabularyUsed.length > 18 ? <span>+{conversation.vocabularyUsed.length - 18}</span> : null}
                       </div>
 
                       {conversation.error ? <p className="conversationError">{conversation.error}</p> : null}
@@ -381,7 +673,7 @@ export function App() {
               );
             })}
           </div>
-        )}
+        ) : null}
       </section>
     </main>
   );

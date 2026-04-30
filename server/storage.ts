@@ -4,6 +4,8 @@ import { RUNS_DIR } from './paths.ts';
 import type { PracticeConversation, PracticeRun } from '../shared/types.ts';
 import { getAllowedVocabulary } from './vocab.ts';
 import { calculateRunAnalytics } from './analytics.ts';
+import { legacyTextModel } from './textModels.ts';
+import { auditConversationsWithVocabulary } from './vocabAudit.ts';
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -36,10 +38,12 @@ export async function saveRun(run: PracticeRun): Promise<PracticeRun> {
 export async function readRun(runId: string): Promise<PracticeRun> {
   const raw = await readFile(runJsonPath(runId), 'utf8');
   const run = JSON.parse(raw) as PracticeRun;
-  if (!run.analytics) {
-    const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
-    run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
+  const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
+  run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations);
+  if (!run.textModel) {
+    run.textModel = legacyTextModel();
   }
+  run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
   return run;
 }
 
@@ -74,8 +78,9 @@ export async function updateConversation(
     throw new Error(`Conversation not found: ${conversationId}`);
   }
 
-  run.conversations[index] = updater(run.conversations[index], run);
   const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
+  run.conversations[index] = updater(run.conversations[index], run);
+  run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations);
   run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
   run.updatedAt = nowIso();
   run.status = run.conversations.every((conversation) => conversation.status === 'audio_ready') ? 'complete' : run.conversations.some((conversation) => conversation.audioFileName) ? 'partial_audio' : 'generated';

@@ -3,14 +3,17 @@ import cors from 'cors';
 import express from 'express';
 import path from 'node:path';
 import { mkdir } from 'node:fs/promises';
-import type { GenerateRequest, PracticeConversation } from '../shared/types.ts';
+import type { GenerateRequest, LlmExchange, PracticeConversation, TextModelInfo, VocabItem } from '../shared/types.ts';
 import { OUTPUTS_DIR, RUNS_DIR } from './paths.ts';
 import { buildGenerationPrompt } from './prompt.ts';
 import { generateConversationAudio, generateConversationJson } from './gemini.ts';
+import { CODEX_TEXT_INSTRUCTIONS, generateCodexConversationJson } from './codexText.ts';
 import { getAllowedVocabulary, getSetSummaries } from './vocab.ts';
 import { listRuns, makeRunId, readRun, saveRun, touchConversation, updateConversation } from './storage.ts';
 import { normalizeGeneratedConversations, parseTranscriptText } from './normalize.ts';
 import { calculateRunAnalytics } from './analytics.ts';
+import { getTextModelOptions, resolveTextModel } from './textModels.ts';
+import { auditConversationsWithVocabulary } from './vocabAudit.ts';
 
 const app = express();
 const port = Number.parseInt(process.env.API_PORT || '8787', 10);
@@ -31,12 +34,64 @@ function asyncHandler<TReq extends express.Request>(
   };
 }
 
+function validateGenerateRequest(body: GenerateRequest): { setNumber: number; conversationCount: number } | { error: string; status: number } {
+  const setNumber = Number(body.setNumber);
+  const conversationCount = Number(body.conversationCount);
+
+  if (!Number.isInteger(setNumber) || setNumber < 1) {
+    return { status: 400, error: 'Set number must be a positive integer.' };
+  }
+  if (!Number.isInteger(conversationCount) || conversationCount < 4 || conversationCount > 30) {
+    return { status: 400, error: 'Conversation count must be between 4 and 30.' };
+  }
+
+  return { setNumber, conversationCount };
+}
+
+async function getGenerateContext(body: GenerateRequest): Promise<
+  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string }
+  | { error: string; status: number }
+> {
+  const validated = validateGenerateRequest(body);
+  if ('error' in validated) return validated;
+
+  const allowedVocabulary = await getAllowedVocabulary(validated.setNumber);
+  if (!allowedVocabulary.length) {
+    return { status: 404, error: `No vocabulary found for Set ${validated.setNumber}.` };
+  }
+
+  const textModel = await resolveTextModel(body.textModelId);
+  const prompt = await buildGenerationPrompt(validated.setNumber, validated.conversationCount, allowedVocabulary);
+  return { ...validated, allowedVocabulary, textModel, prompt };
+}
+
+function makeLlmExchange(
+  textModel: TextModelInfo,
+  prompt: string,
+  requestedAt = new Date().toISOString()
+): LlmExchange {
+  return {
+    id: `llm-${requestedAt.replace(/[-:.]/g, '')}`,
+    provider: textModel.provider,
+    model: textModel.model,
+    label: textModel.label,
+    instructions: textModel.provider === 'codex' ? CODEX_TEXT_INSTRUCTIONS : undefined,
+    prompt,
+    requestedAt,
+    status: 'pending'
+  };
+}
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
 
 app.get('/api/sets', asyncHandler(async (_req, res) => {
   res.json({ sets: await getSetSummaries() });
+}));
+
+app.get('/api/text-models', asyncHandler(async (_req, res) => {
+  res.json({ models: await getTextModelOptions() });
 }));
 
 app.get('/api/runs', asyncHandler(async (_req, res) => {
@@ -47,28 +102,32 @@ app.get('/api/runs/:runId', asyncHandler(async (req, res) => {
   res.json({ run: await readRun(routeParam(req.params.runId)) });
 }));
 
+app.post('/api/generate/preview', asyncHandler(async (req: express.Request<unknown, unknown, GenerateRequest>, res) => {
+  const context = await getGenerateContext(req.body);
+  if ('error' in context) {
+    res.status(context.status).json({ error: context.error });
+    return;
+  }
+
+  res.json({ exchange: makeLlmExchange(context.textModel, context.prompt) });
+}));
+
 app.post('/api/generate', asyncHandler(async (req: express.Request<unknown, unknown, GenerateRequest>, res) => {
-  const setNumber = Number(req.body.setNumber);
-  const conversationCount = Number(req.body.conversationCount);
-
-  if (!Number.isInteger(setNumber) || setNumber < 1) {
-    res.status(400).json({ error: 'Set number must be a positive integer.' });
-    return;
-  }
-  if (!Number.isInteger(conversationCount) || conversationCount < 4 || conversationCount > 30) {
-    res.status(400).json({ error: 'Conversation count must be between 4 and 30.' });
+  const context = await getGenerateContext(req.body);
+  if ('error' in context) {
+    res.status(context.status).json({ error: context.error });
     return;
   }
 
-  const allowedVocabulary = await getAllowedVocabulary(setNumber);
-  if (!allowedVocabulary.length) {
-    res.status(404).json({ error: `No vocabulary found for Set ${setNumber}.` });
-    return;
-  }
-
-  const prompt = await buildGenerationPrompt(setNumber, conversationCount, allowedVocabulary);
-  const raw = await generateConversationJson(prompt);
-  const conversations = normalizeGeneratedConversations(raw, conversationCount);
+  const requestedAt = new Date().toISOString();
+  const exchange = makeLlmExchange(context.textModel, context.prompt, requestedAt);
+  const generation = context.textModel.provider === 'codex'
+    ? await generateCodexConversationJson(context.prompt, context.textModel.model)
+    : await generateConversationJson(context.prompt);
+  const conversations = await auditConversationsWithVocabulary(
+    context.allowedVocabulary,
+    normalizeGeneratedConversations(generation.parsed, context.conversationCount)
+  );
 
   if (!conversations.length) {
     res.status(502).json({ error: 'The generation response did not include any usable conversations.' });
@@ -77,12 +136,22 @@ app.post('/api/generate', asyncHandler(async (req: express.Request<unknown, unkn
 
   const timestamp = new Date().toISOString();
   const run = await saveRun({
-    id: makeRunId(setNumber),
-    setNumber,
-    conversationCount,
-    allowedVocabCount: allowedVocabulary.length,
-    analytics: calculateRunAnalytics(setNumber, allowedVocabulary, conversations),
+    id: makeRunId(context.setNumber),
+    setNumber: context.setNumber,
+    conversationCount: context.conversationCount,
+    allowedVocabCount: context.allowedVocabulary.length,
+    textModel: context.textModel,
+    analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
     status: 'generated',
+    llmExchanges: [
+      {
+        ...exchange,
+        output: generation.output,
+        stats: generation.stats,
+        receivedAt: timestamp,
+        status: 'complete'
+      }
+    ],
     createdAt: timestamp,
     updatedAt: timestamp,
     conversations

@@ -42,7 +42,42 @@ function stripJsonFences(text: string): string {
   return withoutFence;
 }
 
-export async function generateConversationJson(prompt: string): Promise<unknown> {
+function compactObject<T extends Record<string, unknown>>(value: T): Partial<T> {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined && item !== null)) as Partial<T>;
+}
+
+function extractGeminiStats(response: unknown, model: string): unknown {
+  const typed = response as {
+    usageMetadata?: unknown;
+    modelVersion?: unknown;
+    responseId?: unknown;
+    promptFeedback?: unknown;
+    candidates?: Array<{
+      index?: unknown;
+      finishReason?: unknown;
+      safetyRatings?: unknown;
+      citationMetadata?: unknown;
+      groundingMetadata?: unknown;
+    }>;
+  };
+
+  return compactObject({
+    model,
+    responseId: typed.responseId,
+    modelVersion: typed.modelVersion,
+    usageMetadata: typed.usageMetadata,
+    promptFeedback: typed.promptFeedback,
+    candidates: typed.candidates?.map((candidate) => compactObject({
+      index: candidate.index,
+      finishReason: candidate.finishReason,
+      safetyRatings: candidate.safetyRatings,
+      citationMetadata: candidate.citationMetadata,
+      groundingMetadata: candidate.groundingMetadata
+    }))
+  });
+}
+
+export async function generateConversationJson(prompt: string): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
   const ai = getAi();
   const model = process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash';
 
@@ -60,7 +95,11 @@ export async function generateConversationJson(prompt: string): Promise<unknown>
     throw new Error('Gemini returned an empty generation response.');
   }
 
-  return JSON.parse(stripJsonFences(text));
+  return {
+    parsed: JSON.parse(stripJsonFences(text)),
+    output: text,
+    stats: extractGeminiStats(response, model)
+  };
 }
 
 function parseMimeType(mimeType: string): WavConversionOptions {

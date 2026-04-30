@@ -18,6 +18,32 @@ export interface SetSummary {
   cumulativeCount: number;
 }
 
+export type TextModelProvider = 'gemini' | 'codex';
+
+export interface TextModelInfo {
+  id: string;
+  provider: TextModelProvider;
+  model: string;
+  label: string;
+  reasoningEffort?: string;
+  source?: 'configured' | 'codex-api' | 'fallback' | 'legacy';
+}
+
+export interface LlmExchange {
+  id: string;
+  provider: TextModelProvider;
+  model: string;
+  label: string;
+  instructions?: string;
+  prompt: string;
+  output?: string;
+  stats?: unknown;
+  requestedAt: string;
+  receivedAt?: string;
+  status: 'pending' | 'complete' | 'failed';
+  error?: string;
+}
+
 export interface ConversationLine {
   speaker: 'Speaker 1' | 'Speaker 2';
   tags: string[];
@@ -67,8 +93,10 @@ export interface PracticeRun {
   setNumber: number;
   conversationCount: number;
   allowedVocabCount: number;
+  textModel: TextModelInfo;
   analytics: RunAnalytics;
   status: 'generated' | 'partial_audio' | 'complete';
+  llmExchanges?: LlmExchange[];
   createdAt: string;
   updatedAt: string;
   conversations: PracticeConversation[];
@@ -77,6 +105,7 @@ export interface PracticeRun {
 export interface GenerateRequest {
   setNumber: number;
   conversationCount: number;
+  textModelId?: string;
 }
 
 export interface GenerateResponse {

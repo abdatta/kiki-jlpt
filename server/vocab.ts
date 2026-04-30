@@ -68,6 +68,6 @@ export async function getAllowedVocabulary(setNumber: number): Promise<VocabItem
 
 export function formatVocabForPrompt(vocab: VocabItem[]): string {
   return vocab
-    .map((item) => `Set ${item.set} | ${item.japanese} | ${item.reading} | ${item.meaning} | ${item.partOfSpeech}`)
+    .map((item) => `Set ${item.set} | ${item.japanese} | ${item.meaning}`)
     .join('\n');
 }

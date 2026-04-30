@@ -15,8 +15,9 @@ export function calculateRunAnalytics(setNumber: number, allowedVocabulary: Voca
   const allowedWords = new Set(allowedVocabulary.map((item) => item.japanese));
   const currentSetWords = allowedVocabulary.filter((item) => item.set === setNumber).map((item) => item.japanese);
   const usedWords = uniqueSorted(conversations.flatMap((conversation) => conversation.vocabularyUsed));
-  const usedAllowedWords = usedWords.filter((word) => allowedWords.has(word));
-  const missingCurrentSetWords = currentSetWords.filter((word) => !usedAllowedWords.includes(word));
+  const usedWordSet = new Set(usedWords);
+  const usedAllowedWords = allowedVocabulary.filter((item) => usedWordSet.has(item.japanese));
+  const missingCurrentSetWords = currentSetWords.filter((word) => !usedWordSet.has(word));
   const auditedOutOfAllowed = conversations
     .flatMap((conversation) => conversation.outOfVocabularyAudit)
     .map(cleanAuditWord)
