@@ -14,11 +14,13 @@ import {
   RefreshCw,
   Save,
   Sparkles,
+  Trash2,
   X
 } from 'lucide-react';
 import type { ApiError, LlmExchange, PracticeConversation, PracticeRun, SetSummary, TextModelInfo } from '../shared/types.ts';
 
-type BusyAction = 'generate' | `approve:${string}` | `reject:${string}` | `audio:${string}` | `save:${string}` | null;
+type ConversationAction = 'approve' | 'reject' | 'audio' | 'delete-audio';
+type BusyAction = 'generate' | `${ConversationAction}:${string}` | `save:${string}` | null;
 
 interface EditState {
   conversationId: string;
@@ -73,6 +75,32 @@ function makeSessionId(): string {
 
 function formatAuditTime(value?: string): string {
   return value ? new Date(value).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Pending';
+}
+
+function formatClockTime(date: Date): string {
+  return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+}
+
+function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function formatRunTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const now = new Date();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const daysAgo = Math.round((startOfLocalDay(now).getTime() - startOfLocalDay(date).getTime()) / dayMs);
+  const time = formatClockTime(date);
+
+  if (daysAgo === 0) return time;
+  if (daysAgo === 1) return `Yesterday, ${time}`;
+  if (daysAgo > 1 && daysAgo < 7) {
+    return `${date.toLocaleDateString([], { weekday: 'long' })} ${time}`;
+  }
+
+  return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
 }
 
 function formatAuditOutput(value?: string): string | undefined {
@@ -300,15 +328,20 @@ export function App() {
     setRuns((existing) => [payload.run, ...existing.filter((run) => run.id !== payload.run.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
   }
 
-  async function runAction(conversationId: string, action: 'approve' | 'reject' | 'audio') {
+  async function runAction(conversationId: string, action: ConversationAction) {
     if (!currentRun) return;
+    if (action === 'delete-audio' && !window.confirm('Delete this generated audio? You can regenerate it afterward.')) {
+      return;
+    }
+
     const marker = `${action}:${conversationId}` as BusyAction;
     setBusy(marker);
     setError(null);
     try {
+      const routeAction = action === 'delete-audio' ? 'audio' : action;
       const payload = await api<{ run: PracticeRun }>(
-        `/api/runs/${encodeURIComponent(currentRun.id)}/conversations/${encodeURIComponent(conversationId)}/${action}`,
-        { method: 'POST' }
+        `/api/runs/${encodeURIComponent(currentRun.id)}/conversations/${encodeURIComponent(conversationId)}/${routeAction}`,
+        { method: action === 'delete-audio' ? 'DELETE' : 'POST' }
       );
       setCurrentRun(payload.run);
       await loadInitial();
@@ -411,7 +444,10 @@ export function App() {
                 refreshRun(run.id);
               }}
             >
-              <span>Set {run.setNumber}</span>
+              <span className="runButtonHeader">
+                <span>Set {run.setNumber}</span>
+                <time dateTime={run.createdAt}>{formatRunTime(run.createdAt)}</time>
+              </span>
               <small>{run.conversations.length} conversations - {run.textModel.label}</small>
             </button>
           ))}
@@ -623,9 +659,20 @@ export function App() {
 
                       {conversation.error ? <p className="conversationError">{conversation.error}</p> : null}
                       {conversation.audioUrl ? (
-                        <audio controls src={conversation.audioUrl}>
-                          <track kind="captions" />
-                        </audio>
+                        <div className="audioRow">
+                          <audio controls src={conversation.audioUrl}>
+                            <track kind="captions" />
+                          </audio>
+                          <button
+                            className="audioDeleteButton"
+                            onClick={() => runAction(conversation.id, 'delete-audio')}
+                            disabled={busy === `delete-audio:${conversation.id}` || conversation.status === 'audio_generating'}
+                            title="Delete audio so it can be regenerated"
+                            aria-label="Delete generated audio"
+                          >
+                            {busy === `delete-audio:${conversation.id}` ? <RefreshCw className="spin" size={17} /> : <Trash2 size={17} />}
+                          </button>
+                        </div>
                       ) : null}
 
                       <div className="buttonRow">

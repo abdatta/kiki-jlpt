@@ -11,6 +11,11 @@ interface WavConversionOptions {
   bitsPerSample: number;
 }
 
+interface GeminiInlineAudio {
+  mimeType?: string;
+  data?: string;
+}
+
 function getAi(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -157,6 +162,32 @@ function convertToWav(rawData: string, mimeType: string): Buffer {
   return Buffer.concat([wavHeader, audioBuffer]);
 }
 
+function extractInlineAudio(response: unknown): GeminiInlineAudio | undefined {
+  const typed = response as {
+    candidates?: Array<{ content?: { parts?: Array<{ inlineData?: GeminiInlineAudio }> } }>;
+  };
+
+  return typed.candidates?.flatMap((candidate) => candidate.content?.parts ?? []).find((part) => part.inlineData?.data)?.inlineData;
+}
+
+function audioBufferForInlineData(inlineData: GeminiInlineAudio): { extension: string; buffer: Buffer } {
+  const mimeType = inlineData.mimeType || '';
+  const normalizedMimeType = mimeType.split(';')[0].trim();
+  const extension = mime.getExtension(normalizedMimeType);
+
+  if (extension && normalizedMimeType !== 'audio/L16' && normalizedMimeType !== 'audio/pcm') {
+    return {
+      extension,
+      buffer: Buffer.from(inlineData.data || '', 'base64')
+    };
+  }
+
+  return {
+    extension: 'wav',
+    buffer: convertToWav(inlineData.data || '', mimeType)
+  };
+}
+
 function transcriptLine(line: ConversationLine): string {
   return `${line.speaker}: [${line.tags.join(', ')}] ${line.japanese}`;
 }
@@ -174,15 +205,18 @@ ${conversation.text.map(transcriptLine).join('\n')}`;
 
 export async function generateConversationAudio(runId: string, conversation: PracticeConversation): Promise<{ fileName: string; filePath: string }> {
   const ai = getAi();
-  const model = process.env.GEMINI_TTS_MODEL || 'gemini-3.1-flash-tts-preview';
+  const model = process.env.GEMINI_TTS_MODEL;
+  if (!model) {
+    throw new Error('GEMINI_TTS_MODEL is not set. Create a .env or set the variable before generating.');
+  }
   const outputDir = runAudioDir(runId);
   await mkdir(outputDir, { recursive: true });
 
-  const response = await ai.models.generateContentStream({
+  const response = await ai.models.generateContent({
     model,
     config: {
       temperature: 1,
-      responseModalities: ['audio'],
+      responseModalities: ['AUDIO'],
       speechConfig: {
         multiSpeakerVoiceConfig: {
           speakerVoiceConfigs: [
@@ -214,20 +248,12 @@ export async function generateConversationAudio(runId: string, conversation: Pra
     ]
   } as never);
 
-  let index = 0;
-  for await (const chunk of response as AsyncIterable<{
-    candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { mimeType?: string; data?: string } }> } }>;
-  }>) {
-    const inlineData = chunk.candidates?.[0]?.content?.parts?.find((part) => part.inlineData)?.inlineData;
-    if (!inlineData?.data) continue;
-
-    const extension = mime.getExtension(inlineData.mimeType || '') || 'wav';
-    const buffer = extension === 'wav' ? Buffer.from(inlineData.data, 'base64') : Buffer.from(inlineData.data, 'base64');
-    const finalExtension = mime.getExtension(inlineData.mimeType || '') ? extension : 'wav';
-    const finalBuffer = mime.getExtension(inlineData.mimeType || '') ? buffer : convertToWav(inlineData.data, inlineData.mimeType || '');
-    const fileName = `${conversation.id}${index ? `-${index}` : ''}.${finalExtension}`;
+  const inlineData = extractInlineAudio(response);
+  if (inlineData?.data) {
+    const audio = audioBufferForInlineData(inlineData);
+    const fileName = `${conversation.id}.${audio.extension}`;
     const filePath = path.join(outputDir, fileName);
-    await writeFile(filePath, finalBuffer);
+    await writeFile(filePath, audio.buffer);
     return { fileName, filePath };
   }
 

@@ -214,6 +214,22 @@ textarea:focus {
   color: #1f2a2e;
 }
 
+.runButtonHeader {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 800;
+}
+
+.runButtonHeader time {
+  color: #637173;
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .runButton small {
   overflow-wrap: anywhere;
   text-align: left;
@@ -821,6 +837,35 @@ textarea:focus {
 
 audio {
   width: 100%;
+}
+
+.audioRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  align-items: center;
+  gap: 8px;
+}
+
+.audioDeleteButton {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #d9b3aa;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #8c3025;
+  display: inline-grid;
+  place-items: center;
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.audioDeleteButton:hover {
+  transform: translateY(-1px);
+}
+
+.audioDeleteButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
 }
 
 .buttonRow {

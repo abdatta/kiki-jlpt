@@ -2,14 +2,14 @@ import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
 import path from 'node:path';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, unlink } from 'node:fs/promises';
 import type { GenerateRequest, LlmExchange, PracticeConversation, TextModelInfo, VocabItem } from '../shared/types.ts';
 import { OUTPUTS_DIR, RUNS_DIR } from './paths.ts';
 import { buildGenerationPrompt } from './prompt.ts';
 import { generateConversationAudio, generateConversationJson } from './gemini.ts';
 import { CODEX_TEXT_INSTRUCTIONS, generateCodexConversationJson } from './codexText.ts';
 import { getAllowedVocabulary, getSetSummaries } from './vocab.ts';
-import { listRuns, makeRunId, readRun, saveRun, touchConversation, updateConversation } from './storage.ts';
+import { listRuns, makeRunId, readRun, runAudioDir, saveRun, touchConversation, updateConversation } from './storage.ts';
 import { normalizeGeneratedConversations, parseTranscriptText } from './normalize.ts';
 import { calculateRunAnalytics } from './analytics.ts';
 import { getTextModelOptions, resolveTextModel } from './textModels.ts';
@@ -24,6 +24,18 @@ app.use('/audio', express.static(RUNS_DIR));
 
 function routeParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] : value ?? '';
+}
+
+async function deleteAudioFile(runId: string, fileName: string): Promise<void> {
+  const audioDir = path.resolve(runAudioDir(runId));
+  const filePath = path.resolve(audioDir, fileName);
+  if (!filePath.startsWith(`${audioDir}${path.sep}`)) {
+    throw new Error('Invalid audio file path.');
+  }
+
+  await unlink(filePath).catch((error: NodeJS.ErrnoException) => {
+    if (error.code !== 'ENOENT') throw error;
+  });
 }
 
 function asyncHandler<TReq extends express.Request>(
@@ -231,6 +243,32 @@ app.post('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(as
     });
     res.status(502).json({ error: 'Audio generation failed.', detail: error instanceof Error ? error.message : String(error), run });
   }
+}));
+
+app.delete('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(async (req, res) => {
+  const runId = routeParam(req.params.runId);
+  const conversationId = routeParam(req.params.conversationId);
+  const run = await readRun(runId);
+  const conversation = run.conversations.find((item) => item.id === conversationId);
+  if (!conversation) throw new Error('Conversation not found.');
+  if (conversation.status === 'audio_generating') {
+    throw new Error('Wait for audio generation to finish before deleting audio.');
+  }
+
+  if (conversation.audioFileName) {
+    await deleteAudioFile(runId, conversation.audioFileName);
+  }
+
+  const updated = await updateConversation(runId, conversationId, (current) => {
+    return touchConversation({
+      ...current,
+      status: 'approved',
+      audioFileName: undefined,
+      audioUrl: undefined,
+      error: undefined
+    });
+  });
+  res.json({ run: updated });
 }));
 
 await mkdir(OUTPUTS_DIR, { recursive: true });
