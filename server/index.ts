@@ -4,16 +4,17 @@ import express from 'express';
 import path from 'node:path';
 import { mkdir, unlink } from 'node:fs/promises';
 import type { GenerateRequest, LlmExchange, PracticeConversation, TextModelInfo, VocabItem } from '../shared/types.ts';
-import { OUTPUTS_DIR, RUNS_DIR } from './paths.ts';
+import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR } from './paths.ts';
 import { buildGenerationPrompt } from './prompt.ts';
 import { generateConversationAudio, generateConversationJson } from './gemini.ts';
 import { CODEX_TEXT_INSTRUCTIONS, generateCodexConversationJson } from './codexText.ts';
 import { getAllowedVocabulary, getSetSummaries } from './vocab.ts';
-import { listRuns, makeRunId, readRun, runAudioDir, saveRun, touchConversation, updateConversation } from './storage.ts';
+import { listRuns, makeRunId, readRun, reanalyzeRun, runAudioDir, saveRun, touchConversation, unlockCuratedSource, updateConversation } from './storage.ts';
 import { normalizeGeneratedConversations, parseTranscriptText } from './normalize.ts';
 import { calculateRunAnalytics } from './analytics.ts';
 import { getTextModelOptions, resolveTextModel } from './textModels.ts';
 import { auditConversationsWithVocabulary } from './vocabAudit.ts';
+import { addConversationToLibrary, listCuratedSets, readCuratedSet, reanalyzeCuratedSet, removeConversationFromLibrary } from './library.ts';
 
 const app = express();
 const port = Number.parseInt(process.env.API_PORT || '8787', 10);
@@ -21,6 +22,7 @@ const port = Number.parseInt(process.env.API_PORT || '8787', 10);
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 app.use('/audio', express.static(RUNS_DIR));
+app.use('/curated', express.static(CURATED_DIR));
 
 function routeParam(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] : value ?? '';
@@ -114,6 +116,44 @@ app.get('/api/runs/:runId', asyncHandler(async (req, res) => {
   res.json({ run: await readRun(routeParam(req.params.runId)) });
 }));
 
+app.post('/api/runs/:runId/reanalyze', asyncHandler(async (req, res) => {
+  res.json({ run: await reanalyzeRun(routeParam(req.params.runId)) });
+}));
+
+app.get('/api/library', asyncHandler(async (_req, res) => {
+  const setSummaries = await getSetSummaries();
+  res.json({ sets: await Promise.all(setSummaries.map((set) => readCuratedSet(set.set))) });
+}));
+
+app.get('/api/library/sets', asyncHandler(async (_req, res) => {
+  const sets = await listCuratedSets();
+  res.json({
+    sets: sets.map((set) => ({
+      setNumber: set.setNumber,
+      conversationCount: set.conversations.length,
+      updatedAt: set.updatedAt
+    }))
+  });
+}));
+
+app.get('/api/library/sets/:setNumber', asyncHandler(async (req, res) => {
+  const setNumber = Number(routeParam(req.params.setNumber));
+  if (!Number.isInteger(setNumber) || setNumber < 1) {
+    res.status(400).json({ error: 'Set number must be a positive integer.' });
+    return;
+  }
+  res.json({ set: await readCuratedSet(setNumber) });
+}));
+
+app.post('/api/library/sets/:setNumber/reanalyze', asyncHandler(async (req, res) => {
+  const setNumber = Number(routeParam(req.params.setNumber));
+  if (!Number.isInteger(setNumber) || setNumber < 1) {
+    res.status(400).json({ error: 'Set number must be a positive integer.' });
+    return;
+  }
+  res.json({ set: await reanalyzeCuratedSet(setNumber) });
+}));
+
 app.post('/api/generate/preview', asyncHandler(async (req: express.Request<unknown, unknown, GenerateRequest>, res) => {
   const context = await getGenerateContext(req.body);
   if ('error' in context) {
@@ -177,6 +217,9 @@ app.put('/api/runs/:runId/conversations/:conversationId', asyncHandler(async (re
   const runId = routeParam(req.params.runId);
   const conversationId = routeParam(req.params.conversationId);
   const updated = await updateConversation(runId, conversationId, (conversation) => {
+    if (conversation.curatedId) {
+      throw new Error('This conversation is in Library and is read-only.');
+    }
     const next: PracticeConversation = {
       ...conversation,
       title: typeof title === 'string' ? title.trim() : conversation.title,
@@ -193,26 +236,12 @@ app.put('/api/runs/:runId/conversations/:conversationId', asyncHandler(async (re
   res.json({ run: updated });
 }));
 
-app.post('/api/runs/:runId/conversations/:conversationId/approve', asyncHandler(async (req, res) => {
-  const updated = await updateConversation(routeParam(req.params.runId), routeParam(req.params.conversationId), (conversation) => {
-    return touchConversation({ ...conversation, status: 'approved', error: undefined });
-  });
-  res.json({ run: updated });
-}));
-
-app.post('/api/runs/:runId/conversations/:conversationId/reject', asyncHandler(async (req, res) => {
-  const updated = await updateConversation(routeParam(req.params.runId), routeParam(req.params.conversationId), (conversation) => {
-    return touchConversation({ ...conversation, status: 'rejected', error: undefined });
-  });
-  res.json({ run: updated });
-}));
-
 app.post('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(async (req, res) => {
   const runId = routeParam(req.params.runId);
   const conversationId = routeParam(req.params.conversationId);
   let run = await updateConversation(runId, conversationId, (conversation) => {
-    if (conversation.status !== 'approved' && conversation.status !== 'audio_failed') {
-      throw new Error('Approve the conversation before generating audio.');
+    if (conversation.curatedId) {
+      throw new Error('This conversation is in Library and is read-only.');
     }
     return touchConversation({ ...conversation, status: 'audio_generating', error: undefined });
   });
@@ -251,6 +280,9 @@ app.delete('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(
   const run = await readRun(runId);
   const conversation = run.conversations.find((item) => item.id === conversationId);
   if (!conversation) throw new Error('Conversation not found.');
+  if (conversation.curatedId) {
+    throw new Error('This conversation is in Library and is read-only.');
+  }
   if (conversation.status === 'audio_generating') {
     throw new Error('Wait for audio generation to finish before deleting audio.');
   }
@@ -262,7 +294,7 @@ app.delete('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(
   const updated = await updateConversation(runId, conversationId, (current) => {
     return touchConversation({
       ...current,
-      status: 'approved',
+      status: 'draft',
       audioFileName: undefined,
       audioUrl: undefined,
       error: undefined
@@ -271,8 +303,39 @@ app.delete('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(
   res.json({ run: updated });
 }));
 
+app.post('/api/runs/:runId/conversations/:conversationId/library', asyncHandler(async (req, res) => {
+  const runId = routeParam(req.params.runId);
+  const conversationId = routeParam(req.params.conversationId);
+  let run = await readRun(runId);
+  const conversation = run.conversations.find((item) => item.id === conversationId);
+  if (!conversation) throw new Error('Conversation not found.');
+  if (conversation.curatedId) {
+    res.json({ run, curated: null });
+    return;
+  }
+
+  const curated = await addConversationToLibrary(runId, run.setNumber, conversation);
+  run = await updateConversation(runId, conversationId, (current) => {
+    return touchConversation({
+      ...current,
+      curatedId: curated.id,
+      curatedAt: curated.curatedAt
+    });
+  });
+  res.json({ run, curated });
+}));
+
+app.delete('/api/library/:curatedId', asyncHandler(async (req, res) => {
+  const removed = await removeConversationFromLibrary(routeParam(req.params.curatedId));
+  const run = await unlockCuratedSource(removed.sourceRunId, removed.sourceConversationId, removed.id);
+  res.json({ removed, run });
+}));
+
 await mkdir(OUTPUTS_DIR, { recursive: true });
 await mkdir(RUNS_DIR, { recursive: true });
+await mkdir(CURATED_DIR, { recursive: true });
+await mkdir(CURATED_SETS_DIR, { recursive: true });
+await mkdir(CURATED_AUDIO_DIR, { recursive: true });
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const message = error instanceof Error ? error.message : String(error);

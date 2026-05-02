@@ -1,26 +1,39 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bot,
-  Check,
+  BookOpen,
   CircleAlert,
   Disc3,
   Eye,
-  FileAudio,
+  Headphones,
   Languages,
   LoaderCircle,
   ListMusic,
+  Pause,
   Pencil,
+  Plus,
   Play,
   RefreshCw,
+  RotateCcw,
   Save,
   Sparkles,
   Trash2,
   X
 } from 'lucide-react';
-import type { ApiError, LlmExchange, PracticeConversation, PracticeRun, SetSummary, TextModelInfo } from '../shared/types.ts';
+import type { ApiError, CuratedConversation, CuratedSet, LlmExchange, PracticeConversation, PracticeRun, SetSummary, TextModelInfo } from '../shared/types.ts';
 
-type ConversationAction = 'approve' | 'reject' | 'audio' | 'delete-audio';
-type BusyAction = 'generate' | `${ConversationAction}:${string}` | `save:${string}` | null;
+type ConversationAction = 'audio' | 'delete-audio';
+type BoardMode = 'runs' | 'library';
+type BusyAction =
+  | 'generate'
+  | `${ConversationAction}:${string}`
+  | `save:${string}`
+  | `library-add:${string}`
+  | `library-remove:${string}`
+  | `reanalyze-run:${string}`
+  | `reanalyze-library:${number}`
+  | null;
+type AudioPlaybackState = 'idle' | 'paused' | 'playing' | 'ended';
 
 interface EditState {
   conversationId: string;
@@ -69,6 +82,12 @@ function statusLabel(status: PracticeConversation['status']): string {
   return status.replaceAll('_', ' ');
 }
 
+function audioSrc(conversation: PracticeConversation | CuratedConversation): string | undefined {
+  if (!conversation.audioUrl) return undefined;
+  const separator = conversation.audioUrl.includes('?') ? '&' : '?';
+  return `${conversation.audioUrl}${separator}v=${encodeURIComponent(conversation.updatedAt)}`;
+}
+
 function makeSessionId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `generation-${Date.now()}`;
 }
@@ -101,6 +120,42 @@ function formatRunTime(value: string): string {
   }
 
   return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
+}
+
+function formatRunHistoryTitle(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const now = new Date();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const daysAgo = Math.round((startOfLocalDay(now).getTime() - startOfLocalDay(date).getTime()) / dayMs);
+  const time = formatClockTime(date);
+
+  if (daysAgo === 0) return `Today, ${time}`;
+  if (daysAgo === 1) return `Yesterday, ${time}`;
+  if (daysAgo > 1 && daysAgo < 7) {
+    return `${date.toLocaleDateString([], { weekday: 'long' })}, ${time}`;
+  }
+
+  return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
+}
+
+function shortModelLabel(model: TextModelInfo): string {
+  const effort = model.reasoningEffort ? model.reasoningEffort.slice(0, 3) : undefined;
+  if (model.provider === 'codex') {
+    const match = /GPT[-\s]?([\d.]+)/i.exec(model.label) ?? /gpt-([\d.]+)/i.exec(model.model);
+    const name = match ? `GPT-${match[1]}` : model.model.toUpperCase();
+    return effort ? `${name} (${effort})` : name;
+  }
+  return model.model.replace(/^gemini-/i, 'Gemini ');
+}
+
+function runHistorySummary(run: PracticeRun): string {
+  return `${run.conversations.length} convos · ${run.analytics.currentSetMissingCount} Missing · ${run.analytics.allowedVocabUsedPercentage}% Used · ${run.analytics.outOfAllowedCount} New`;
+}
+
+function libraryHistorySummary(set: CuratedSet): string {
+  return `${set.conversations.length} convos · ${set.analytics.currentSetMissingCount} Missing · ${set.analytics.allowedVocabUsedPercentage}% Used · ${set.analytics.outOfAllowedCount} New`;
 }
 
 function formatAuditOutput(value?: string): string | undefined {
@@ -206,10 +261,49 @@ function LoadingPanel({ session }: { session: GenerationSession }) {
   );
 }
 
+function AnalyticsPanel({ analytics, setNumber, label }: { analytics: PracticeRun['analytics']; setNumber: number; label: string }) {
+  return (
+    <section className="analyticsPanel" aria-label={label}>
+      <div className="analyticsCard">
+        <span>Current Set Missing</span>
+        <strong>{analytics.currentSetMissingCount}</strong>
+        <p>{analytics.currentSetUsedCount} of {analytics.currentSetTotal} Set {setNumber} words used</p>
+        <div className="miniChips">
+          {analytics.currentSetMissingWords.length === 0 ? <span>None</span> : null}
+          {analytics.currentSetMissingWords.slice(0, 40).map((word) => (
+            <span key={word}>{word}</span>
+          ))}
+          {analytics.currentSetMissingWords.length > 40 ? <span>+{analytics.currentSetMissingWords.length - 40}</span> : null}
+        </div>
+      </div>
+
+      <div className="analyticsCard">
+        <span>Allowed Vocab Used</span>
+        <strong>{analytics.allowedVocabUsedPercentage}%</strong>
+        <p>{analytics.allowedVocabUsedCount} of {analytics.allowedVocabTotal} words from Sets 1-{setNumber}</p>
+      </div>
+
+      <div className="analyticsCard">
+        <span>New Words Introduced</span>
+        <strong>{analytics.outOfAllowedCount}</strong>
+        <p>Words not found in allowed Sets 1-{setNumber}</p>
+        <div className="miniChips warning">
+          {analytics.outOfAllowedWords.length === 0 ? <span>None</span> : null}
+          {analytics.outOfAllowedWords.map((word) => (
+            <span key={word}>{word}</span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function App() {
   const [sets, setSets] = useState<SetSummary[]>([]);
   const [runs, setRuns] = useState<PracticeRun[]>([]);
+  const [librarySets, setLibrarySets] = useState<CuratedSet[]>([]);
   const [currentRun, setCurrentRun] = useState<PracticeRun | null>(null);
+  const [boardMode, setBoardMode] = useState<BoardMode>('runs');
   const [textModels, setTextModels] = useState<TextModelInfo[]>([]);
   const [textModelId, setTextModelId] = useState('gemini');
   const [setNumber, setSetNumber] = useState(1);
@@ -221,21 +315,28 @@ export function App() {
   const [auditOpen, setAuditOpen] = useState(false);
   const [revealedAnswers, setRevealedAnswers] = useState<Record<string, boolean>>({});
   const [revealedTranslations, setRevealedTranslations] = useState<Record<string, boolean>>({});
+  const [audioStates, setAudioStates] = useState<Record<string, AudioPlaybackState>>({});
+  const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
   const currentSet = useMemo(() => sets.find((item) => item.set === setNumber), [sets, setNumber]);
   const currentTextModel = useMemo(() => textModels.find((model) => model.id === textModelId), [textModels, textModelId]);
-  const showRunContent = Boolean(currentRun && !generationSession);
+  const currentLibrarySet = useMemo(() => librarySets.find((item) => item.setNumber === setNumber), [librarySets, setNumber]);
+  const curatedLibrarySets = useMemo(() => librarySets.filter((item) => item.conversations.length > 0), [librarySets]);
+  const showRunContent = Boolean(boardMode === 'runs' && currentRun && !generationSession);
+  const showLibraryContent = Boolean(boardMode === 'library' && !generationSession);
   const currentExchange = currentRun?.llmExchanges?.[0];
 
   async function loadInitial() {
-    const [setPayload, runPayload, modelPayload] = await Promise.all([
+    const [setPayload, runPayload, modelPayload, libraryPayload] = await Promise.all([
       api<{ sets: SetSummary[] }>('/api/sets'),
       api<{ runs: PracticeRun[] }>('/api/runs'),
-      api<{ models: TextModelInfo[] }>('/api/text-models')
+      api<{ models: TextModelInfo[] }>('/api/text-models'),
+      api<{ sets: CuratedSet[] }>('/api/library')
     ]);
     setSets(setPayload.sets);
     setRuns(runPayload.runs);
     setTextModels(modelPayload.models);
+    setLibrarySets(libraryPayload.sets);
     setTextModelId((previous) => modelPayload.models.some((model) => model.id === previous) ? previous : 'gemini');
     setCurrentRun((previous) => previous ?? runPayload.runs[0] ?? null);
   }
@@ -247,7 +348,8 @@ export function App() {
   useEffect(() => {
     setRevealedAnswers({});
     setRevealedTranslations({});
-  }, [currentRun?.id]);
+    setAudioStates({});
+  }, [boardMode, currentRun?.id, setNumber]);
 
   function answerKey(conversationId: string, questionIndex: number): string {
     return `${conversationId}:${questionIndex}`;
@@ -273,6 +375,67 @@ export function App() {
     }));
   }
 
+  function setAudioState(conversationId: string, state: AudioPlaybackState) {
+    setAudioStates((previous) => ({
+      ...previous,
+      [conversationId]: state
+    }));
+  }
+
+  async function toggleAudioPlayback(conversationId: string) {
+    const audio = audioRefs.current[conversationId];
+    if (!audio) return;
+
+    if (!audio.paused && !audio.ended) {
+      audio.pause();
+      return;
+    }
+
+    if (audio.ended || audioStates[conversationId] === 'ended') {
+      audio.currentTime = 0;
+    }
+
+    try {
+      await audio.play();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    }
+  }
+
+  function audioButtonContent(conversationId: string) {
+    const state = audioStates[conversationId] ?? 'idle';
+    if (state === 'playing') {
+      return (
+        <>
+          <Pause size={16} />
+          Pause
+        </>
+      );
+    }
+    if (state === 'ended') {
+      return (
+        <>
+          <RotateCcw size={16} />
+          Replay
+        </>
+      );
+    }
+    if (state === 'paused') {
+      return (
+        <>
+          <Play size={16} />
+          Resume
+        </>
+      );
+    }
+    return (
+      <>
+        <Play size={16} />
+        Play
+      </>
+    );
+  }
+
   async function generate() {
     const sessionId = makeSessionId();
     const modelLabel = currentTextModel?.label ?? (textModelId === 'gemini' ? 'Gemini' : textModelId);
@@ -281,6 +444,7 @@ export function App() {
     setError(null);
     setEdit(null);
     setAuditOpen(false);
+    setBoardMode('runs');
     setCurrentRun(null);
     setGenerationSession({
       id: sessionId,
@@ -302,6 +466,7 @@ export function App() {
         body: JSON.stringify(requestBody)
       });
       setCurrentRun(payload.run);
+      setBoardMode('runs');
       setGenerationSession(null);
       await loadInitial();
     } catch (caught) {
@@ -328,9 +493,43 @@ export function App() {
     setRuns((existing) => [payload.run, ...existing.filter((run) => run.id !== payload.run.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
   }
 
+  async function reanalyzeCurrentRun() {
+    if (!currentRun) return;
+    const marker = `reanalyze-run:${currentRun.id}` as BusyAction;
+    setBusy(marker);
+    setError(null);
+    try {
+      const payload = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(currentRun.id)}/reanalyze`, { method: 'POST' });
+      setCurrentRun(payload.run);
+      setRuns((existing) => [payload.run, ...existing.filter((run) => run.id !== payload.run.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function reanalyzeCurrentLibrarySet() {
+    const marker = `reanalyze-library:${setNumber}` as BusyAction;
+    setBusy(marker);
+    setError(null);
+    try {
+      const payload = await api<{ set: CuratedSet }>(`/api/library/sets/${encodeURIComponent(setNumber)}/reanalyze`, { method: 'POST' });
+      setLibrarySets((existing) => [payload.set, ...existing.filter((set) => set.setNumber !== payload.set.setNumber)].sort((a, b) => a.setNumber - b.setNumber));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function runAction(conversationId: string, action: ConversationAction) {
     if (!currentRun) return;
+    const conversation = currentRun.conversations.find((item) => item.id === conversationId);
     if (action === 'delete-audio' && !window.confirm('Delete this generated audio? You can regenerate it afterward.')) {
+      return;
+    }
+    if (action === 'audio' && conversation?.audioFileName && !window.confirm('Regenerate this audio? The existing recording will be permanently replaced only after the new recording generates successfully.')) {
       return;
     }
 
@@ -348,6 +547,50 @@ export function App() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       await refreshRun(currentRun.id).catch(() => undefined);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function addToLibrary(conversationId: string) {
+    if (!currentRun) return;
+    const marker = `library-add:${conversationId}` as BusyAction;
+    setBusy(marker);
+    setError(null);
+    try {
+      const payload = await api<{ run: PracticeRun }>(
+        `/api/runs/${encodeURIComponent(currentRun.id)}/conversations/${encodeURIComponent(conversationId)}/library`,
+        { method: 'POST' }
+      );
+      setCurrentRun(payload.run);
+      await loadInitial();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+      await refreshRun(currentRun.id).catch(() => undefined);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function removeFromLibrary(conversation: CuratedConversation) {
+    if (!window.confirm('Remove this conversation from Library? The generated run will become editable again if it still exists.')) {
+      return;
+    }
+
+    const marker = `library-remove:${conversation.id}` as BusyAction;
+    setBusy(marker);
+    setError(null);
+    try {
+      await api<{ removed: CuratedConversation; run?: PracticeRun | null }>(
+        `/api/library/${encodeURIComponent(conversation.id)}`,
+        { method: 'DELETE' }
+      );
+      await loadInitial();
+      if (currentRun?.id === conversation.sourceRunId) {
+        await refreshRun(currentRun.id).catch(() => undefined);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
       setBusy(null);
     }
@@ -373,6 +616,248 @@ export function App() {
     } finally {
       setBusy(null);
     }
+  }
+
+  function renderConversationCard(conversation: PracticeConversation | CuratedConversation, source: 'run' | 'library') {
+    const isEditing = edit?.conversationId === conversation.id;
+    const isLibraryCard = source === 'library';
+    const isReadonly = isLibraryCard || Boolean(conversation.curatedId);
+    const canAddToLibrary = source === 'run' && conversation.status === 'audio_ready' && Boolean(conversation.audioFileName);
+    const isAudioBusy = busy === `audio:${conversation.id}` || conversation.status === 'audio_generating';
+    const isDeleteBusy = busy === `delete-audio:${conversation.id}`;
+    const currentAudioSrc = audioSrc(conversation);
+    const hasAudio = Boolean(currentAudioSrc);
+
+    return (
+      <article className={isReadonly ? 'conversationCard readonly' : 'conversationCard'} key={conversation.id}>
+        <div className="cardHeader">
+          <div>
+            <span className="conversationNumber">Conversation {conversation.number}</span>
+            <h3>{conversation.title}</h3>
+          </div>
+          <span className={`statusPill ${conversation.status}`}>{isLibraryCard ? 'in library' : statusLabel(conversation.status)}</span>
+        </div>
+
+        {isEditing && edit ? (
+          <div className="editForm">
+            <label>
+              <span>Title</span>
+              <input value={edit.title} onChange={(event) => setEdit({ ...edit, title: event.target.value })} />
+            </label>
+            <label>
+              <span>Scene</span>
+              <input value={edit.scene} onChange={(event) => setEdit({ ...edit, scene: event.target.value })} />
+            </label>
+            <label>
+              <span>Sample context</span>
+              <input value={edit.sampleContext} onChange={(event) => setEdit({ ...edit, sampleContext: event.target.value })} />
+            </label>
+            <label>
+              <span>Transcript</span>
+              <textarea rows={7} value={edit.transcript} onChange={(event) => setEdit({ ...edit, transcript: event.target.value })} />
+            </label>
+            <div className="buttonRow">
+              <button className="secondaryButton" onClick={() => setEdit(null)}>
+                <X size={17} />
+                Cancel
+              </button>
+              <button className="primaryButton compact" onClick={saveEdit} disabled={busy === `save:${conversation.id}`}>
+                <Save size={17} />
+                Save
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="sceneText">{conversation.scene}</p>
+            <div className="transcriptBlock">
+              {conversation.text.map((line, index) => {
+                const key = translationKey(conversation.id, index);
+                const isRevealed = Boolean(revealedTranslations[key]);
+                return (
+                  <div className="transcriptLine" key={key}>
+                    <strong>{line.speaker}</strong>
+                    <span>[{line.tags.join(', ')}]</span>
+                    <div className={isRevealed ? 'translationCard revealed' : 'translationCard'}>
+                      <div className="translationCardInner">
+                        <span className="translationFace japaneseFace">{line.japanese}</span>
+                        <span className="translationFace englishFace">{conversation.englishTranslation[index]?.english ?? 'No translation provided'}</span>
+                      </div>
+                    </div>
+                    <button
+                      aria-label={`${isRevealed ? 'Hide' : 'Show'} translation for line ${index + 1}`}
+                      aria-pressed={isRevealed}
+                      className={isRevealed ? 'translationToggle active' : 'translationToggle'}
+                      onClick={() => toggleTranslation(conversation.id, index)}
+                      title={`${isRevealed ? 'Hide' : 'Show'} translation`}
+                      type="button"
+                    >
+                      <Languages size={16} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="detailStrip">
+              <div>
+                <span>Questions</span>
+                <ol>
+                  {conversation.listeningQuestions.map((question, questionIndex) => {
+                    const key = answerKey(conversation.id, questionIndex);
+                    const isRevealed = Boolean(revealedAnswers[key]);
+                    return (
+                      <li className={isRevealed ? 'answerCard revealed' : 'answerCard'} key={key}>
+                        <div className="answerCardInner">
+                          <span className="answerFace questionFace">{question}</span>
+                          <span className="answerFace answerFaceBack">{conversation.answerKey[questionIndex] ?? 'No answer provided'}</span>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+              <div className="answerToggleColumn">
+                <span>Show Answers</span>
+                <div className="answerButtons">
+                  {conversation.listeningQuestions.map((question, questionIndex) => {
+                    const key = answerKey(conversation.id, questionIndex);
+                    const isRevealed = Boolean(revealedAnswers[key]);
+                    return (
+                      <button
+                        aria-label={`${isRevealed ? 'Hide' : 'Show'} answer for question ${questionIndex + 1}`}
+                        aria-pressed={isRevealed}
+                        className={isRevealed ? 'answerToggle active' : 'answerToggle'}
+                        key={key}
+                        onClick={() => toggleAnswer(conversation.id, questionIndex)}
+                        title={`${isRevealed ? 'Hide' : 'Show'} answer`}
+                        type="button"
+                      >
+                        <Eye size={17} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="vocabChips warning">
+              {conversation.outOfVocabularyAudit.length === 0 ? <span>None</span> : null}
+              {conversation.outOfVocabularyAudit.map((word) => (
+                <span key={word}>{word}</span>
+              ))}
+            </div>
+
+            {conversation.error ? <p className="conversationError">{conversation.error}</p> : null}
+            {currentAudioSrc ? (
+              <div className="audioRow single">
+                <audio
+                  controls
+                  onEnded={() => setAudioState(conversation.id, 'ended')}
+                  onPause={(event) => {
+                    if (!event.currentTarget.ended) {
+                      setAudioState(conversation.id, event.currentTarget.currentTime > 0 ? 'paused' : 'idle');
+                    }
+                  }}
+                  onPlay={() => setAudioState(conversation.id, 'playing')}
+                  onSeeked={(event) => {
+                    if (!event.currentTarget.paused || event.currentTarget.ended) return;
+                    setAudioState(conversation.id, event.currentTarget.currentTime > 0 ? 'paused' : 'idle');
+                  }}
+                  ref={(node) => {
+                    audioRefs.current[conversation.id] = node;
+                  }}
+                  src={currentAudioSrc}
+                >
+                  <track kind="captions" />
+                </audio>
+              </div>
+            ) : null}
+
+            <div className="buttonRow">
+              {hasAudio ? (
+                <>
+                  <button className="playLink" onClick={() => toggleAudioPlayback(conversation.id)} type="button">
+                    {audioButtonContent(conversation.id)}
+                  </button>
+                  <button
+                    className="primaryButton compact"
+                    onClick={() => runAction(conversation.id, 'audio')}
+                    disabled={isReadonly || isAudioBusy}
+                    title={isReadonly ? 'Remove it from Library before regenerating audio.' : 'Regenerate audio'}
+                  >
+                    {isAudioBusy ? <RefreshCw className="spin" size={17} /> : <RefreshCw size={17} />}
+                    {isAudioBusy ? 'Generating' : 'Regenerate'}
+                  </button>
+                  <button
+                    className="secondaryButton danger"
+                    onClick={() => runAction(conversation.id, 'delete-audio')}
+                    disabled={isReadonly || isAudioBusy || isDeleteBusy}
+                    title={isReadonly ? 'Remove it from Library before deleting audio.' : 'Delete generated audio'}
+                  >
+                    {isDeleteBusy ? <RefreshCw className="spin" size={17} /> : <Trash2 size={17} />}
+                    Delete
+                  </button>
+                  {source === 'run' ? (
+                    conversation.curatedId ? (
+                      <button className="secondaryButton" disabled title="Remove it from the Library board to edit this source again.">
+                        <BookOpen size={17} />
+                        In Library
+                      </button>
+                    ) : (
+                      <button
+                        className="secondaryButton positive"
+                        onClick={() => addToLibrary(conversation.id)}
+                        disabled={!canAddToLibrary || busy === `library-add:${conversation.id}`}
+                        title={canAddToLibrary ? 'Add to Library' : 'Generate audio before adding to Library'}
+                      >
+                        {busy === `library-add:${conversation.id}` ? <RefreshCw className="spin" size={17} /> : <Plus size={17} />}
+                        Library
+                      </button>
+                    )
+                  ) : (
+                    <button className="secondaryButton danger" onClick={() => removeFromLibrary(conversation as CuratedConversation)} disabled={busy === `library-remove:${conversation.id}`}>
+                      {busy === `library-remove:${conversation.id}` ? <RefreshCw className="spin" size={17} /> : <Trash2 size={17} />}
+                      Remove
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <button
+                    className="primaryButton compact"
+                    onClick={() => runAction(conversation.id, 'audio')}
+                    disabled={isReadonly || isAudioBusy}
+                  >
+                    {isAudioBusy ? <RefreshCw className="spin" size={17} /> : <Headphones size={17} />}
+                    {isAudioBusy ? 'Generating' : 'Generate'}
+                  </button>
+                  <button
+                    className="secondaryButton"
+                    disabled={isReadonly}
+                    onClick={() => {
+                      if (!isReadonly) {
+                        setEdit({
+                          conversationId: conversation.id,
+                          title: conversation.title,
+                          scene: conversation.scene,
+                          sampleContext: conversation.sampleContext,
+                          transcript: transcriptForEdit(conversation)
+                        });
+                      }
+                    }}
+                    title={isReadonly ? 'Remove it from Library to edit this conversation.' : 'Edit conversation'}
+                  >
+                    <Pencil size={17} />
+                    Edit
+                  </button>
+                </>
+              )}
+            </div>
+          </>
+        )}
+      </article>
+    );
   }
 
   return (
@@ -426,6 +911,17 @@ export function App() {
           </button>
         </section>
 
+        <div className="boardTabs" aria-label="Boards">
+          <button className={boardMode === 'runs' ? 'active' : ''} onClick={() => setBoardMode('runs')}>
+            <ListMusic size={16} />
+            Runs
+          </button>
+          <button className={boardMode === 'library' ? 'active' : ''} onClick={() => setBoardMode('library')}>
+            <BookOpen size={16} />
+            Library
+          </button>
+        </div>
+
         <section className="runList" aria-label="Generated runs">
           <div className="sectionHeader">
             <span>Runs</span>
@@ -441,14 +937,43 @@ export function App() {
               onClick={() => {
                 setGenerationSession(null);
                 setAuditOpen(false);
+                setBoardMode('runs');
                 refreshRun(run.id);
               }}
             >
               <span className="runButtonHeader">
-                <span>Set {run.setNumber}</span>
-                <time dateTime={run.createdAt}>{formatRunTime(run.createdAt)}</time>
+                <span>{formatRunHistoryTitle(run.createdAt)}</span>
+                <time dateTime={run.createdAt}>{shortModelLabel(run.textModel)}</time>
               </span>
-              <small>{run.conversations.length} conversations - {run.textModel.label}</small>
+              <small>{runHistorySummary(run)}</small>
+            </button>
+          ))}
+        </section>
+
+        <section className="runList" aria-label="Library sets">
+          <div className="sectionHeader">
+            <span>Library</span>
+            <button className="iconButton" onClick={() => loadInitial()} title="Refresh library">
+              <RefreshCw size={17} />
+            </button>
+          </div>
+          {curatedLibrarySets.length === 0 ? <p className="emptyText">No curated conversations yet.</p> : null}
+          {curatedLibrarySets.map((set) => (
+            <button
+              key={set.setNumber}
+              className={`runButton ${boardMode === 'library' && setNumber === set.setNumber ? 'active' : ''}`}
+              onClick={() => {
+                setGenerationSession(null);
+                setAuditOpen(false);
+                setBoardMode('library');
+                setSetNumber(set.setNumber);
+              }}
+            >
+              <span className="runButtonHeader">
+                <span>{formatRunHistoryTitle(set.updatedAt)}</span>
+                <time dateTime={set.updatedAt}>Set {set.setNumber}</time>
+              </span>
+              <small>{libraryHistorySummary(set)}</small>
             </button>
           ))}
         </section>
@@ -457,8 +982,16 @@ export function App() {
       <section className="workspace">
         <header className="topBar">
           <div>
-            <p className="eyebrow">{generationSession ? 'Generate, inspect, review' : 'Approve, then synthesize'}</p>
-            <h2>{generationSession ? `Set ${generationSession.setNumber} generation` : currentRun ? `Set ${currentRun.setNumber} practice run` : 'Create a listening batch'}</h2>
+            <p className="eyebrow">{generationSession ? 'Generate, inspect, review' : boardMode === 'library' ? 'Curated listening shelf' : 'Generate, edit, synthesize'}</p>
+            <h2>
+              {generationSession
+                ? `Set ${generationSession.setNumber} generation`
+                : boardMode === 'library'
+                  ? `Set ${setNumber} Library`
+                  : currentRun
+                    ? `Set ${currentRun.setNumber} practice run`
+                    : 'Create a listening batch'}
+            </h2>
           </div>
           {generationSession ? (
             <div className="runStats">
@@ -466,11 +999,24 @@ export function App() {
               <span>{generationSession.textModelLabel}</span>
               <span>{generationSession.status}</span>
             </div>
+          ) : boardMode === 'library' ? (
+            <div className="runStats">
+              <span>{currentLibrarySet?.conversations.length ?? 0} curated</span>
+              <span>Set {setNumber}</span>
+              <button className="auditToggle" onClick={reanalyzeCurrentLibrarySet} disabled={busy === `reanalyze-library:${setNumber}`}>
+                {busy === `reanalyze-library:${setNumber}` ? <RefreshCw className="spin" size={15} /> : <RefreshCw size={15} />}
+                Reanalyze
+              </button>
+            </div>
           ) : currentRun ? (
             <div className="runStats">
               <span>{currentRun.allowedVocabCount} allowed words</span>
               <span>{currentRun.textModel.label}</span>
               <span>{currentRun.status}</span>
+              <button className="auditToggle" onClick={reanalyzeCurrentRun} disabled={busy === `reanalyze-run:${currentRun.id}`}>
+                {busy === `reanalyze-run:${currentRun.id}` ? <RefreshCw className="spin" size={15} /> : <RefreshCw size={15} />}
+                Reanalyze
+              </button>
               {currentExchange ? (
                 <button className="auditToggle" onClick={() => setAuditOpen((open) => !open)}>
                   <Eye size={15} />
@@ -490,44 +1036,25 @@ export function App() {
 
         {generationSession ? <LoadingPanel session={generationSession} /> : null}
 
-        {!generationSession && auditOpen && currentExchange ? <AuditLog exchange={currentExchange} /> : null}
+        {boardMode === 'runs' && !generationSession && auditOpen && currentExchange ? <AuditLog exchange={currentExchange} /> : null}
 
-        {showRunContent && currentRun ? (
-          <section className="analyticsPanel" aria-label="Generation analytics">
-            <div className="analyticsCard">
-              <span>Current Set Missing</span>
-              <strong>{currentRun.analytics.currentSetMissingCount}</strong>
-              <p>{currentRun.analytics.currentSetUsedCount} of {currentRun.analytics.currentSetTotal} Set {currentRun.setNumber} words used</p>
-              <div className="miniChips">
-                {currentRun.analytics.currentSetMissingWords.length === 0 ? <span>None</span> : null}
-                {currentRun.analytics.currentSetMissingWords.slice(0, 40).map((word) => (
-                  <span key={word}>{word}</span>
-                ))}
-                {currentRun.analytics.currentSetMissingWords.length > 40 ? <span>+{currentRun.analytics.currentSetMissingWords.length - 40}</span> : null}
-              </div>
+        {showRunContent && currentRun ? <AnalyticsPanel analytics={currentRun.analytics} setNumber={currentRun.setNumber} label="Generation analytics" /> : null}
+
+        {showLibraryContent && currentLibrarySet ? <AnalyticsPanel analytics={currentLibrarySet.analytics} setNumber={setNumber} label="Library analytics" /> : null}
+
+        {showLibraryContent ? (
+          currentLibrarySet && currentLibrarySet.conversations.length > 0 ? (
+            <div className="conversationGrid">
+              {currentLibrarySet.conversations.map((conversation) => renderConversationCard(conversation, 'library'))}
             </div>
-
-            <div className="analyticsCard">
-              <span>Allowed Vocab Used</span>
-              <strong>{currentRun.analytics.allowedVocabUsedPercentage}%</strong>
-              <p>{currentRun.analytics.allowedVocabUsedCount} of {currentRun.analytics.allowedVocabTotal} words from Sets 1-{currentRun.setNumber}</p>
+          ) : (
+            <div className="blankState">
+              <BookOpen size={42} />
+              <h3>No Library items for Set {setNumber}</h3>
+              <p>Generate audio from a run, then add conversations to Library.</p>
             </div>
-
-            <div className="analyticsCard">
-              <span>New Words Introduced</span>
-              <strong>{currentRun.analytics.outOfAllowedCount}</strong>
-              <p>Words not found in allowed Sets 1-{currentRun.setNumber}</p>
-              <div className="miniChips warning">
-                {currentRun.analytics.outOfAllowedWords.length === 0 ? <span>None</span> : null}
-                {currentRun.analytics.outOfAllowedWords.map((word) => (
-                  <span key={word}>{word}</span>
-                ))}
-              </div>
-            </div>
-          </section>
-        ) : null}
-
-        {!generationSession && !currentRun ? (
+          )
+        ) : !generationSession && !currentRun ? (
           <div className="blankState">
             <Disc3 size={42} />
             <h3>No batch selected</h3>
@@ -535,190 +1062,7 @@ export function App() {
           </div>
         ) : showRunContent && currentRun ? (
           <div className="conversationGrid">
-            {currentRun.conversations.map((conversation) => {
-              const isEditing = edit?.conversationId === conversation.id;
-              return (
-                <article className="conversationCard" key={conversation.id}>
-                  <div className="cardHeader">
-                    <div>
-                      <span className="conversationNumber">Conversation {conversation.number}</span>
-                      <h3>{conversation.title}</h3>
-                    </div>
-                    <span className={`statusPill ${conversation.status}`}>{statusLabel(conversation.status)}</span>
-                  </div>
-
-                  {isEditing && edit ? (
-                    <div className="editForm">
-                      <label>
-                        <span>Title</span>
-                        <input value={edit.title} onChange={(event) => setEdit({ ...edit, title: event.target.value })} />
-                      </label>
-                      <label>
-                        <span>Scene</span>
-                        <input value={edit.scene} onChange={(event) => setEdit({ ...edit, scene: event.target.value })} />
-                      </label>
-                      <label>
-                        <span>Sample context</span>
-                        <input value={edit.sampleContext} onChange={(event) => setEdit({ ...edit, sampleContext: event.target.value })} />
-                      </label>
-                      <label>
-                        <span>Transcript</span>
-                        <textarea rows={7} value={edit.transcript} onChange={(event) => setEdit({ ...edit, transcript: event.target.value })} />
-                      </label>
-                      <div className="buttonRow">
-                        <button className="secondaryButton" onClick={() => setEdit(null)}>
-                          <X size={17} />
-                          Cancel
-                        </button>
-                        <button className="primaryButton compact" onClick={saveEdit} disabled={busy === `save:${conversation.id}`}>
-                          <Save size={17} />
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <p className="sceneText">{conversation.scene}</p>
-                      <div className="transcriptBlock">
-                        {conversation.text.map((line, index) => {
-                          const key = translationKey(conversation.id, index);
-                          const isRevealed = Boolean(revealedTranslations[key]);
-                          return (
-                            <div className="transcriptLine" key={key}>
-                              <strong>{line.speaker}</strong>
-                              <span>[{line.tags.join(', ')}]</span>
-                              <div className={isRevealed ? 'translationCard revealed' : 'translationCard'}>
-                                <div className="translationCardInner">
-                                  <span className="translationFace japaneseFace">{line.japanese}</span>
-                                  <span className="translationFace englishFace">{conversation.englishTranslation[index]?.english ?? 'No translation provided'}</span>
-                                </div>
-                              </div>
-                              <button
-                                aria-label={`${isRevealed ? 'Hide' : 'Show'} translation for line ${index + 1}`}
-                                aria-pressed={isRevealed}
-                                className={isRevealed ? 'translationToggle active' : 'translationToggle'}
-                                onClick={() => toggleTranslation(conversation.id, index)}
-                                title={`${isRevealed ? 'Hide' : 'Show'} translation`}
-                                type="button"
-                              >
-                                <Languages size={16} />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      <div className="detailStrip">
-                        <div>
-                          <span>Questions</span>
-                          <ol>
-                            {conversation.listeningQuestions.map((question, questionIndex) => {
-                              const key = answerKey(conversation.id, questionIndex);
-                              const isRevealed = Boolean(revealedAnswers[key]);
-                              return (
-                                <li className={isRevealed ? 'answerCard revealed' : 'answerCard'} key={key}>
-                                  <div className="answerCardInner">
-                                    <span className="answerFace questionFace">{question}</span>
-                                    <span className="answerFace answerFaceBack">{conversation.answerKey[questionIndex] ?? 'No answer provided'}</span>
-                                  </div>
-                                </li>
-                              );
-                            })}
-                          </ol>
-                        </div>
-                        <div className="answerToggleColumn">
-                          <span>Show Answers</span>
-                          <div className="answerButtons">
-                            {conversation.listeningQuestions.map((question, questionIndex) => {
-                              const key = answerKey(conversation.id, questionIndex);
-                              const isRevealed = Boolean(revealedAnswers[key]);
-                              return (
-                                <button
-                                  aria-label={`${isRevealed ? 'Hide' : 'Show'} answer for question ${questionIndex + 1}`}
-                                  aria-pressed={isRevealed}
-                                  className={isRevealed ? 'answerToggle active' : 'answerToggle'}
-                                  key={key}
-                                  onClick={() => toggleAnswer(conversation.id, questionIndex)}
-                                  title={`${isRevealed ? 'Hide' : 'Show'} answer`}
-                                  type="button"
-                                >
-                                  <Eye size={17} />
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="vocabChips warning">
-                        {conversation.outOfVocabularyAudit.length === 0 ? <span>None</span> : null}
-                        {conversation.outOfVocabularyAudit.map((word) => (
-                          <span key={word}>{word}</span>
-                        ))}
-                      </div>
-
-                      {conversation.error ? <p className="conversationError">{conversation.error}</p> : null}
-                      {conversation.audioUrl ? (
-                        <div className="audioRow">
-                          <audio controls src={conversation.audioUrl}>
-                            <track kind="captions" />
-                          </audio>
-                          <button
-                            className="audioDeleteButton"
-                            onClick={() => runAction(conversation.id, 'delete-audio')}
-                            disabled={busy === `delete-audio:${conversation.id}` || conversation.status === 'audio_generating'}
-                            title="Delete audio so it can be regenerated"
-                            aria-label="Delete generated audio"
-                          >
-                            {busy === `delete-audio:${conversation.id}` ? <RefreshCw className="spin" size={17} /> : <Trash2 size={17} />}
-                          </button>
-                        </div>
-                      ) : null}
-
-                      <div className="buttonRow">
-                        <button
-                          className="secondaryButton"
-                          onClick={() =>
-                            setEdit({
-                              conversationId: conversation.id,
-                              title: conversation.title,
-                              scene: conversation.scene,
-                              sampleContext: conversation.sampleContext,
-                              transcript: transcriptForEdit(conversation)
-                            })
-                          }
-                        >
-                          <Pencil size={17} />
-                          Edit
-                        </button>
-                        <button className="secondaryButton" onClick={() => runAction(conversation.id, 'reject')} disabled={busy === `reject:${conversation.id}`}>
-                          <X size={17} />
-                          Reject
-                        </button>
-                        <button className="secondaryButton positive" onClick={() => runAction(conversation.id, 'approve')} disabled={busy === `approve:${conversation.id}`}>
-                          <Check size={17} />
-                          Approve
-                        </button>
-                        <button
-                          className="primaryButton compact"
-                          onClick={() => runAction(conversation.id, 'audio')}
-                          disabled={!['approved', 'audio_failed'].includes(conversation.status) || busy === `audio:${conversation.id}`}
-                        >
-                          {busy === `audio:${conversation.id}` || conversation.status === 'audio_generating' ? <RefreshCw className="spin" size={17} /> : <FileAudio size={17} />}
-                          Audio
-                        </button>
-                        {conversation.audioUrl ? (
-                          <a className="playLink" href={conversation.audioUrl} target="_blank" rel="noreferrer">
-                            <Play size={16} />
-                            Open
-                          </a>
-                        ) : null}
-                      </div>
-                    </>
-                  )}
-                </article>
-              );
-            })}
+            {currentRun.conversations.map((conversation) => renderConversationCard(conversation, 'run'))}
           </div>
         ) : null}
       </section>

@@ -1,4 +1,4 @@
-export type ConversationStatus = 'draft' | 'approved' | 'rejected' | 'audio_generating' | 'audio_ready' | 'audio_failed';
+export type ConversationStatus = 'draft' | 'audio_generating' | 'audio_ready' | 'audio_failed';
 
 export interface VocabItem {
   set: number;
@@ -71,7 +71,27 @@ export interface PracticeConversation {
   status: ConversationStatus;
   audioFileName?: string;
   audioUrl?: string;
+  curatedId?: string;
+  curatedAt?: string;
   error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CuratedConversation extends Omit<PracticeConversation, 'id' | 'audioFileName' | 'audioUrl'> {
+  id: string;
+  sourceRunId: string;
+  sourceConversationId: string;
+  setNumber: number;
+  audioFileName: string;
+  audioUrl: string;
+  curatedAudioPath: string;
+}
+
+export interface CuratedSet {
+  setNumber: number;
+  analytics: RunAnalytics;
+  conversations: CuratedConversation[];
   createdAt: string;
   updatedAt: string;
 }
