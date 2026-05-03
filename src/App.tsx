@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import type { ApiError, CuratedConversation, CuratedSet, LlmExchange, PracticeConversation, PracticeRun, SetSummary, TextModelInfo } from '../shared/types.ts';
+import { ConsumerApp } from './consumer/ConsumerApp.tsx';
 
 type ConversationAction = 'audio' | 'delete-audio';
 type BoardMode = 'runs' | 'library';
@@ -298,7 +299,7 @@ function AnalyticsPanel({ analytics, setNumber, label }: { analytics: PracticeRu
   );
 }
 
-export function App() {
+function StudioApp() {
   const [sets, setSets] = useState<SetSummary[]>([]);
   const [runs, setRuns] = useState<PracticeRun[]>([]);
   const [librarySets, setLibrarySets] = useState<CuratedSet[]>([]);
@@ -866,10 +867,13 @@ export function App() {
         <div className="brand">
           <ListMusic size={26} />
           <div>
-            <h1>JLPT Listener</h1>
-            <p>N5 listening batches from your set ladder</p>
+            <h1>Listener Studio</h1>
+            <p>Generate, curate, and publish listening batches</p>
           </div>
         </div>
+        <a className="sideSwitch" href="#/practice">
+          Open Practice
+        </a>
 
         <section className="generatorPanel">
           <label>
@@ -1068,4 +1072,21 @@ export function App() {
       </section>
     </main>
   );
+}
+
+function currentSide(): 'studio' | 'practice' {
+  if (typeof window === 'undefined') return 'studio';
+  return window.location.hash.startsWith('#/practice') ? 'practice' : 'studio';
+}
+
+export function App() {
+  const [side, setSide] = useState(currentSide);
+
+  useEffect(() => {
+    const handleHashChange = () => setSide(currentSide());
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  return side === 'practice' ? <ConsumerApp /> : <StudioApp />;
 }

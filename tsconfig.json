@@ -17,5 +17,5 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["server", "src", "shared", "vite.config.ts", "generate-audio.ts"]
+  "include": ["server", "src", "shared", "tools", "vite.config.ts", "generate-audio.ts"]
 }
