@@ -1,0 +1,97 @@
+name: Publish Practice App
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Prepare local-only server dependency
+        run: |
+          mkdir -p ../gpt-oauth-client
+          cat > ../gpt-oauth-client/package.json <<'JSON'
+          {
+            "name": "gpt-oauth-client",
+            "version": "0.1.0",
+            "type": "module",
+            "main": "index.js",
+            "types": "index.d.ts",
+            "dependencies": {
+              "open": "^11.0.0",
+              "uuid": "^13.0.0"
+            }
+          }
+          JSON
+          cat > ../gpt-oauth-client/index.js <<'JS'
+          export const CODEX_API_URL = 'https://chatgpt.com/backend-api/';
+          export const HEADERS = { ORIGINATOR: 'chatgpt-originator' };
+          export async function refreshAccessToken() {
+            return { type: 'error' };
+          }
+          JS
+          cat > ../gpt-oauth-client/index.d.ts <<'TS'
+          export interface GPTOAuthSession {
+            accessToken: string;
+            refreshToken: string;
+            expiresAt?: number;
+            accountId: string;
+          }
+          export const CODEX_API_URL: string;
+          export const HEADERS: { ORIGINATOR: string };
+          export function refreshAccessToken(refreshToken: string): Promise<
+            | { type: 'success'; access: string; refresh: string; expires?: number }
+            | { type: 'error' }
+          >;
+          TS
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build practice app
+        run: npm run build:practice
+
+      - name: Disable Jekyll
+        run: touch dist/.nojekyll
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

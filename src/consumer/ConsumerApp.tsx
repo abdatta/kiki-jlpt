@@ -41,6 +41,7 @@ type VocabPracticeCard = VocabCard & PracticeCard;
 const VOCAB_LISTENING_UNLOCK_RATIO = 0.5;
 const LEVEL_MASTERY_RATIO = 0.8;
 const LEVEL_LISTENING_TARGET = 20;
+const PRACTICE_ONLY = import.meta.env.VITE_PRACTICE_ONLY === 'true';
 
 interface QuestionState {
   revealed: boolean;
@@ -768,6 +769,9 @@ function ConversationsPage({
 }) {
   const conversations = useMemo(() => library.conversations.filter((conversation) => conversation.level === level), [library, level]);
   const [index, setIndex] = useState(0);
+  const emptyBody = PRACTICE_ONLY
+    ? 'Published conversations will appear after the curated library is exported.'
+    : 'Run the library export after approving conversations and generating audio in Kiki JLPT Studio.';
 
   useEffect(() => {
     setIndex(0);
@@ -790,7 +794,7 @@ function ConversationsPage({
           body={`You have ${progress.strongVocabCount} of ${Math.ceil(progress.vocabTotal * VOCAB_LISTENING_UNLOCK_RATIO)} required strong words (${percent(progress.vocabMasteryRatio)}%). Keep practicing Level ${level} vocabulary to unlock conversations.`}
         />
       ) : conversations.length === 0 ? (
-        <EmptyState title="No published conversations yet" body="Run the library export after approving conversations and generating audio in Kiki JLPT Studio." />
+        <EmptyState title="No published conversations yet" body={emptyBody} />
       ) : (
         <ConversationPractice
           key={current.id}
@@ -1022,9 +1026,11 @@ export function ConsumerApp() {
             Conversations
           </a>
         </nav>
-        <a className="studioLink" href="#">
-          Kiki JLPT Studio
-        </a>
+        {PRACTICE_ONLY ? null : (
+          <a className="studioLink" href="#">
+            Kiki JLPT Studio
+          </a>
+        )}
       </aside>
 
       <section className="practiceWorkspace">

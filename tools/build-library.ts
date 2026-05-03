@@ -1,63 +1,77 @@
 import { copyFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { PracticeRun } from '../shared/types.ts';
+import type { CuratedSet } from '../shared/types.ts';
 import type { StaticLibraryConversation, StaticLibraryManifest } from '../src/consumer/types.ts';
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const runsDir = path.join(rootDir, 'outputs', 'runs');
+const curatedSetsDir = path.join(rootDir, 'curated', 'sets');
+const curatedAudioDir = path.join(rootDir, 'curated', 'audio');
 const libraryDir = path.join(rootDir, 'public', 'library');
 const libraryAudioDir = path.join(libraryDir, 'audio');
 const manifestPath = path.join(libraryDir, 'library.json');
 
-async function readRuns(): Promise<PracticeRun[]> {
-  const entries = await readdir(runsDir, { withFileTypes: true }).catch(() => []);
-  const runs = await Promise.all(entries
-    .filter((entry) => entry.isDirectory())
+function setSlug(setNumber: number): string {
+  return `set-${String(setNumber).padStart(2, '0')}`;
+}
+
+function latestTimestamp(values: Array<string | undefined>): string {
+  return values
+    .filter((value): value is string => Boolean(value))
+    .sort((a, b) => b.localeCompare(a))[0] ?? '';
+}
+
+async function readCuratedSets(): Promise<CuratedSet[]> {
+  const entries = await readdir(curatedSetsDir, { withFileTypes: true }).catch(() => []);
+  const sets = await Promise.all(entries
+    .filter((entry) => entry.isFile() && /^set-\d+\.json$/i.test(entry.name))
     .map(async (entry) => {
       try {
-        const raw = await readFile(path.join(runsDir, entry.name, 'run.json'), 'utf8');
-        return JSON.parse(raw) as PracticeRun;
+        const raw = await readFile(path.join(curatedSetsDir, entry.name), 'utf8');
+        return JSON.parse(raw) as CuratedSet;
       } catch {
         return null;
       }
     }));
 
-  return runs.filter((run): run is PracticeRun => Boolean(run));
+  return sets
+    .filter((set): set is CuratedSet => Boolean(set))
+    .sort((a, b) => a.setNumber - b.setNumber);
 }
 
 async function buildLibrary(): Promise<void> {
-  const runs = await readRuns();
+  const sets = await readCuratedSets();
   const conversations: StaticLibraryConversation[] = [];
 
   await mkdir(libraryDir, { recursive: true });
   await rm(libraryAudioDir, { recursive: true, force: true });
   await mkdir(libraryAudioDir, { recursive: true });
 
-  for (const run of runs) {
-    for (const conversation of run.conversations) {
+  for (const set of sets) {
+    const slug = setSlug(set.setNumber);
+    for (const conversation of set.conversations) {
       if (conversation.status !== 'audio_ready' || !conversation.audioFileName) {
         continue;
       }
 
-      const sourceAudio = path.join(runsDir, run.id, 'audio', conversation.audioFileName);
-      const outputAudioDir = path.join(libraryAudioDir, run.id);
+      const sourceAudio = path.join(curatedAudioDir, slug, conversation.audioFileName);
+      const outputAudioDir = path.join(libraryAudioDir, slug);
       const outputAudio = path.join(outputAudioDir, conversation.audioFileName);
       await mkdir(outputAudioDir, { recursive: true });
       await copyFile(sourceAudio, outputAudio);
 
       conversations.push({
-        id: `${run.id}:${conversation.id}`,
-        level: run.setNumber,
+        id: conversation.id,
+        level: set.setNumber,
         title: conversation.title,
         scene: conversation.scene,
         sampleContext: conversation.sampleContext,
-        audioUrl: `library/audio/${encodeURIComponent(run.id)}/${encodeURIComponent(conversation.audioFileName)}`,
+        audioUrl: `library/audio/${encodeURIComponent(slug)}/${encodeURIComponent(conversation.audioFileName)}`,
         text: conversation.text,
         englishTranslation: conversation.englishTranslation,
         listeningQuestions: conversation.listeningQuestions,
         answerKey: conversation.answerKey,
-        createdAt: conversation.createdAt
+        createdAt: conversation.curatedAt ?? conversation.createdAt
       });
     }
   }
@@ -66,7 +80,10 @@ async function buildLibrary(): Promise<void> {
 
   const manifest: StaticLibraryManifest = {
     version: 1,
-    generatedAt: new Date().toISOString(),
+    generatedAt: latestTimestamp(sets.flatMap((set) => [
+      set.updatedAt,
+      ...set.conversations.map((conversation) => conversation.curatedAt ?? conversation.updatedAt ?? conversation.createdAt)
+    ])),
     conversations
   };
 

@@ -1,6 +1,7 @@
 node_modules/
 dist/
 outputs/
+public/library/audio/
 .env
 .env.local
 *.log

@@ -10,6 +10,7 @@
     "dev:ui": "vite --host 127.0.0.1",
     "library:build": "tsx tools/build-library.ts",
     "build": "tsc --noEmit && vite build",
+    "build:practice": "npm run library:build && tsc --noEmit -p tsconfig.practice.json && vite build --config vite.practice.config.ts",
     "start": "tsx server/index.ts",
     "tts": "tsx generate-audio.ts",
     "test": "npm run build"

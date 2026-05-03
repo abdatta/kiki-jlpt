@@ -1,5 +1,375 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-02T21:45:20.360Z",
-  "conversations": []
+  "generatedAt": "2026-05-02T23:07:49.125Z",
+  "conversations": [
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-03",
+      "level": 1,
+      "title": "Family Photo",
+      "scene": "Two people look at a family picture.",
+      "sampleContext": "They ask who the people are.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-03.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "これは私の家族です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "この人はどなたですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "父です。そして母です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あの男の人は兄ですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、兄です。あの女の人は姉です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "子供もいますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "はい、弟と妹がいます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "大きい家族ですね。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "This is my family."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Who is this person?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "My father. And my mother."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is that man over there your older brother?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, he is my older brother. That woman over there is my older sister."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Are there children too?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, my younger brother and younger sister are there."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "A big family, isn't it?"
+        }
+      ],
+      "listeningQuestions": [
+        "What is Speaker 1 showing?",
+        "Who are the first two people Speaker 1 identifies?",
+        "Is the man over there Speaker 1's older brother?",
+        "Who is the woman over there?",
+        "Which younger family members does Speaker 1 mention?"
+      ],
+      "answerKey": [
+        "She is showing her family.",
+        "Her father and mother.",
+        "Yes, he is her older brother.",
+        "She is Speaker 1's older sister.",
+        "Her younger brother and younger sister."
+      ],
+      "createdAt": "2026-05-02T21:44:35.769Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-02",
+      "level": 1,
+      "title": "Red or Blue",
+      "scene": "Two people choose between red and blue things.",
+      "sampleContext": "They are looking at two items nearby.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-02.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "これとそれ、どれがいいですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "thinking",
+            "slow"
+          ],
+          "japanese": "その赤いのがいいです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "ああ、赤が好きですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、好きです。でも青も好きです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "私は青いのが好きです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あれは古いですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、あれは古いです。でも悪いではありません。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "いいですね。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "This and that, which is good?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That red one is good."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, do you like red?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I like it. But I like blue too."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I like the blue one."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is that one over there old?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, that one is old. But it is not bad."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That's good."
+        }
+      ],
+      "listeningQuestions": [
+        "Which color does Speaker 2 choose first?",
+        "Does Speaker 2 like blue too?",
+        "Which color does Speaker 1 like?",
+        "What does Speaker 2 ask about the thing over there?",
+        "Does Speaker 1 say the old thing is bad?"
+      ],
+      "answerKey": [
+        "He chooses the red one.",
+        "Yes, he also likes blue.",
+        "She likes the blue one.",
+        "He asks whether it is old.",
+        "No, she says it is old but not bad."
+      ],
+      "createdAt": "2026-05-02T21:44:33.064Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-01",
+      "level": 1,
+      "title": "Morning Greeting",
+      "scene": "Two people greet each other in the morning.",
+      "sampleContext": "They speak politely and warmly.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-01.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "おはようございます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "おはようございます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "ああ、田中です。初めまして。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "初めまして。佐藤です。よろしくお願いします。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "こちらこそ、よろしくお願いします。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あなたは学生ですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、学生です。先生ではありません。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "そうですか。どうぞよろしく。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Good morning."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Good morning."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, I am Tanaka. Nice to meet you."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Nice to meet you. I am Sato. Please treat me well."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Likewise, please treat me well."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Are you a student?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, I am a student. I am not a teacher."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I see. Regards."
+        }
+      ],
+      "listeningQuestions": [
+        "What time greeting do they use?",
+        "What is Speaker 1's name?",
+        "What is Speaker 2's name?",
+        "Is Speaker 1 a teacher?",
+        "How does Speaker 2 end the conversation?"
+      ],
+      "answerKey": [
+        "They say good morning.",
+        "Her name is Tanaka.",
+        "His name is Sato.",
+        "No, she is a student, not a teacher.",
+        "He says please treat me well / regards."
+      ],
+      "createdAt": "2026-05-02T21:23:58.674Z"
+    }
+  ]
 }
