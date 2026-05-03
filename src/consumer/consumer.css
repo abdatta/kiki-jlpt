@@ -447,6 +447,25 @@
   width: 100%;
 }
 
+.vocabPanel {
+  min-height: calc(100vh - 174px - env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+}
+
+.vocabCardStage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0;
+  transform: translateY(calc((174px - (94px + env(safe-area-inset-bottom))) / -2));
+}
+
+.vocabCardStage > .practiceCard {
+  width: 100%;
+}
+
 .widePanel {
   width: 100%;
 }
@@ -522,9 +541,9 @@
   inset: 0;
   z-index: 20;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+  padding: 14px;
 }
 
 .statsModalBackdrop {
@@ -732,9 +751,9 @@
   inset: 0;
   z-index: 25;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
-  padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
+  padding: 14px;
 }
 
 .wordDetailPanel {
@@ -864,7 +883,6 @@
 }
 
 .practiceCard {
-  min-height: min(390px, calc(100vh - 210px));
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -874,7 +892,6 @@
 
 .practiceCard.revealed {
   width: min(100%, 460px);
-  min-height: min(440px, calc(100vh - 190px));
   background: var(--surface-raised);
   border-color: var(--border-strong);
 }
@@ -899,11 +916,11 @@
 }
 
 .vocabPrompt {
-  min-height: 170px;
   display: grid;
   place-items: center;
   text-align: center;
   color: var(--text-strong);
+  margin: 50px 0;
 }
 
 .vocabPrompt span,
@@ -938,7 +955,7 @@
 
 .vocabAnswer {
   border-top: 1px solid var(--border);
-  padding-top: 18px;
+  padding: 30px;
   text-align: center;
 }
 

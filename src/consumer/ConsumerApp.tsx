@@ -290,7 +290,6 @@ function VocabFlashcard({
 
       {revealed ? (
         <div className="vocabAnswer">
-          <span>{card.japanese}</span>
           <strong>{card.meaning}</strong>
           <p>{card.romaji || card.reading}</p>
         </div>
@@ -551,7 +550,7 @@ function VocabPage({
   const complete = queue.length > 0 && index >= queue.length;
 
   return (
-    <section className="practicePanel">
+    <section className="practicePanel vocabPanel">
       <div className="panelHeader">
         <div>
           <p>Level {level}</p>
@@ -576,13 +575,15 @@ function VocabPage({
         </div>
       </div>
 
-      {activeCards.length === 0 ? (
-        <EmptyState title="No words in this level" body="Choose another level in Settings." />
-      ) : complete ? (
-        <CompletionPanel label="Vocabulary session complete" onNext={startSession} />
-      ) : current ? (
-        <VocabFlashcard card={current} showKana={showKana} stats={stats} onReview={review} />
-      ) : null}
+      <div className="vocabCardStage">
+        {activeCards.length === 0 ? (
+          <EmptyState title="No words in this level" body="Choose another level in Settings." />
+        ) : complete ? (
+          <CompletionPanel label="Vocabulary session complete" onNext={startSession} />
+        ) : current ? (
+          <VocabFlashcard card={current} showKana={showKana} stats={stats} onReview={review} />
+        ) : null}
+      </div>
 
       {statsOpen ? (
         <VocabStatsModal
