@@ -43,14 +43,33 @@ function cleanForm(value: string | undefined): string | null {
   return cleaned;
 }
 
+function katakanaToHiragana(value: string): string {
+  return value.replace(/[\u30a1-\u30f6]/g, (character) => String.fromCharCode(character.charCodeAt(0) - 0x60));
+}
+
+function normalizeForm(value: string): string {
+  return katakanaToHiragana(value.trim());
+}
+
+function isPatternMarker(value: string): boolean {
+  return /^[\u301c\uff5e~]+$/.test(value);
+}
+
 function tokenForms(token: IpadicFeatures): string[] {
-  return [...new Set([cleanForm(token.surface_form), cleanForm(token.basic_form)].filter((value): value is string => Boolean(value)))];
+  const forms = [cleanForm(token.surface_form), cleanForm(token.basic_form), cleanForm(token.reading)]
+    .filter((value): value is string => Boolean(value))
+    .flatMap((value) => [value, normalizeForm(value)]);
+  return [...new Set(forms)];
 }
 
 function isContentToken(token: IpadicFeatures): boolean {
-  if (['助詞', '助動詞', '記号', '接頭詞', 'フィラー'].includes(token.pos)) return false;
-  if (token.pos === '名詞' && ['固有名詞', '接尾', '非自立'].includes(token.pos_detail_1)) return false;
-  return ['名詞', '動詞', '形容詞', '副詞', '連体詞', '接続詞', '感動詞'].includes(token.pos);
+  const nonContentPos = ['\u52a9\u8a5e', '\u52a9\u52d5\u8a5e', '\u8a18\u53f7', '\u63a5\u982d\u8a5e', '\u30d5\u30a3\u30e9\u30fc'];
+  const nonContentNounDetails = ['\u56fa\u6709\u540d\u8a5e', '\u63a5\u5c3e', '\u975e\u81ea\u7acb'];
+  const contentPos = ['\u540d\u8a5e', '\u52d5\u8a5e', '\u5f62\u5bb9\u8a5e', '\u526f\u8a5e', '\u9023\u4f53\u8a5e', '\u63a5\u7d9a\u8a5e', '\u611f\u52d5\u8a5e'];
+
+  if (nonContentPos.includes(token.pos)) return false;
+  if (token.pos === '\u540d\u8a5e' && nonContentNounDetails.includes(token.pos_detail_1)) return false;
+  return contentPos.includes(token.pos);
 }
 
 function auditWordForToken(token: IpadicFeatures): string {
@@ -61,13 +80,24 @@ function uniqueSorted(words: Iterable<string>): string[] {
   return [...new Set([...words].map((word) => word.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
 }
 
+function vocabCandidates(item: VocabItem): string[] {
+  return [...new Set([item.japanese, item.reading]
+    .flatMap((value) => value.split(/[;；、,]/))
+    .map((value) => value.trim())
+    .filter(Boolean))];
+}
+
 function buildPatterns(tokenizer: JapaneseTokenizer, allowedVocabulary: VocabItem[]): VocabPattern[] {
   return allowedVocabulary
-    .map((item) => ({
-      item,
-      formsByToken: tokenizer.tokenize(item.japanese).map(tokenForms).filter((forms) => forms.length > 0)
-    }))
-    .filter((pattern) => pattern.formsByToken.length > 0)
+    .flatMap((item) => vocabCandidates(item)
+      .map((candidate) => ({
+        item,
+        formsByToken: tokenizer
+          .tokenize(candidate)
+          .map(tokenForms)
+          .filter((forms) => forms.length > 0 && !forms.every(isPatternMarker))
+      }))
+      .filter((pattern) => pattern.formsByToken.length > 0))
     .sort((a, b) => b.formsByToken.length - a.formsByToken.length || b.item.japanese.length - a.item.japanese.length);
 }
 
@@ -96,10 +126,14 @@ function findVocabularyMatches(tokens: IpadicFeatures[], patterns: VocabPattern[
   return { usedWords, coveredTokenIndexes };
 }
 
+function buildAllowedFormSet(tokenizer: JapaneseTokenizer, allowedVocabulary: VocabItem[]): Set<string> {
+  return new Set(allowedVocabulary.flatMap((item) => vocabCandidates(item).flatMap((candidate) => tokenizer.tokenize(candidate).flatMap(tokenForms))));
+}
+
 function auditConversation(
   tokenizer: JapaneseTokenizer,
   patterns: VocabPattern[],
-  allowedWords: Set<string>,
+  allowedForms: Set<string>,
   conversation: PracticeConversation
 ): PracticeConversation {
   const tokens = conversation.text.flatMap((line) => tokenizer.tokenize(line.japanese));
@@ -109,7 +143,7 @@ function auditConversation(
   tokens.forEach((token, index) => {
     if (!isContentToken(token)) return;
     if (coveredTokenIndexes.has(index)) return;
-    if (tokenForms(token).some((form) => allowedWords.has(form))) return;
+    if (tokenForms(token).some((form) => allowedForms.has(form))) return;
     outOfVocabulary.add(auditWordForToken(token));
   });
 
@@ -127,6 +161,6 @@ export async function auditConversationsWithVocabulary(
 ): Promise<PracticeConversation[]> {
   const tokenizer = await getTokenizer();
   const patterns = buildPatterns(tokenizer, allowedVocabulary);
-  const allowedWords = new Set(allowedVocabulary.map((item) => item.japanese));
-  return conversations.map((conversation) => auditConversation(tokenizer, patterns, allowedWords, conversation));
+  const allowedForms = buildAllowedFormSet(tokenizer, allowedVocabulary);
+  return conversations.map((conversation) => auditConversation(tokenizer, patterns, allowedForms, conversation));
 }

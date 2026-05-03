@@ -31,19 +31,18 @@ Conjugations:
 Conjugations of learned verbs/adjectives are allowed and do not count as new words.
 
 Important rules:
-1. Do not use Japanese content words outside the allowed vocabulary table.
-2. Common Japanese personal names are allowed and do not count as vocabulary.
-3. Do not introduce new words outside the vocabulary table unless necessary to keep a sentence natural.
-4. Do not include romaji.
-5. Keep the Japanese natural but beginner-friendly.
-6. Avoid advanced grammar.
-7. Reuse vocabulary naturally across conversations for repeated listening exposure.
-8.  Prefer current Set {{setNumber}} words when possible, while using earlier set words for natural glue.
+1. All the words in current Set {{setNumber}} must have been used in the overall set of generated conversations.
+2. Also use words from earlier sets when possible.
+3. Do not use Japanese content words outside the allowed vocabulary table.
+4. Common Japanese personal names are allowed and do not count as vocabulary.
+5. Do not introduce new words outside the vocabulary table unless necessary to keep a sentence natural.
+6. Keep the Japanese natural but beginner-friendly.
+7. Avoid advanced grammar.
+8. Reuse vocabulary naturally across conversations for repeated listening exposure.
 9.  If the requested number of conversations is too small to cover all allowed words, maximize useful variety instead of forcing unnatural lines.
-10. Try your best to cover all words in the current Set {{setNumber}}. Ideally we should have 100% coverage.
-11. Speaker 1 is always female. If she is named or referred to by name, use a common Japanese female name.
-12. Speaker 2 is always male. If he is named or referred to by name, use a common Japanese male name.
-13. Do not give Speaker 1 male names or masculine self-reference. Do not give Speaker 2 female names or feminine self-reference.
+10. Speaker 1 is always female. If she is named or referred to by name, use a common Japanese female name.
+11. Speaker 2 is always male. If he is named or referred to by name, use a common Japanese male name.
+
 
 Delivery tag rules:
 1. Every spoken line must include delivery tags.

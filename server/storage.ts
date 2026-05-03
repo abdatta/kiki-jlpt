@@ -37,13 +37,10 @@ export async function saveRun(run: PracticeRun): Promise<PracticeRun> {
 
 export async function readRun(runId: string): Promise<PracticeRun> {
   const raw = await readFile(runJsonPath(runId), 'utf8');
-  const run = JSON.parse(raw) as PracticeRun;
-  const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
-  run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations);
+  const run = JSON.parse(raw.replace(/^\uFEFF/, '')) as PracticeRun;
   if (!run.textModel) {
     run.textModel = legacyTextModel();
   }
-  run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
   return run;
 }
 
@@ -67,6 +64,15 @@ export async function listRuns(): Promise<PracticeRun[]> {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export async function reanalyzeRun(runId: string): Promise<PracticeRun> {
+  const run = await readRun(runId);
+  const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
+  run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations);
+  run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
+  run.updatedAt = nowIso();
+  return saveRun(run);
+}
+
 export async function updateConversation(
   runId: string,
   conversationId: string,
@@ -85,6 +91,21 @@ export async function updateConversation(
   run.updatedAt = nowIso();
   run.status = run.conversations.every((conversation) => conversation.status === 'audio_ready') ? 'complete' : run.conversations.some((conversation) => conversation.audioFileName) ? 'partial_audio' : 'generated';
   return saveRun(run);
+}
+
+export async function unlockCuratedSource(runId: string, conversationId: string, curatedId: string): Promise<PracticeRun | null> {
+  try {
+    return await updateConversation(runId, conversationId, (conversation) => {
+      if (conversation.curatedId !== curatedId) return conversation;
+      return touchConversation({
+        ...conversation,
+        curatedId: undefined,
+        curatedAt: undefined
+      });
+    });
+  } catch {
+    return null;
+  }
 }
 
 export function touchConversation<T extends PracticeConversation>(conversation: T): T {

@@ -11,6 +11,11 @@ type CodexModelRecord = {
 const GEMINI_MODEL_ID = 'gemini';
 const CODEX_FALLBACK_MODEL = 'gpt-5.5';
 const CODEX_CLIENT_VERSION = process.env.CODEX_CLIENT_VERSION || '0.0.0';
+const CODEX_MODEL_CACHE_MS = 10 * 60 * 1000;
+const CODEX_MODEL_TIMEOUT_MS = 1500;
+
+let codexModelCache: { expiresAt: number; options: TextModelInfo[] } | null = null;
+let codexModelRequest: Promise<TextModelInfo[]> | null = null;
 
 function geminiTextModel(): TextModelInfo {
   const model = process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash';
@@ -55,7 +60,47 @@ function normalizeCodexModels(payload: unknown): TextModelInfo[] {
   return options;
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`Timed out after ${timeoutMs}ms`)), timeoutMs);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
 async function getCodexModelOptions(): Promise<TextModelInfo[]> {
+  if (codexModelCache && Date.now() < codexModelCache.expiresAt) {
+    return codexModelCache.options;
+  }
+
+  codexModelRequest ??= fetchCodexModelOptions()
+    .then((options) => {
+      codexModelCache = {
+        expiresAt: Date.now() + CODEX_MODEL_CACHE_MS,
+        options
+      };
+      return options;
+    })
+    .finally(() => {
+      codexModelRequest = null;
+    });
+
+  try {
+    return await withTimeout(codexModelRequest, CODEX_MODEL_TIMEOUT_MS);
+  } catch {
+    return codexModelCache?.options ?? [fallbackCodexModel()];
+  }
+}
+
+async function fetchCodexModelOptions(): Promise<TextModelInfo[]> {
   try {
     const url = `${CODEX_MODELS_URL}?client_version=${encodeURIComponent(CODEX_CLIENT_VERSION)}`;
     const response = await codexFetch(url);

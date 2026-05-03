@@ -109,7 +109,8 @@ button {
 }
 
 .generatorPanel,
-.runList {
+.runList,
+.boardTabs {
   display: grid;
   gap: 14px;
 }
@@ -220,6 +221,35 @@ textarea:focus {
   color: #17634f;
 }
 
+.secondaryButton.danger {
+  border-color: #d9b3aa;
+  color: #8c3025;
+}
+
+.boardTabs {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.boardTabs button {
+  min-height: 40px;
+  border: 1px solid #ded8ca;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #314042;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 850;
+}
+
+.boardTabs button.active {
+  background: #e9f2ef;
+  border-color: #8eb7a5;
+  color: #17634f;
+}
+
 .iconButton {
   width: 38px;
   min-height: 38px;
@@ -323,6 +353,11 @@ textarea:focus {
   padding: 0 11px;
   font-size: 13px;
   font-weight: 800;
+}
+
+.auditToggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .errorBanner,
@@ -625,6 +660,11 @@ textarea:focus {
   box-shadow: 0 14px 40px rgba(73, 62, 44, 0.07);
 }
 
+.conversationCard.readonly {
+  border-color: #bed3ce;
+  background: #fbfcf8;
+}
+
 .cardHeader {
   display: flex;
   justify-content: space-between;
@@ -641,14 +681,12 @@ textarea:focus {
   white-space: nowrap;
 }
 
-.statusPill.approved,
 .statusPill.audio_ready {
   border-color: #8eb7a5;
   color: #17634f;
   background: #edf7f0;
 }
 
-.statusPill.rejected,
 .statusPill.audio_failed {
   border-color: #ecb19c;
   color: #8f3218;
@@ -871,31 +909,13 @@ audio {
 
 .audioRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
+  grid-template-columns: minmax(0, 1fr);
   align-items: center;
   gap: 8px;
 }
 
-.audioDeleteButton {
-  width: 40px;
-  height: 40px;
-  border: 1px solid #d9b3aa;
-  border-radius: 8px;
-  background: #fffdf8;
-  color: #8c3025;
-  display: inline-grid;
-  place-items: center;
-  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
-}
-
-.audioDeleteButton:hover {
-  transform: translateY(-1px);
-}
-
-.audioDeleteButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-  transform: none;
+.audioRow.single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .buttonRow {
@@ -911,6 +931,8 @@ audio {
 .buttonRow > .secondaryButton,
 .buttonRow > .playLink {
   align-self: flex-start;
+  flex: 1 1 120px;
+  min-width: 0;
 }
 
 .editForm {
