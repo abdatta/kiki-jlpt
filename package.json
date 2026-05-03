@@ -8,6 +8,7 @@
     "dev": "concurrently -n api,ui -c cyan,green \"npm:dev:api\" \"npm:dev:ui\"",
     "dev:api": "tsx watch server/index.ts",
     "dev:ui": "vite --host 127.0.0.1",
+    "library:build": "tsx tools/build-library.ts",
     "build": "tsc --noEmit && vite build",
     "start": "tsx server/index.ts",
     "tts": "tsx generate-audio.ts",

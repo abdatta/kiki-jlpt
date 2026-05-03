@@ -78,6 +78,19 @@ button {
   font-size: 13px;
 }
 
+.sideSwitch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  border: 1px solid #d8c9b4;
+  border-radius: 8px;
+  background: #f7efe0;
+  color: #7d3826;
+  font-weight: 800;
+  text-decoration: none;
+}
+
 .generatorPanel,
 .runList {
   display: grid;
