@@ -64,6 +64,23 @@ button {
   font-size: 22px;
 }
 
+.brandTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.brandTitle span {
+  border: 1px solid #d8c9b4;
+  border-radius: 6px;
+  background: #f7efe0;
+  color: #7d3826;
+  padding: 4px 8px;
+  font-size: 20px;
+  line-height: 1;
+}
+
 .brand p,
 .emptyText,
 .setMeta span,

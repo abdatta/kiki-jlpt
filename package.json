@@ -1,5 +1,5 @@
 {
-  "name": "jlpt-listener",
+  "name": "kiki-jlpt",
   "version": "1.0.0",
   "description": "Local JLPT N5 listening-practice generator with review and Gemini TTS.",
   "type": "module",

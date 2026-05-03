@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import {
   BookOpen,
   Check,
   ChevronRight,
   Eye,
-  GraduationCap,
+  Headphones,
   Library,
+  ListMusic,
+  Lock,
   Play,
-  RotateCcw,
   Settings,
+  Trophy,
   X
 } from 'lucide-react';
 import { buildSessionQueue, calculateNextStats, getBucket, getStats } from './deck.ts';
@@ -35,6 +38,9 @@ import type {
 import './consumer.css';
 
 type VocabPracticeCard = VocabCard & PracticeCard;
+const VOCAB_LISTENING_UNLOCK_RATIO = 0.5;
+const LEVEL_MASTERY_RATIO = 0.8;
+const LEVEL_LISTENING_TARGET = 20;
 
 interface QuestionState {
   revealed: boolean;
@@ -42,6 +48,32 @@ interface QuestionState {
 }
 
 type MikanTheme = 'mikan-light' | 'mikan-dark';
+
+interface LevelProgress {
+  level: number;
+  theme: string;
+  vocabTotal: number;
+  strongVocabCount: number;
+  vocabMasteryRatio: number;
+  listeningAttemptCount: number;
+  listeningUnlocked: boolean;
+  complete: boolean;
+  unlocked: boolean;
+}
+
+interface VocabWordStat {
+  card: VocabPracticeCard;
+  reviews: number;
+  streak: number;
+  accuracy: number;
+}
+
+interface VocabStatsAnalysis {
+  strong: VocabWordStat[];
+  improving: VocabWordStat[];
+  weak: VocabWordStat[];
+  newWords: VocabPracticeCard[];
+}
 
 function navFromHash(): PracticeArea {
   if (typeof window === 'undefined') return 'vocab';
@@ -60,11 +92,152 @@ function strengthLabel(cardId: string, stats: StatsMap): string {
   return bucket[0].toUpperCase() + bucket.slice(1);
 }
 
+function isKanji(char: string): boolean {
+  return /[\u3400-\u9FFF]/u.test(char);
+}
+
+function isJapaneseKanaText(value: string): boolean {
+  return /^[\u3040-\u30FFー]+$/u.test(value);
+}
+
+function tokenizeForFurigana(value: string): Array<{ text: string; kanji: boolean }> {
+  const tokens: Array<{ text: string; kanji: boolean }> = [];
+
+  for (const char of value) {
+    const kanji = isKanji(char);
+    const previous = tokens[tokens.length - 1];
+    if (previous && previous.kanji === kanji) {
+      previous.text += char;
+    } else {
+      tokens.push({ text: char, kanji });
+    }
+  }
+
+  return tokens;
+}
+
+function furiganaParts(japanese: string, reading: string): Array<{ text: string; reading?: string }> {
+  if (!reading || reading === japanese || !japanese.split('').some(isKanji)) {
+    return [{ text: japanese }];
+  }
+
+  const tokens = tokenizeForFurigana(japanese);
+  let readingIndex = 0;
+
+  return tokens.map((token, index) => {
+    if (!token.kanji) {
+      if (isJapaneseKanaText(token.text)) {
+        const foundAt = reading.indexOf(token.text, readingIndex);
+        if (foundAt >= readingIndex) {
+          readingIndex = foundAt + token.text.length;
+        }
+      }
+      return { text: token.text };
+    }
+
+    const nextKanaToken = tokens.slice(index + 1).find((item) => !item.kanji && isJapaneseKanaText(item.text));
+    const nextKanaIndex = nextKanaToken ? reading.indexOf(nextKanaToken.text, readingIndex) : -1;
+    const rubyText = nextKanaIndex >= readingIndex ? reading.slice(readingIndex, nextKanaIndex) : reading.slice(readingIndex);
+    readingIndex = nextKanaIndex >= readingIndex ? nextKanaIndex : reading.length;
+    return { text: token.text, reading: rubyText || undefined };
+  });
+}
+
 function applyReview(stats: StatsMap, id: string, result: ReviewResult): StatsMap {
   return {
     ...stats,
     [id]: calculateNextStats(getStats(stats, id), result)
   };
+}
+
+function statAccuracy(cardStats: ReturnType<typeof getStats>): number {
+  if (cardStats.reviews === 0) return 0;
+  const recent = cardStats.recentResults;
+  if (recent.length > 0) {
+    return recent.reduce<number>((sum, value) => sum + value, 0) / recent.length;
+  }
+  return cardStats.streak > 0 ? 1 : 0;
+}
+
+function analyzeVocabStats(cards: VocabPracticeCard[], stats: StatsMap): VocabStatsAnalysis {
+  const analysis: VocabStatsAnalysis = {
+    strong: [],
+    improving: [],
+    weak: [],
+    newWords: []
+  };
+
+  for (const card of cards) {
+    const cardStats = getStats(stats, card.id);
+    if (cardStats.reviews === 0) {
+      analysis.newWords.push(card);
+      continue;
+    }
+
+    const item = {
+      card,
+      reviews: cardStats.reviews,
+      streak: cardStats.streak,
+      accuracy: statAccuracy(cardStats)
+    };
+
+    const bucket = getBucket(cardStats);
+    if (bucket === 'strong') {
+      analysis.strong.push(item);
+    } else if (bucket === 'weak') {
+      analysis.weak.push(item);
+    } else {
+      analysis.improving.push(item);
+    }
+  }
+
+  analysis.strong.sort((a, b) => b.accuracy - a.accuracy || b.streak - a.streak);
+  analysis.improving.sort((a, b) => b.accuracy - a.accuracy || b.reviews - a.reviews);
+  analysis.weak.sort((a, b) => a.accuracy - b.accuracy || a.streak - b.streak);
+  analysis.newWords.sort((a, b) => (a.frequency ?? Number.POSITIVE_INFINITY) - (b.frequency ?? Number.POSITIVE_INFINITY));
+  return analysis;
+}
+
+function percent(value: number): number {
+  return Math.round(value * 100);
+}
+
+function routeForArea(area: PracticeArea): string {
+  if (area === 'conversations') return '#/practice/conversations';
+  if (area === 'settings') return '#/practice/settings';
+  return '#/practice';
+}
+
+function buildLevelProgress(vocabStats: StatsMap, questionStats: StatsMap, library: StaticLibraryManifest): LevelProgress[] {
+  let previousLevelsComplete = true;
+
+  return levelSummaries.map((summary) => {
+    const cards = vocabCards.filter((card) => card.level === summary.set);
+    const strongVocabCount = cards.filter((card) => getBucket(getStats(vocabStats, card.id)) === 'strong').length;
+    const vocabMasteryRatio = cards.length > 0 ? strongVocabCount / cards.length : 0;
+    const listeningQuestionIds = library.conversations
+      .filter((conversation) => conversation.level === summary.set)
+      .flatMap((conversation) => conversation.listeningQuestions.map((_, index) => `conversation:${conversation.id}:q:${index}`));
+    const listeningAttemptCount = listeningQuestionIds.filter((id) => getStats(questionStats, id).reviews > 0).length;
+    const unlocked = previousLevelsComplete;
+    const complete = vocabMasteryRatio >= LEVEL_MASTERY_RATIO && listeningAttemptCount >= LEVEL_LISTENING_TARGET;
+
+    if (!complete) {
+      previousLevelsComplete = false;
+    }
+
+    return {
+      level: summary.set,
+      theme: summary.theme,
+      vocabTotal: cards.length,
+      strongVocabCount,
+      vocabMasteryRatio,
+      listeningAttemptCount,
+      listeningUnlocked: vocabMasteryRatio >= VOCAB_LISTENING_UNLOCK_RATIO,
+      complete,
+      unlocked
+    };
+  });
 }
 
 function VocabFlashcard({
@@ -91,6 +264,8 @@ function VocabFlashcard({
     window.setTimeout(() => onReview(card.id, nextResult), 260);
   }
 
+  const promptParts = showKana ? furiganaParts(card.japanese, card.reading) : [{ text: card.japanese }];
+
   return (
     <article className={`practiceCard vocabCard ${revealed ? 'revealed' : ''} ${result ?? ''}`}>
       <div className="cardMeta">
@@ -99,14 +274,18 @@ function VocabFlashcard({
       </div>
 
       <div className="vocabPrompt">
-        {showKana && card.reading && card.reading !== card.japanese ? (
-          <ruby>
-            {card.japanese}
-            <rt>{card.reading}</rt>
-          </ruby>
-        ) : (
-          <span>{card.japanese}</span>
-        )}
+        <span className="furiganaWord">
+          {promptParts.map((part, index) => (
+            part.reading ? (
+              <ruby key={`${part.text}:${index}`}>
+                {part.text}
+                <rt>{part.reading}</rt>
+              </ruby>
+            ) : (
+              <span key={`${part.text}:${index}`}>{part.text}</span>
+            )
+          ))}
+        </span>
       </div>
 
       {revealed ? (
@@ -140,24 +319,217 @@ function VocabFlashcard({
   );
 }
 
+function WordStatTile({ item, onSelect }: { item: VocabWordStat; onSelect: (item: VocabWordStat) => void }) {
+  return (
+    <button className="wordStatTile" onClick={() => onSelect(item)} type="button">
+      <strong>{item.card.japanese}</strong>
+      <span>{Math.round(item.accuracy * 100)}%</span>
+    </button>
+  );
+}
+
+function NewWordTile({ card, onSelect }: { card: VocabPracticeCard; onSelect: (card: VocabPracticeCard) => void }) {
+  return (
+    <button className="wordStatTile newWordTile" onClick={() => onSelect(card)} type="button">
+      <strong>{card.japanese}</strong>
+      <span>New</span>
+    </button>
+  );
+}
+
+function WordStatSection({
+  title,
+  count,
+  children
+}: {
+  title: string;
+  count: number;
+  children: ReactNode;
+}) {
+  return (
+    <section className="wordStatSection">
+      <header>
+        <h3>{title}</h3>
+        <span>{count}</span>
+      </header>
+      {count === 0 ? <p className="emptyStatText">Nothing here yet.</p> : children}
+    </section>
+  );
+}
+
+function WordDetailModal({
+  selected,
+  onClose
+}: {
+  selected: VocabWordStat | VocabPracticeCard;
+  onClose: () => void;
+}) {
+  const isReviewed = 'accuracy' in selected;
+  const card = isReviewed ? selected.card : selected;
+
+  return (
+    <div className="wordDetailModal" role="dialog" aria-modal="true" aria-labelledby="word-detail-title">
+      <button className="statsModalBackdrop" aria-label="Close word details" onClick={onClose} type="button" />
+      <section className="wordDetailPanel">
+        <header>
+          <div>
+            <p>Word details</p>
+            <h3 id="word-detail-title">{card.japanese}</h3>
+            <span>{card.romaji || card.reading}</span>
+          </div>
+          <button className="modalCloseButton" aria-label="Close word details" onClick={onClose} type="button">
+            <X size={18} />
+          </button>
+        </header>
+        <div className="wordMeaningBox">
+          <span>Meaning</span>
+          <strong>{card.meaning}</strong>
+        </div>
+        <div className="wordDetailGrid">
+          <div>
+            <span>Reading</span>
+            <strong>{card.reading || '-'}</strong>
+          </div>
+          <div>
+            <span>Category</span>
+            <strong>{card.category || card.partOfSpeech || '-'}</strong>
+          </div>
+          {isReviewed ? (
+            <>
+              <div>
+                <span>Accuracy</span>
+                <strong>{Math.round(selected.accuracy * 100)}%</strong>
+              </div>
+              <div>
+                <span>Reviews</span>
+                <strong>{selected.reviews}</strong>
+              </div>
+              <div>
+                <span>Streak</span>
+                <strong>{selected.streak > 0 ? `+${selected.streak}` : selected.streak}</strong>
+              </div>
+            </>
+          ) : (
+            <div>
+              <span>Status</span>
+              <strong>New</strong>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function VocabStatsModal({
+  level,
+  theme,
+  progress,
+  analysis,
+  onClose
+}: {
+  level: number;
+  theme: string;
+  progress: LevelProgress;
+  analysis: VocabStatsAnalysis;
+  onClose: () => void;
+}) {
+  const [showNewWords, setShowNewWords] = useState(false);
+  const [selectedWord, setSelectedWord] = useState<VocabWordStat | VocabPracticeCard | null>(null);
+  const progressPercent = percent(progress.vocabMasteryRatio);
+  const progressLabel = progress.complete
+    ? 'Next Level Unlocked'
+    : progress.vocabMasteryRatio >= VOCAB_LISTENING_UNLOCK_RATIO
+      ? 'Unlock next level at 80%'
+      : 'Unlock Conversations at 50%';
+
+  return (
+    <div className="statsModal" role="dialog" aria-modal="true" aria-labelledby="word-stats-title">
+      <button className="statsModalBackdrop" aria-label="Close word stats" onClick={onClose} type="button" />
+      <section className="statsModalPanel">
+        <header className="statsModalHeader">
+          <div>
+            <p>Level {level}</p>
+            <h2 id="word-stats-title">{theme}</h2>
+          </div>
+          <button className="modalCloseButton" aria-label="Close word stats" onClick={onClose} type="button">
+            <X size={18} />
+          </button>
+        </header>
+
+        <div className="statsProgressSummary">
+          <div>
+            <span>{progressPercent}%</span>
+            <strong>{progressLabel}</strong>
+          </div>
+          <i><b style={{ width: `${Math.min(100, progressPercent)}%` }} /></i>
+        </div>
+
+        <WordStatSection title="Strong" count={analysis.strong.length}>
+          <div className="wordStatList">{analysis.strong.map((item) => <WordStatTile key={item.card.id} item={item} onSelect={setSelectedWord} />)}</div>
+        </WordStatSection>
+
+        <WordStatSection title="Improving" count={analysis.improving.length}>
+          <div className="wordStatList">{analysis.improving.map((item) => <WordStatTile key={item.card.id} item={item} onSelect={setSelectedWord} />)}</div>
+        </WordStatSection>
+
+        <WordStatSection title="Needs Work" count={analysis.weak.length}>
+          <div className="wordStatList">{analysis.weak.map((item) => <WordStatTile key={item.card.id} item={item} onSelect={setSelectedWord} />)}</div>
+        </WordStatSection>
+
+        <section className="wordStatSection">
+          <header>
+            <h3>New Words</h3>
+            <div className="newWordsControls">
+              <span>{analysis.newWords.length}</span>
+              <button
+                aria-label={showNewWords ? 'Hide new words' : 'Show new words'}
+                aria-pressed={showNewWords}
+                className={showNewWords ? 'active' : ''}
+                onClick={() => setShowNewWords((value) => !value)}
+                type="button"
+              >
+                <Eye size={16} />
+              </button>
+            </div>
+          </header>
+          {showNewWords ? (
+            analysis.newWords.length === 0 ? <p className="emptyStatText">All words have appeared.</p> : (
+              <div className="wordStatList">{analysis.newWords.map((card) => <NewWordTile key={card.id} card={card} onSelect={setSelectedWord} />)}</div>
+            )
+          ) : (
+            <p className="emptyStatText">Hidden by default.</p>
+          )}
+        </section>
+
+        {selectedWord ? <WordDetailModal selected={selectedWord} onClose={() => setSelectedWord(null)} /> : null}
+      </section>
+    </div>
+  );
+}
+
 function VocabPage({
   level,
   showKana,
   stats,
-  setStats
+  setStats,
+  progress
 }: {
   level: number;
   showKana: boolean;
   stats: StatsMap;
   setStats: (stats: StatsMap) => void;
+  progress: LevelProgress;
 }) {
   const activeCards = useMemo<VocabPracticeCard[]>(() => (
     vocabCards
       .filter((card) => card.level === level)
       .map((card) => ({ ...card, kind: 'vocab', frequency: card.frequencyRank }))
   ), [level]);
+  const statsAnalysis = useMemo(() => analyzeVocabStats(activeCards, stats), [activeCards, stats]);
   const [queue, setQueue] = useState<VocabPracticeCard[]>([]);
   const [index, setIndex] = useState(0);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   function startSession() {
     setQueue(buildSessionQueue(activeCards, stats, 15));
@@ -182,12 +554,16 @@ function VocabPage({
     <section className="practicePanel">
       <div className="panelHeader">
         <div>
-          <p>Vocabulary</p>
-          <h2>Level {level} words</h2>
+          <p>Level {level}</p>
+          <h2>{progress.theme}</h2>
         </div>
-        <button className="iconTextButton" onClick={startSession} title="Restart session">
-          <RotateCcw size={17} />
-          Restart
+        <button
+          className="progressBadge"
+          onClick={() => setStatsOpen(true)}
+          style={{ '--progress': `${Math.min(100, percent(progress.vocabMasteryRatio))}%` } as CSSProperties}
+          type="button"
+        >
+          <span>{percent(progress.vocabMasteryRatio)}% Progress</span>
         </button>
       </div>
 
@@ -206,6 +582,16 @@ function VocabPage({
         <CompletionPanel label="Vocabulary session complete" onNext={startSession} />
       ) : current ? (
         <VocabFlashcard card={current} showKana={showKana} stats={stats} onReview={review} />
+      ) : null}
+
+      {statsOpen ? (
+        <VocabStatsModal
+          level={level}
+          theme={progress.theme}
+          progress={progress}
+          analysis={statsAnalysis}
+          onClose={() => setStatsOpen(false)}
+        />
       ) : null}
     </section>
   );
@@ -370,12 +756,14 @@ function ConversationsPage({
   level,
   library,
   stats,
-  setStats
+  setStats,
+  progress
 }: {
   level: number;
   library: StaticLibraryManifest;
   stats: StatsMap;
   setStats: (stats: StatsMap) => void;
+  progress: LevelProgress;
 }) {
   const conversations = useMemo(() => library.conversations.filter((conversation) => conversation.level === level), [library, level]);
   const [index, setIndex] = useState(0);
@@ -390,13 +778,18 @@ function ConversationsPage({
     <section className="practicePanel widePanel">
       <div className="panelHeader">
         <div>
-          <p>Conversations</p>
-          <h2>Level {level} listening deck</h2>
+          <p>Level {level}</p>
+          <h2>{progress.theme}</h2>
         </div>
         <span className="libraryCount">{conversations.length} ready</span>
       </div>
-      {conversations.length === 0 ? (
-        <EmptyState title="No published conversations yet" body="Run the library export after approving conversations and generating audio in Listener Studio." />
+      {!progress.listeningUnlocked ? (
+        <LockedPanel
+          title="Listening unlocks at 50% vocabulary mastery"
+          body={`You have ${progress.strongVocabCount} of ${Math.ceil(progress.vocabTotal * VOCAB_LISTENING_UNLOCK_RATIO)} required strong words (${percent(progress.vocabMasteryRatio)}%). Keep practicing Level ${level} vocabulary to unlock conversations.`}
+        />
+      ) : conversations.length === 0 ? (
+        <EmptyState title="No published conversations yet" body="Run the library export after approving conversations and generating audio in Kiki JLPT Studio." />
       ) : (
         <ConversationPractice
           key={current.id}
@@ -413,16 +806,20 @@ function ConversationsPage({
 function SettingsPage({
   settings,
   setSettings,
-  library
+  library,
+  levelProgress
 }: {
   settings: LearnerSettings;
   setSettings: (settings: LearnerSettings) => void;
   library: StaticLibraryManifest;
+  levelProgress: LevelProgress[];
 }) {
   function update(nextSettings: LearnerSettings) {
     setSettings(nextSettings);
     saveSettings(nextSettings);
   }
+
+  const selectedProgress = levelProgress.find((progress) => progress.level === settings.level) ?? levelProgress[0];
 
   return (
     <section className="practicePanel settingsPanel">
@@ -432,16 +829,63 @@ function SettingsPage({
           <h2>Practice setup</h2>
         </div>
       </div>
-      <label className="settingField">
-        <span>Level</span>
-        <select value={settings.level} onChange={(event) => update({ ...settings, level: Number(event.target.value) })}>
-          {levelSummaries.map((summary) => (
-            <option key={summary.set} value={summary.set}>
-              Level {summary.set} - {summary.theme}
-            </option>
-          ))}
-        </select>
-      </label>
+
+      <section className="settingsBlock">
+        <div className="settingsBlockHeader">
+          <div>
+            <span>Level ladder</span>
+            <h3>Choose your current level</h3>
+          </div>
+          <Trophy size={22} />
+        </div>
+        <p className="settingsHelp">
+          Listening opens after 50% of a level's words are strong. The next level opens after 80% strong vocabulary and 20 attempted listening questions.
+        </p>
+        <div className="levelButtonGrid">
+          {levelProgress.map((progress) => {
+            const isSelected = settings.level === progress.level;
+            return (
+              <button
+                aria-pressed={isSelected}
+                className={`levelButton ${isSelected ? 'active' : ''} ${progress.unlocked ? '' : 'locked'}`}
+                disabled={!progress.unlocked}
+                key={progress.level}
+                onClick={() => update({ ...settings, level: progress.level })}
+                type="button"
+              >
+                <span className="levelButtonTop">
+                  <strong>Level {progress.level}</strong>
+                  {progress.unlocked ? progress.complete ? <Check size={17} /> : null : <Lock size={16} />}
+                </span>
+                <span className="levelTheme">{progress.theme}</span>
+                <span className="levelMeters">
+                  <i><b style={{ width: `${Math.min(100, percent(progress.vocabMasteryRatio))}%` }} /></i>
+                  <em>{percent(progress.vocabMasteryRatio)}% vocab</em>
+                </span>
+                <span className="levelListening">{Math.min(progress.listeningAttemptCount, LEVEL_LISTENING_TARGET)} / {LEVEL_LISTENING_TARGET} listening</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {selectedProgress ? (
+        <section className="settingsBlock compactBlock">
+          <div className="progressRuleGrid">
+            <div className={selectedProgress.listeningUnlocked ? 'ruleCard done' : 'ruleCard'}>
+              <span>{percent(selectedProgress.vocabMasteryRatio)}%</span>
+              <strong>Listening access</strong>
+              <p>{selectedProgress.listeningUnlocked ? 'Unlocked for this level.' : `${Math.max(0, Math.ceil(selectedProgress.vocabTotal * VOCAB_LISTENING_UNLOCK_RATIO) - selectedProgress.strongVocabCount)} more strong words needed.`}</p>
+            </div>
+            <div className={selectedProgress.complete ? 'ruleCard done' : 'ruleCard'}>
+              <span>{selectedProgress.listeningAttemptCount}</span>
+              <strong>Next level</strong>
+              <p>{selectedProgress.complete ? 'Next level is open.' : 'Reach 80% strong vocab and 20 listening attempts.'}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <label className="toggleField">
         <input
           type="checkbox"
@@ -468,6 +912,16 @@ function EmptyState({ title, body }: { title: string; body: string }) {
   );
 }
 
+function LockedPanel({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="practiceEmpty lockedPanel">
+      <Lock size={38} />
+      <h3>{title}</h3>
+      <p>{body}</p>
+    </div>
+  );
+}
+
 function CompletionPanel({ label, onNext }: { label: string; onNext: () => void }) {
   return (
     <div className="practiceEmpty complete">
@@ -483,6 +937,7 @@ function CompletionPanel({ label, onNext }: { label: string; onNext: () => void 
 
 export function ConsumerApp() {
   const [area, setArea] = useState<PracticeArea>(navFromHash);
+  const [lastPracticeArea, setLastPracticeArea] = useState<PracticeArea>('vocab');
   const [settings, setSettings] = useState<LearnerSettings>(() => loadSettings(levelSummaries[0]?.set ?? 1));
   const [mikanTheme, setMikanTheme] = useState<MikanTheme>(deviceMikanTheme);
   const [vocabStats, setVocabStats] = useState<StatsMap>(loadVocabStats);
@@ -495,6 +950,12 @@ export function ConsumerApp() {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  useEffect(() => {
+    if (area !== 'settings') {
+      setLastPracticeArea(area);
+    }
+  }, [area]);
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-color-scheme: dark)');
@@ -513,51 +974,68 @@ export function ConsumerApp() {
       .catch((error) => setLibraryError(error instanceof Error ? error.message : String(error)));
   }, []);
 
-  const levelSummary = levelSummaries.find((summary) => summary.set === settings.level);
+  const levelProgress = useMemo(() => buildLevelProgress(vocabStats, questionStats, library), [vocabStats, questionStats, library]);
+  const currentProgress = levelProgress.find((progress) => progress.level === settings.level) ?? levelProgress[0];
+  const settingsHref = area === 'settings' ? routeForArea(lastPracticeArea) : '#/practice/settings';
+
+  useEffect(() => {
+    if (!currentProgress || currentProgress.unlocked) return;
+    const fallback = levelProgress.find((progress) => progress.unlocked) ?? levelProgress[0];
+    if (!fallback) return;
+    const nextSettings = { ...settings, level: fallback.level };
+    setSettings(nextSettings);
+    saveSettings(nextSettings);
+  }, [currentProgress, levelProgress, settings]);
 
   return (
     <main className="practiceShell" data-theme={mikanTheme}>
       <aside className="practiceSidebar">
-        <div className="practiceBrand">
-          <GraduationCap size={28} />
-          <div>
-            <h1>JLPT Practice</h1>
-            <p>{levelSummary?.theme ?? 'Static study decks'}</p>
+        <div className="practiceHeaderBar">
+          <div className="practiceBrand">
+            <ListMusic size={28} />
+            <div>
+              <div className="practiceBrandTitle">
+                <h1>Kiki JLPT</h1>
+              </div>
+            </div>
           </div>
+          <a
+            aria-label={area === 'settings' ? 'Close settings' : 'Settings'}
+            className={`settingsIconLink ${area === 'settings' ? 'active closeSettings' : ''}`}
+            href={settingsHref}
+            title={area === 'settings' ? 'Close settings' : 'Settings'}
+          >
+            {area === 'settings' ? <X size={20} /> : <Settings size={20} />}
+          </a>
         </div>
         <nav className="practiceNav">
           <a className={area === 'vocab' ? 'active' : ''} href="#/practice">
             <BookOpen size={18} />
             Vocabulary
           </a>
-          <a className={area === 'conversations' ? 'active' : ''} href="#/practice/conversations">
-            <Play size={18} />
+          <a
+            className={area === 'conversations' ? 'active' : ''}
+            href="#/practice/conversations"
+          >
+            <Headphones size={18} />
             Conversations
           </a>
         </nav>
         <a className="studioLink" href="#">
-          Listener Studio
+          Kiki JLPT Studio
         </a>
       </aside>
 
       <section className="practiceWorkspace">
-        <a
-          aria-label="Settings"
-          className={`settingsIconLink ${area === 'settings' ? 'active' : ''}`}
-          href="#/practice/settings"
-          title="Settings"
-        >
-          <Settings size={20} />
-        </a>
         {libraryError ? <div className="practiceError">{libraryError}</div> : null}
         {area === 'vocab' ? (
-          <VocabPage level={settings.level} showKana={settings.showKana} stats={vocabStats} setStats={setVocabStats} />
+          <VocabPage level={settings.level} showKana={settings.showKana} stats={vocabStats} setStats={setVocabStats} progress={currentProgress} />
         ) : null}
         {area === 'conversations' ? (
-          <ConversationsPage level={settings.level} library={library} stats={questionStats} setStats={setQuestionStats} />
+          <ConversationsPage level={settings.level} library={library} stats={questionStats} setStats={setQuestionStats} progress={currentProgress} />
         ) : null}
         {area === 'settings' ? (
-          <SettingsPage settings={settings} setSettings={setSettings} library={library} />
+          <SettingsPage settings={settings} setSettings={setSettings} library={library} levelProgress={levelProgress} />
         ) : null}
       </section>
     </main>

@@ -382,8 +382,9 @@ function StudioApp() {
         <div className="brand">
           <ListMusic size={26} />
           <div>
-            <h1>Listener Studio</h1>
-            <p>Generate, curate, and publish listening batches</p>
+            <div className="brandTitle">
+              <h1>Kiki JLPT <span>Studio</span></h1>
+            </div>
           </div>
         </div>
         <a className="sideSwitch" href="#/practice">
@@ -743,6 +744,10 @@ export function App() {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  useEffect(() => {
+    document.title = side === 'practice' ? 'Kiki JLPT Practice' : 'Kiki JLPT Studio';
+  }, [side]);
 
   return side === 'practice' ? <ConsumerApp /> : <StudioApp />;
 }

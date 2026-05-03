@@ -280,6 +280,6 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
 });
 
 app.listen(port, '127.0.0.1', () => {
-  console.log(`JLPT Listener API running at http://127.0.0.1:${port}`);
+  console.log(`Kiki JLPT API running at http://127.0.0.1:${port}`);
   console.log(`Audio files are stored below ${path.relative(process.cwd(), RUNS_DIR) || RUNS_DIR}`);
 });
