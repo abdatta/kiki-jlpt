@@ -3,9 +3,6 @@ import type { LearnerSettings, StatsMap } from './types.ts';
 const SETTINGS_KEY = 'kiki-jlpt.practice.settings';
 const VOCAB_STATS_KEY = 'kiki-jlpt.practice.vocabStats';
 const QUESTION_STATS_KEY = 'kiki-jlpt.practice.questionStats';
-const LEGACY_SETTINGS_KEY = 'jlpt-listener.practice.settings';
-const LEGACY_VOCAB_STATS_KEY = 'jlpt-listener.practice.vocabStats';
-const LEGACY_QUESTION_STATS_KEY = 'jlpt-listener.practice.questionStats';
 
 function readJson<TValue>(key: string, fallback: TValue): TValue {
   if (typeof window === 'undefined') return fallback;
@@ -18,22 +15,13 @@ function readJson<TValue>(key: string, fallback: TValue): TValue {
   }
 }
 
-function readJsonFromKeys<TValue>(keys: string[], fallback: TValue): TValue {
-  for (const key of keys) {
-    const value = readJson<TValue | undefined>(key, undefined);
-    if (value !== undefined) return value;
-  }
-
-  return fallback;
-}
-
 function writeJson(key: string, value: unknown): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
 export function loadSettings(fallbackLevel: number): LearnerSettings {
-  const stored = readJsonFromKeys<Partial<LearnerSettings>>([SETTINGS_KEY, LEGACY_SETTINGS_KEY], {});
+  const stored = readJson<Partial<LearnerSettings>>(SETTINGS_KEY, {});
   return {
     level: typeof stored.level === 'number' && Number.isFinite(stored.level) ? stored.level : fallbackLevel,
     showKana: typeof stored.showKana === 'boolean' ? stored.showKana : true
@@ -45,7 +33,7 @@ export function saveSettings(settings: LearnerSettings): void {
 }
 
 export function loadVocabStats(): StatsMap {
-  return readJsonFromKeys<StatsMap>([VOCAB_STATS_KEY, LEGACY_VOCAB_STATS_KEY], {});
+  return readJson<StatsMap>(VOCAB_STATS_KEY, {});
 }
 
 export function saveVocabStats(stats: StatsMap): void {
@@ -53,7 +41,7 @@ export function saveVocabStats(stats: StatsMap): void {
 }
 
 export function loadQuestionStats(): StatsMap {
-  return readJsonFromKeys<StatsMap>([QUESTION_STATS_KEY, LEGACY_QUESTION_STATS_KEY], {});
+  return readJson<StatsMap>(QUESTION_STATS_KEY, {});
 }
 
 export function saveQuestionStats(stats: StatsMap): void {
