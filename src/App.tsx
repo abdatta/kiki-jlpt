@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import type { ApiError, CuratedConversation, CuratedSet, LlmExchange, PracticeConversation, PracticeRun, SetSummary, TextModelInfo } from '../shared/types.ts';
+import { BrandLogo } from './components/BrandLogo.tsx';
 import { ConsumerApp } from './consumer/ConsumerApp.tsx';
 
 type ConversationAction = 'audio' | 'delete-audio';
@@ -865,7 +866,7 @@ function StudioApp() {
     <main className="appShell">
       <aside className="sideBar">
         <div className="brand">
-          <ListMusic size={26} />
+          <BrandLogo className="brandLogo" title="Kiki JLPT" />
           <div>
             <div className="brandTitle">
               <h1>Kiki JLPT <span>Studio</span></h1>

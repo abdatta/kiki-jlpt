@@ -7,13 +7,13 @@ import {
   Eye,
   Headphones,
   Library,
-  ListMusic,
   Lock,
   Play,
   Settings,
   Trophy,
   X
 } from 'lucide-react';
+import { BrandLogo } from '../components/BrandLogo.tsx';
 import { buildSessionQueue, calculateNextStats, getBucket, getStats } from './deck.ts';
 import { levelSummaries, vocabCards } from './vocabData.ts';
 import { loadLibrary } from './library.ts';
@@ -997,7 +997,7 @@ export function ConsumerApp() {
       <aside className="practiceSidebar">
         <div className="practiceHeaderBar">
           <div className="practiceBrand">
-            <ListMusic size={28} />
+            <BrandLogo className="practiceBrandLogo" title="Kiki JLPT" />
             <div>
               <div className="practiceBrandTitle">
                 <h1>Kiki JLPT</h1>

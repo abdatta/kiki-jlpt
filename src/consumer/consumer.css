@@ -308,8 +308,23 @@
   gap: 12px;
 }
 
-.practiceBrand svg {
-  color: var(--accent);
+.practiceBrandLogo {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  display: block;
+  --brand-logo-bg: transparent;
+  --brand-logo-mark: var(--accent);
+  --brand-logo-cutout: transparent;
+  border-radius: 10px;
+  filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--surface) 76%, transparent));
+  overflow: hidden;
+}
+
+.practiceBrandLogo svg {
+  width: 100%;
+  height: 100%;
+  scale: 1.5;
 }
 
 .practiceBrand h1,

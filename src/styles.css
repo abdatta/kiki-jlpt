@@ -48,8 +48,23 @@ button {
   gap: 12px;
 }
 
-.brand svg {
-  color: #d35635;
+.brandLogo {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
+  display: block;
+  --brand-logo-bg: transparent;
+  --brand-logo-mark: #9b662c;
+  --brand-logo-cutout: transparent;
+  border-radius: 10px;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.7));
+  overflow: hidden;
+}
+
+.brandLogo svg {
+  width: 100%;
+  height: 100%;
+  scale: 1.5;
 }
 
 .brand h1,
