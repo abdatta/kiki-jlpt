@@ -20,7 +20,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       manifest: {
         name: 'Kiki JLPT Practice',
-        short_name: 'JLPT Practice',
+        short_name: 'Kiki JLPT',
         description: 'Local JLPT N5 listening-practice generator',
         theme_color: '#2a2118',
         background_color: '#2a2118',

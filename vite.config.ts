@@ -10,7 +10,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       manifest: {
         name: 'Kiki JLPT Studio',
-        short_name: 'JLPT Studio',
+        short_name: 'Kiki JLPT Studio',
         description: 'Local JLPT N5 listening-practice generator with review and Gemini TTS.',
         theme_color: '#2a2118',
         background_color: '#2a2118',
