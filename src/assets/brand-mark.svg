@@ -1,4 +1,4 @@
-﻿<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
+<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
 	 width="100%" viewBox="0 0 1046 1046" enable-background="new 0 0 1046 1046" xml:space="preserve">
 <defs>
 <mask id="brand-logo-cutouts" maskUnits="userSpaceOnUse">
@@ -151,7 +151,7 @@ M684.000000,1047.000000
 	C1047.101685,1046.400146 1046.127563,1047.093506 1042.455688,1047.090088 
 	C923.137207,1046.980957 803.818604,1047.000000 684.000000,1047.000000 
 z"/>
-<path mask="url(#brand-logo-cutouts)" fill="var(--brand-logo-mark, currentColor)" opacity="1.000000" stroke="none" 
+<path fill="var(--brand-logo-mark, currentColor)" opacity="1.000000" stroke="none" 
 	d="
 M364.145874,585.698242 
 	C363.772156,588.736450 363.699738,591.411255 363.744446,594.518433 
@@ -254,8 +254,8 @@ M465.548370,722.999268
 	C465.587219,746.880188 465.591644,746.880127 465.592163,735.498352 
 	C465.592346,731.498657 465.564850,727.498901 465.548370,722.999268 
 z"/>
-<path fill="var(--brand-logo-bg, transparent)" opacity="1.000000" stroke="none" 
-	d="
+<path fill="var(--brand-logo-mark, currentColor)" opacity="1.000000" stroke="none" 
+	 d="
 M713.599304,534.449036 
 	C717.882263,524.414490 721.635986,522.365112 732.182861,521.919922 
 	C746.904907,521.298645 759.519897,525.436890 769.241516,536.760742 
@@ -268,8 +268,8 @@ M713.599304,534.449036
 	C712.996521,632.376709 712.997253,585.609985 713.006714,538.843201 
 	C713.007019,537.515625 712.926819,536.175415 713.599304,534.449036 
 z"/>
-<path fill="var(--brand-logo-bg, transparent)" opacity="1.000000" stroke="none" 
-	d="
+<path fill="var(--brand-logo-mark, currentColor)" opacity="1.000000" stroke="none" 
+	 d="
 M333.573669,683.508911 
 	C330.038727,693.564697 326.291626,695.884155 316.007996,696.303589 
 	C298.567963,697.014893 284.243561,691.553650 274.518738,676.468079 
