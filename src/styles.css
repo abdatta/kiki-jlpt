@@ -286,7 +286,7 @@ textarea:focus {
 }
 
 .boardTabs {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -703,6 +703,131 @@ textarea:focus {
   color: var(--studio-danger);
 }
 
+.miniChips.coverage span,
+.vocabChips.coverage span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--studio-info-soft);
+  border-color: var(--studio-info-border);
+  color: var(--studio-info);
+}
+
+.miniChips.coverage b,
+.vocabChips.coverage b {
+  min-width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 6px;
+  background: var(--studio-info);
+  color: var(--studio-on-accent);
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.miniChips.coverage .coverageCount0,
+.vocabChips.coverage .coverageCount0 {
+  background: #fff1e8;
+  border-color: #e6a47f;
+  color: #8a3b13;
+}
+
+.miniChips.coverage .coverageCount1,
+.vocabChips.coverage .coverageCount1 {
+  background: #edf7fb;
+  border-color: #9fc3cf;
+  color: #225c71;
+}
+
+.miniChips.coverage .coverageCount2,
+.vocabChips.coverage .coverageCount2 {
+  background: #eef7ed;
+  border-color: #9cc59a;
+  color: #2f6835;
+}
+
+.miniChips.coverage .coverageCount3,
+.vocabChips.coverage .coverageCount3 {
+  background: #f6f0ff;
+  border-color: #b9a0d8;
+  color: #604184;
+}
+
+.miniChips.coverage .coverageCount4,
+.vocabChips.coverage .coverageCount4 {
+  background: #f4f2ed;
+  border-color: #beb7a9;
+  color: #514b43;
+}
+
+.miniChips.coverage .coverageCount0 b,
+.vocabChips.coverage .coverageCount0 b {
+  background: #8a3b13;
+}
+
+.miniChips.coverage .coverageCount1 b,
+.vocabChips.coverage .coverageCount1 b {
+  background: #225c71;
+}
+
+.miniChips.coverage .coverageCount2 b,
+.vocabChips.coverage .coverageCount2 b {
+  background: #2f6835;
+}
+
+.miniChips.coverage .coverageCount3 b,
+.vocabChips.coverage .coverageCount3 b {
+  background: #604184;
+}
+
+.miniChips.coverage .coverageCount4 b,
+.vocabChips.coverage .coverageCount4 b {
+  background: #514b43;
+}
+
+.recommendationSummary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.recommendationSummary > div,
+.recommendationMeta {
+  border: 1px solid var(--studio-border);
+  border-radius: 8px;
+  background: var(--studio-surface);
+}
+
+.recommendationSummary > div {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  padding: 16px;
+}
+
+.recommendationSummary span,
+.recommendationMeta span {
+  color: var(--studio-text-subtle);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.recommendationSummary strong {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.recommendationSummary p {
+  margin: 0;
+  color: var(--studio-text-muted);
+}
+
 .conversationGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
@@ -729,6 +854,25 @@ textarea:focus {
   justify-content: space-between;
   align-items: flex-start;
   gap: 14px;
+}
+
+.recommendationMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  background: var(--studio-divider);
+}
+
+.recommendationMeta > div {
+  display: grid;
+  gap: 4px;
+  background: var(--studio-surface-soft);
+  padding: 10px;
+}
+
+.recommendationMeta strong {
+  color: var(--studio-text-soft);
 }
 
 .conversationCard h3 {
@@ -1032,6 +1176,10 @@ audio {
   }
 
   .analyticsPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .recommendationSummary {
     grid-template-columns: 1fr;
   }
 

@@ -15,6 +15,7 @@ import { calculateRunAnalytics } from './analytics.ts';
 import { getTextModelOptions, resolveTextModel } from './textModels.ts';
 import { auditConversationsWithVocabulary } from './vocabAudit.ts';
 import { addConversationToLibrary, listCuratedSets, readCuratedSet, reanalyzeCuratedSet, removeConversationFromLibrary } from './library.ts';
+import { recommendLibraryConversations } from './recommendations.ts';
 
 const app = express();
 const port = Number.parseInt(process.env.API_PORT || '8787', 10);
@@ -152,6 +153,15 @@ app.post('/api/library/sets/:setNumber/reanalyze', asyncHandler(async (req, res)
     return;
   }
   res.json({ set: await reanalyzeCuratedSet(setNumber) });
+}));
+
+app.get('/api/library/sets/:setNumber/recommendations', asyncHandler(async (req, res) => {
+  const setNumber = Number(routeParam(req.params.setNumber));
+  if (!Number.isInteger(setNumber) || setNumber < 1) {
+    res.status(400).json({ error: 'Set number must be a positive integer.' });
+    return;
+  }
+  res.json({ recommendations: await recommendLibraryConversations(setNumber) });
 }));
 
 app.post('/api/generate/preview', asyncHandler(async (req: express.Request<unknown, unknown, GenerateRequest>, res) => {

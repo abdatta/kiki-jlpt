@@ -17,15 +17,27 @@ import {
   RotateCcw,
   Save,
   Sparkles,
+  Target,
   Trash2,
   X
 } from 'lucide-react';
-import type { ApiError, CuratedConversation, CuratedSet, LlmExchange, PracticeConversation, PracticeRun, SetSummary, TextModelInfo } from '../shared/types.ts';
+import type {
+  ApiError,
+  CuratedConversation,
+  CuratedSet,
+  LibraryRecommendationCandidate,
+  LibraryRecommendations,
+  LlmExchange,
+  PracticeConversation,
+  PracticeRun,
+  SetSummary,
+  TextModelInfo
+} from '../shared/types.ts';
 import { BrandLogo } from './components/BrandLogo.tsx';
 import { ConsumerApp } from './consumer/ConsumerApp.tsx';
 
 type ConversationAction = 'audio' | 'delete-audio';
-type BoardMode = 'runs' | 'library';
+type BoardMode = 'runs' | 'library' | 'recommendations';
 type BusyAction =
   | 'generate'
   | `${ConversationAction}:${string}`
@@ -140,6 +152,24 @@ function formatRunHistoryTitle(value: string): string {
   }
 
   return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
+}
+
+function coverageCountClass(count: number): string {
+  if (count <= 0) return 'coverageCount0';
+  if (count === 1) return 'coverageCount1';
+  if (count === 2) return 'coverageCount2';
+  if (count === 3) return 'coverageCount3';
+  return 'coverageCount4';
+}
+
+function wordFrequency(words: string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const word of words) {
+    const cleaned = word.trim();
+    if (!cleaned) continue;
+    counts.set(cleaned, (counts.get(cleaned) ?? 0) + 1);
+  }
+  return counts;
 }
 
 function shortModelLabel(model: TextModelInfo): string {
@@ -304,6 +334,8 @@ function StudioApp() {
   const [sets, setSets] = useState<SetSummary[]>([]);
   const [runs, setRuns] = useState<PracticeRun[]>([]);
   const [librarySets, setLibrarySets] = useState<CuratedSet[]>([]);
+  const [recommendations, setRecommendations] = useState<LibraryRecommendations | null>(null);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [currentRun, setCurrentRun] = useState<PracticeRun | null>(null);
   const [boardMode, setBoardMode] = useState<BoardMode>('runs');
   const [textModels, setTextModels] = useState<TextModelInfo[]>([]);
@@ -324,8 +356,10 @@ function StudioApp() {
   const currentTextModel = useMemo(() => textModels.find((model) => model.id === textModelId), [textModels, textModelId]);
   const currentLibrarySet = useMemo(() => librarySets.find((item) => item.setNumber === setNumber), [librarySets, setNumber]);
   const curatedLibrarySets = useMemo(() => librarySets.filter((item) => item.conversations.length > 0), [librarySets]);
+  const leastCoveredWordSet = useMemo(() => new Set(recommendations?.leastCoveredWords.map((word) => word.japanese) ?? []), [recommendations]);
   const showRunContent = Boolean(boardMode === 'runs' && currentRun && !generationSession);
   const showLibraryContent = Boolean(boardMode === 'library' && !generationSession);
+  const showRecommendationsContent = Boolean(boardMode === 'recommendations' && !generationSession);
   const currentExchange = currentRun?.llmExchanges?.[0];
 
   async function loadInitial() {
@@ -343,9 +377,28 @@ function StudioApp() {
     setCurrentRun((previous) => previous ?? runPayload.runs[0] ?? null);
   }
 
+  async function loadRecommendations(targetSet = setNumber) {
+    setRecommendationsLoading(true);
+    setError(null);
+    try {
+      const payload = await api<{ recommendations: LibraryRecommendations }>(`/api/library/sets/${encodeURIComponent(targetSet)}/recommendations`);
+      setRecommendations(payload.recommendations);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setRecommendationsLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadInitial().catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
   }, []);
+
+  useEffect(() => {
+    if (boardMode === 'recommendations' && !generationSession) {
+      loadRecommendations().catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
+    }
+  }, [boardMode, generationSession, setNumber]);
 
   useEffect(() => {
     setRevealedAnswers({});
@@ -438,6 +491,10 @@ function StudioApp() {
     );
   }
 
+  function actionKey(runId: string | undefined, conversationId: string): string {
+    return runId ? `${runId}:${conversationId}` : conversationId;
+  }
+
   async function generate() {
     const sessionId = makeSessionId();
     const modelLabel = currentTextModel?.label ?? (textModelId === 'gemini' ? 'Gemini' : textModelId);
@@ -525,9 +582,10 @@ function StudioApp() {
     }
   }
 
-  async function runAction(conversationId: string, action: ConversationAction) {
-    if (!currentRun) return;
-    const conversation = currentRun.conversations.find((item) => item.id === conversationId);
+  async function runAction(conversationId: string, action: ConversationAction, sourceRunId = currentRun?.id) {
+    if (!sourceRunId) return;
+    const sourceRun = currentRun?.id === sourceRunId ? currentRun : runs.find((run) => run.id === sourceRunId) ?? null;
+    const conversation = sourceRun?.conversations.find((item) => item.id === conversationId);
     if (action === 'delete-audio' && !window.confirm('Delete this generated audio? You can regenerate it afterward.')) {
       return;
     }
@@ -535,40 +593,50 @@ function StudioApp() {
       return;
     }
 
-    const marker = `${action}:${conversationId}` as BusyAction;
+    const marker = `${action}:${actionKey(sourceRunId, conversationId)}` as BusyAction;
     setBusy(marker);
     setError(null);
     try {
       const routeAction = action === 'delete-audio' ? 'audio' : action;
       const payload = await api<{ run: PracticeRun }>(
-        `/api/runs/${encodeURIComponent(currentRun.id)}/conversations/${encodeURIComponent(conversationId)}/${routeAction}`,
+        `/api/runs/${encodeURIComponent(sourceRunId)}/conversations/${encodeURIComponent(conversationId)}/${routeAction}`,
         { method: action === 'delete-audio' ? 'DELETE' : 'POST' }
       );
-      setCurrentRun(payload.run);
+      if (currentRun?.id === sourceRunId) {
+        setCurrentRun(payload.run);
+      }
       await loadInitial();
+      if (boardMode === 'recommendations') {
+        await loadRecommendations();
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
-      await refreshRun(currentRun.id).catch(() => undefined);
+      await refreshRun(sourceRunId).catch(() => undefined);
     } finally {
       setBusy(null);
     }
   }
 
-  async function addToLibrary(conversationId: string) {
-    if (!currentRun) return;
-    const marker = `library-add:${conversationId}` as BusyAction;
+  async function addToLibrary(conversationId: string, sourceRunId = currentRun?.id) {
+    if (!sourceRunId) return;
+    const marker = `library-add:${actionKey(sourceRunId, conversationId)}` as BusyAction;
     setBusy(marker);
     setError(null);
     try {
       const payload = await api<{ run: PracticeRun }>(
-        `/api/runs/${encodeURIComponent(currentRun.id)}/conversations/${encodeURIComponent(conversationId)}/library`,
+        `/api/runs/${encodeURIComponent(sourceRunId)}/conversations/${encodeURIComponent(conversationId)}/library`,
         { method: 'POST' }
       );
-      setCurrentRun(payload.run);
+      if (currentRun?.id === sourceRunId) {
+        setCurrentRun(payload.run);
+      }
       await loadInitial();
+      if (boardMode === 'recommendations') {
+        await loadRecommendations();
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
-      await refreshRun(currentRun.id).catch(() => undefined);
+      await refreshRun(sourceRunId).catch(() => undefined);
     } finally {
       setBusy(null);
     }
@@ -590,6 +658,9 @@ function StudioApp() {
       await loadInitial();
       if (currentRun?.id === conversation.sourceRunId) {
         await refreshRun(currentRun.id).catch(() => undefined);
+      }
+      if (boardMode === 'recommendations') {
+        await loadRecommendations();
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -620,25 +691,59 @@ function StudioApp() {
     }
   }
 
-  function renderConversationCard(conversation: PracticeConversation | CuratedConversation, source: 'run' | 'library') {
-    const isEditing = edit?.conversationId === conversation.id;
+  async function openRun(runId: string) {
+    setGenerationSession(null);
+    setAuditOpen(false);
+    setBoardMode('runs');
+    await refreshRun(runId);
+  }
+
+  function renderConversationCard(
+    conversation: PracticeConversation | CuratedConversation,
+    source: 'run' | 'library' | 'recommendation',
+    recommendation?: LibraryRecommendationCandidate
+  ) {
+    const sourceRunId = recommendation?.sourceRunId ?? (source === 'run' ? currentRun?.id : undefined);
+    const itemKey = actionKey(sourceRunId, conversation.id);
+    const isEditing = source === 'run' && edit?.conversationId === conversation.id;
     const isLibraryCard = source === 'library';
+    const isRecommendationCard = source === 'recommendation';
     const isReadonly = isLibraryCard || Boolean(conversation.curatedId);
     const canAddToLibrary = source === 'run' && conversation.status === 'audio_ready' && Boolean(conversation.audioFileName);
-    const isAudioBusy = busy === `audio:${conversation.id}` || conversation.status === 'audio_generating';
-    const isDeleteBusy = busy === `delete-audio:${conversation.id}`;
+    const canAddRecommendationToLibrary = isRecommendationCard && conversation.status === 'audio_ready' && Boolean(conversation.audioFileName);
+    const isAudioBusy = busy === `audio:${itemKey}` || conversation.status === 'audio_generating';
+    const isDeleteBusy = busy === `delete-audio:${itemKey}`;
     const currentAudioSrc = audioSrc(conversation);
     const hasAudio = Boolean(currentAudioSrc);
+    const recommendationWordIncreases = recommendation ? wordFrequency(conversation.vocabularyUsed) : new Map<string, number>();
+    const recommendationCoverageWords = recommendation?.leastCoveredWords.filter((word) => leastCoveredWordSet.has(word.japanese)) ?? [];
 
     return (
-      <article className={isReadonly ? 'conversationCard readonly' : 'conversationCard'} key={conversation.id}>
+      <article className={isReadonly ? 'conversationCard readonly' : 'conversationCard'} key={itemKey}>
         <div className="cardHeader">
           <div>
             <span className="conversationNumber">Conversation {conversation.number}</span>
             <h3>{conversation.title}</h3>
           </div>
-          <span className={`statusPill ${conversation.status}`}>{isLibraryCard ? 'in library' : statusLabel(conversation.status)}</span>
+          <span className={`statusPill ${conversation.status}`}>{isLibraryCard ? 'in library' : isRecommendationCard ? `score ${recommendation?.score ?? 0}` : statusLabel(conversation.status)}</span>
         </div>
+
+        {recommendation ? (
+          <div className="recommendationMeta">
+            <div>
+              <span>Uncovered</span>
+              <strong>{recommendation.uncoveredWordCount}</strong>
+            </div>
+            <div>
+              <span>Target Words</span>
+              <strong>{recommendation.targetWordCount}</strong>
+            </div>
+            <div>
+              <span>Run</span>
+              <strong>{formatRunTime(recommendation.sourceRunCreatedAt)}</strong>
+            </div>
+          </div>
+        ) : null}
 
         {isEditing && edit ? (
           <div className="editForm">
@@ -674,7 +779,7 @@ function StudioApp() {
             <p className="sceneText">{conversation.scene}</p>
             <div className="transcriptBlock">
               {conversation.text.map((line, index) => {
-                const key = translationKey(conversation.id, index);
+                const key = translationKey(itemKey, index);
                 const isRevealed = Boolean(revealedTranslations[key]);
                 return (
                   <div className="transcriptLine" key={key}>
@@ -690,7 +795,7 @@ function StudioApp() {
                       aria-label={`${isRevealed ? 'Hide' : 'Show'} translation for line ${index + 1}`}
                       aria-pressed={isRevealed}
                       className={isRevealed ? 'translationToggle active' : 'translationToggle'}
-                      onClick={() => toggleTranslation(conversation.id, index)}
+                      onClick={() => toggleTranslation(itemKey, index)}
                       title={`${isRevealed ? 'Hide' : 'Show'} translation`}
                       type="button"
                     >
@@ -706,7 +811,7 @@ function StudioApp() {
                 <span>Questions</span>
                 <ol>
                   {conversation.listeningQuestions.map((question, questionIndex) => {
-                    const key = answerKey(conversation.id, questionIndex);
+                    const key = answerKey(itemKey, questionIndex);
                     const isRevealed = Boolean(revealedAnswers[key]);
                     return (
                       <li className={isRevealed ? 'answerCard revealed' : 'answerCard'} key={key}>
@@ -723,7 +828,7 @@ function StudioApp() {
                 <span>Show Answers</span>
                 <div className="answerButtons">
                   {conversation.listeningQuestions.map((question, questionIndex) => {
-                    const key = answerKey(conversation.id, questionIndex);
+                    const key = answerKey(itemKey, questionIndex);
                     const isRevealed = Boolean(revealedAnswers[key]);
                     return (
                       <button
@@ -731,7 +836,7 @@ function StudioApp() {
                         aria-pressed={isRevealed}
                         className={isRevealed ? 'answerToggle active' : 'answerToggle'}
                         key={key}
-                        onClick={() => toggleAnswer(conversation.id, questionIndex)}
+                        onClick={() => toggleAnswer(itemKey, questionIndex)}
                         title={`${isRevealed ? 'Hide' : 'Show'} answer`}
                         type="button"
                       >
@@ -750,24 +855,35 @@ function StudioApp() {
               ))}
             </div>
 
+            {recommendation ? (
+              <div className="vocabChips coverage">
+                {recommendationCoverageWords.slice(0, 12).map((word) => (
+                  <span className={coverageCountClass(word.libraryCount)} key={word.japanese}>
+                    {word.japanese}
+                    <b>{recommendationWordIncreases.get(word.japanese) ?? 1}</b>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
             {conversation.error ? <p className="conversationError">{conversation.error}</p> : null}
             {currentAudioSrc ? (
               <div className="audioRow single">
                 <audio
                   controls
-                  onEnded={() => setAudioState(conversation.id, 'ended')}
+                  onEnded={() => setAudioState(itemKey, 'ended')}
                   onPause={(event) => {
                     if (!event.currentTarget.ended) {
-                      setAudioState(conversation.id, event.currentTarget.currentTime > 0 ? 'paused' : 'idle');
+                      setAudioState(itemKey, event.currentTarget.currentTime > 0 ? 'paused' : 'idle');
                     }
                   }}
-                  onPlay={() => setAudioState(conversation.id, 'playing')}
+                  onPlay={() => setAudioState(itemKey, 'playing')}
                   onSeeked={(event) => {
                     if (!event.currentTarget.paused || event.currentTarget.ended) return;
-                    setAudioState(conversation.id, event.currentTarget.currentTime > 0 ? 'paused' : 'idle');
+                    setAudioState(itemKey, event.currentTarget.currentTime > 0 ? 'paused' : 'idle');
                   }}
                   ref={(node) => {
-                    audioRefs.current[conversation.id] = node;
+                    audioRefs.current[itemKey] = node;
                   }}
                   src={currentAudioSrc}
                 >
@@ -779,12 +895,12 @@ function StudioApp() {
             <div className="buttonRow">
               {hasAudio ? (
                 <>
-                  <button className="playLink" onClick={() => toggleAudioPlayback(conversation.id)} type="button">
-                    {audioButtonContent(conversation.id)}
+                  <button className="playLink" onClick={() => toggleAudioPlayback(itemKey)} type="button">
+                    {audioButtonContent(itemKey)}
                   </button>
                   <button
                     className="primaryButton compact"
-                    onClick={() => runAction(conversation.id, 'audio')}
+                    onClick={() => runAction(conversation.id, 'audio', sourceRunId)}
                     disabled={isReadonly || isAudioBusy}
                     title={isReadonly ? 'Remove it from Library before regenerating audio.' : 'Regenerate audio'}
                   >
@@ -793,14 +909,14 @@ function StudioApp() {
                   </button>
                   <button
                     className="secondaryButton danger"
-                    onClick={() => runAction(conversation.id, 'delete-audio')}
+                    onClick={() => runAction(conversation.id, 'delete-audio', sourceRunId)}
                     disabled={isReadonly || isAudioBusy || isDeleteBusy}
                     title={isReadonly ? 'Remove it from Library before deleting audio.' : 'Delete generated audio'}
                   >
                     {isDeleteBusy ? <RefreshCw className="spin" size={17} /> : <Trash2 size={17} />}
                     Delete
                   </button>
-                  {source === 'run' ? (
+                  {source === 'run' || source === 'recommendation' ? (
                     conversation.curatedId ? (
                       <button className="secondaryButton" disabled title="Remove it from the Library board to edit this source again.">
                         <BookOpen size={17} />
@@ -809,11 +925,11 @@ function StudioApp() {
                     ) : (
                       <button
                         className="secondaryButton positive"
-                        onClick={() => addToLibrary(conversation.id)}
-                        disabled={!canAddToLibrary || busy === `library-add:${conversation.id}`}
-                        title={canAddToLibrary ? 'Add to Library' : 'Generate audio before adding to Library'}
+                        onClick={() => addToLibrary(conversation.id, sourceRunId)}
+                        disabled={!(canAddToLibrary || canAddRecommendationToLibrary) || busy === `library-add:${itemKey}`}
+                        title={canAddToLibrary || canAddRecommendationToLibrary ? 'Add to Library' : 'Generate audio before adding to Library'}
                       >
-                        {busy === `library-add:${conversation.id}` ? <RefreshCw className="spin" size={17} /> : <Plus size={17} />}
+                        {busy === `library-add:${itemKey}` ? <RefreshCw className="spin" size={17} /> : <Plus size={17} />}
                         Library
                       </button>
                     )
@@ -828,7 +944,7 @@ function StudioApp() {
                 <>
                   <button
                     className="primaryButton compact"
-                    onClick={() => runAction(conversation.id, 'audio')}
+                    onClick={() => runAction(conversation.id, 'audio', sourceRunId)}
                     disabled={isReadonly || isAudioBusy}
                   >
                     {isAudioBusy ? <RefreshCw className="spin" size={17} /> : <Headphones size={17} />}
@@ -836,9 +952,9 @@ function StudioApp() {
                   </button>
                   <button
                     className="secondaryButton"
-                    disabled={isReadonly}
+                    disabled={isReadonly || isRecommendationCard}
                     onClick={() => {
-                      if (!isReadonly) {
+                      if (!isReadonly && !isRecommendationCard) {
                         setEdit({
                           conversationId: conversation.id,
                           title: conversation.title,
@@ -848,11 +964,17 @@ function StudioApp() {
                         });
                       }
                     }}
-                    title={isReadonly ? 'Remove it from Library to edit this conversation.' : 'Edit conversation'}
+                    title={isRecommendationCard ? 'Open the source run to edit this conversation.' : isReadonly ? 'Remove it from Library to edit this conversation.' : 'Edit conversation'}
                   >
                     <Pencil size={17} />
                     Edit
                   </button>
+                  {isRecommendationCard && sourceRunId ? (
+                    <button className="secondaryButton" onClick={() => openRun(sourceRunId)}>
+                      <ListMusic size={17} />
+                      Open Run
+                    </button>
+                  ) : null}
                 </>
               )}
             </div>
@@ -922,6 +1044,10 @@ function StudioApp() {
             <ListMusic size={16} />
             Runs
           </button>
+          <button className={boardMode === 'recommendations' ? 'active' : ''} onClick={() => setBoardMode('recommendations')}>
+            <Target size={16} />
+            Queue
+          </button>
           <button className={boardMode === 'library' ? 'active' : ''} onClick={() => setBoardMode('library')}>
             <BookOpen size={16} />
             Library
@@ -988,12 +1114,14 @@ function StudioApp() {
       <section className="workspace">
         <header className="topBar">
           <div>
-            <p className="eyebrow">{generationSession ? 'Generate, inspect, review' : boardMode === 'library' ? 'Curated listening shelf' : 'Generate, edit, synthesize'}</p>
+            <p className="eyebrow">{generationSession ? 'Generate, inspect, review' : boardMode === 'library' ? 'Curated listening shelf' : boardMode === 'recommendations' ? 'Coverage recommendation queue' : 'Generate, edit, synthesize'}</p>
             <h2>
               {generationSession
                 ? `Set ${generationSession.setNumber} generation`
                 : boardMode === 'library'
                   ? `Set ${setNumber} Library`
+                  : boardMode === 'recommendations'
+                    ? `Set ${setNumber} Recommendations`
                   : currentRun
                     ? `Set ${currentRun.setNumber} practice run`
                     : 'Create a listening batch'}
@@ -1012,6 +1140,15 @@ function StudioApp() {
               <button className="auditToggle" onClick={reanalyzeCurrentLibrarySet} disabled={busy === `reanalyze-library:${setNumber}`}>
                 {busy === `reanalyze-library:${setNumber}` ? <RefreshCw className="spin" size={15} /> : <RefreshCw size={15} />}
                 Reanalyze
+              </button>
+            </div>
+          ) : boardMode === 'recommendations' ? (
+            <div className="runStats">
+              <span>{recommendations?.libraryConversationCount ?? currentLibrarySet?.conversations.length ?? 0} curated</span>
+              <span>{recommendations?.candidateCount ?? 0} candidates</span>
+              <button className="auditToggle" onClick={() => loadRecommendations()} disabled={recommendationsLoading}>
+                {recommendationsLoading ? <RefreshCw className="spin" size={15} /> : <RefreshCw size={15} />}
+                Refresh
               </button>
             </div>
           ) : currentRun ? (
@@ -1048,6 +1185,45 @@ function StudioApp() {
 
         {showLibraryContent && currentLibrarySet ? <AnalyticsPanel analytics={currentLibrarySet.analytics} setNumber={setNumber} label="Library analytics" /> : null}
 
+        {showRecommendationsContent ? (
+          recommendationsLoading && !recommendations ? (
+            <div className="blankState">
+              <RefreshCw className="spin" size={42} />
+              <h3>Loading recommendations</h3>
+            </div>
+          ) : recommendations && recommendations.recommendations.length > 0 ? (
+            <>
+              <section className="recommendationSummary" aria-label="Recommendation summary">
+                <div>
+                  <span>Least Covered</span>
+                  <div className="miniChips coverage">
+                    {recommendations.leastCoveredWords.slice(0, 24).map((word) => (
+                      <span className={coverageCountClass(word.libraryCount)} key={word.japanese}>
+                        {word.japanese}
+                        <b>{word.libraryCount}</b>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <span>Queue</span>
+                  <strong>{recommendations.recommendations.length}</strong>
+                  <p>{recommendations.targetWordCount} Set {setNumber} words tracked</p>
+                </div>
+              </section>
+              <div className="conversationGrid">
+                {recommendations.recommendations.map((recommendation) => renderConversationCard(recommendation.conversation, 'recommendation', recommendation))}
+              </div>
+            </>
+          ) : (
+            <div className="blankState">
+              <Target size={42} />
+              <h3>No Recommendations for Set {setNumber}</h3>
+              <p>Generate more Set {setNumber} runs or remove already curated conversations from Library.</p>
+            </div>
+          )
+        ) : null}
+
         {showLibraryContent ? (
           currentLibrarySet && currentLibrarySet.conversations.length > 0 ? (
             <div className="conversationGrid">
@@ -1060,7 +1236,7 @@ function StudioApp() {
               <p>Generate audio from a run, then add conversations to Library.</p>
             </div>
           )
-        ) : !generationSession && !currentRun ? (
+        ) : boardMode === 'runs' && !generationSession && !currentRun ? (
           <div className="blankState">
             <Disc3 size={42} />
             <h3>No batch selected</h3>

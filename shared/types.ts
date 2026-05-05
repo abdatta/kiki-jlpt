@@ -96,6 +96,34 @@ export interface CuratedSet {
   updatedAt: string;
 }
 
+export interface LibraryRecommendationWord {
+  japanese: string;
+  reading: string;
+  meaning: string;
+  partOfSpeech: string;
+  category: string;
+  libraryCount: number;
+}
+
+export interface LibraryRecommendationCandidate {
+  sourceRunId: string;
+  sourceRunCreatedAt: string;
+  score: number;
+  targetWordCount: number;
+  uncoveredWordCount: number;
+  leastCoveredWords: LibraryRecommendationWord[];
+  conversation: PracticeConversation;
+}
+
+export interface LibraryRecommendations {
+  setNumber: number;
+  targetWordCount: number;
+  libraryConversationCount: number;
+  candidateCount: number;
+  leastCoveredWords: LibraryRecommendationWord[];
+  recommendations: LibraryRecommendationCandidate[];
+}
+
 export interface RunAnalytics {
   currentSetTotal: number;
   currentSetUsedCount: number;
