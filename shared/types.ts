@@ -124,6 +124,33 @@ export interface LibraryRecommendations {
   recommendations: LibraryRecommendationCandidate[];
 }
 
+export interface LibraryBalanceWord {
+  japanese: string;
+  reading: string;
+  meaning: string;
+  partOfSpeech: string;
+  category: string;
+  libraryCount: number;
+  targetCount: number;
+  neededCount: number;
+}
+
+export interface LibraryBalancePlan {
+  setNumber: number;
+  targetWordCount: number;
+  libraryConversationCount: number;
+  zeroCount: number;
+  lowCoverageCount: number;
+  meanCount: number;
+  standardDeviation: number;
+  targetCount: number;
+  preferredMaxConversationCount: number;
+  suggestedConversationCount: number;
+  requiredZeroWords: LibraryBalanceWord[];
+  priorityWords: LibraryBalanceWord[];
+  overrepresentedWords: LibraryBalanceWord[];
+}
+
 export interface RunAnalytics {
   currentSetTotal: number;
   currentSetUsedCount: number;
@@ -153,6 +180,10 @@ export interface PracticeRun {
 export interface GenerateRequest {
   setNumber: number;
   conversationCount: number;
+  textModelId?: string;
+}
+
+export interface LibraryComplementGenerateRequest {
   textModelId?: string;
 }
 

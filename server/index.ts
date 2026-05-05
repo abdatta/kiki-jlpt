@@ -3,9 +3,9 @@ import cors from 'cors';
 import express from 'express';
 import path from 'node:path';
 import { mkdir, unlink } from 'node:fs/promises';
-import type { GenerateRequest, LlmExchange, PracticeConversation, TextModelInfo, VocabItem } from '../shared/types.ts';
+import type { GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, TextModelInfo, VocabItem } from '../shared/types.ts';
 import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR } from './paths.ts';
-import { buildGenerationPrompt } from './prompt.ts';
+import { buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
 import { generateConversationAudio, generateConversationJson } from './gemini.ts';
 import { CODEX_TEXT_INSTRUCTIONS, generateCodexConversationJson } from './codexText.ts';
 import { getAllowedVocabulary, getSetSummaries } from './vocab.ts';
@@ -16,6 +16,7 @@ import { getTextModelOptions, resolveTextModel } from './textModels.ts';
 import { auditConversationsWithVocabulary } from './vocabAudit.ts';
 import { addConversationToLibrary, listCuratedSets, readCuratedSet, reanalyzeCuratedSet, removeConversationFromLibrary } from './library.ts';
 import { recommendLibraryConversations } from './recommendations.ts';
+import { buildLibraryBalancePlan } from './libraryBalance.ts';
 
 const app = express();
 const port = Number.parseInt(process.env.API_PORT || '8787', 10);
@@ -63,6 +64,14 @@ function validateGenerateRequest(body: GenerateRequest): { setNumber: number; co
   return { setNumber, conversationCount };
 }
 
+function validateSetNumber(value: unknown): { setNumber: number } | { error: string; status: number } {
+  const setNumber = Number(value);
+  if (!Number.isInteger(setNumber) || setNumber < 1) {
+    return { status: 400, error: 'Set number must be a positive integer.' };
+  }
+  return { setNumber };
+}
+
 async function getGenerateContext(body: GenerateRequest): Promise<
   | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string }
   | { error: string; status: number }
@@ -78,6 +87,34 @@ async function getGenerateContext(body: GenerateRequest): Promise<
   const textModel = await resolveTextModel(body.textModelId);
   const prompt = await buildGenerationPrompt(validated.setNumber, validated.conversationCount, allowedVocabulary);
   return { ...validated, allowedVocabulary, textModel, prompt };
+}
+
+async function getLibraryComplementContext(
+  setNumberValue: unknown,
+  body: LibraryComplementGenerateRequest | undefined
+): Promise<
+  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string; balance: Awaited<ReturnType<typeof buildLibraryBalancePlan>> }
+  | { error: string; status: number }
+> {
+  const validated = validateSetNumber(setNumberValue);
+  if ('error' in validated) return validated;
+
+  const allowedVocabulary = await getAllowedVocabulary(validated.setNumber);
+  if (!allowedVocabulary.length) {
+    return { status: 404, error: `No vocabulary found for Set ${validated.setNumber}.` };
+  }
+
+  const textModel = await resolveTextModel(body?.textModelId);
+  const balance = await buildLibraryBalancePlan(validated.setNumber);
+  const prompt = buildLibraryComplementPrompt(validated.setNumber, allowedVocabulary, balance);
+  return {
+    setNumber: validated.setNumber,
+    conversationCount: balance.suggestedConversationCount,
+    allowedVocabulary,
+    textModel,
+    prompt,
+    balance
+  };
 }
 
 function makeLlmExchange(
@@ -156,12 +193,31 @@ app.post('/api/library/sets/:setNumber/reanalyze', asyncHandler(async (req, res)
 }));
 
 app.get('/api/library/sets/:setNumber/recommendations', asyncHandler(async (req, res) => {
-  const setNumber = Number(routeParam(req.params.setNumber));
-  if (!Number.isInteger(setNumber) || setNumber < 1) {
-    res.status(400).json({ error: 'Set number must be a positive integer.' });
+  const validated = validateSetNumber(routeParam(req.params.setNumber));
+  if ('error' in validated) {
+    res.status(validated.status).json({ error: validated.error });
     return;
   }
-  res.json({ recommendations: await recommendLibraryConversations(setNumber) });
+  res.json({ recommendations: await recommendLibraryConversations(validated.setNumber) });
+}));
+
+app.get('/api/library/sets/:setNumber/balance', asyncHandler(async (req, res) => {
+  const validated = validateSetNumber(routeParam(req.params.setNumber));
+  if ('error' in validated) {
+    res.status(validated.status).json({ error: validated.error });
+    return;
+  }
+  res.json({ balance: await buildLibraryBalancePlan(validated.setNumber) });
+}));
+
+app.post('/api/library/sets/:setNumber/complement/preview', asyncHandler(async (req: express.Request<{ setNumber: string }, unknown, LibraryComplementGenerateRequest>, res) => {
+  const context = await getLibraryComplementContext(routeParam(req.params.setNumber), req.body);
+  if ('error' in context) {
+    res.status(context.status).json({ error: context.error });
+    return;
+  }
+
+  res.json({ balance: context.balance, exchange: makeLlmExchange(context.textModel, context.prompt) });
 }));
 
 app.post('/api/generate/preview', asyncHandler(async (req: express.Request<unknown, unknown, GenerateRequest>, res) => {
@@ -220,6 +276,57 @@ app.post('/api/generate', asyncHandler(async (req: express.Request<unknown, unkn
   });
 
   res.json({ run });
+}));
+
+app.post('/api/library/sets/:setNumber/complement', asyncHandler(async (req: express.Request<{ setNumber: string }, unknown, LibraryComplementGenerateRequest>, res) => {
+  const context = await getLibraryComplementContext(routeParam(req.params.setNumber), req.body);
+  if ('error' in context) {
+    res.status(context.status).json({ error: context.error });
+    return;
+  }
+
+  const requestedAt = new Date().toISOString();
+  const exchange = makeLlmExchange(context.textModel, context.prompt, requestedAt);
+  const generation = context.textModel.provider === 'codex'
+    ? await generateCodexConversationJson(context.prompt, context.textModel.model)
+    : await generateConversationJson(context.prompt);
+  const conversations = await auditConversationsWithVocabulary(
+    context.allowedVocabulary,
+    normalizeGeneratedConversations(generation.parsed, context.conversationCount)
+  );
+
+  if (!conversations.length) {
+    res.status(502).json({ error: 'The generation response did not include any usable conversations.' });
+    return;
+  }
+
+  const timestamp = new Date().toISOString();
+  const run = await saveRun({
+    id: makeRunId(context.setNumber),
+    setNumber: context.setNumber,
+    conversationCount: context.conversationCount,
+    allowedVocabCount: context.allowedVocabulary.length,
+    textModel: context.textModel,
+    analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
+    status: 'generated',
+    llmExchanges: [
+      {
+        ...exchange,
+        output: generation.output,
+        stats: {
+          ...(generation.stats && typeof generation.stats === 'object' ? generation.stats : { rawStats: generation.stats }),
+          libraryBalance: context.balance
+        },
+        receivedAt: timestamp,
+        status: 'complete'
+      }
+    ],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+    conversations
+  });
+
+  res.json({ run, balance: context.balance });
 }));
 
 app.put('/api/runs/:runId/conversations/:conversationId', asyncHandler(async (req, res) => {

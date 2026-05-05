@@ -25,6 +25,7 @@ import type {
   ApiError,
   CuratedConversation,
   CuratedSet,
+  LibraryBalancePlan,
   LibraryRecommendationCandidate,
   LibraryRecommendations,
   LlmExchange,
@@ -40,6 +41,7 @@ type ConversationAction = 'audio' | 'delete-audio';
 type BoardMode = 'runs' | 'library' | 'recommendations';
 type BusyAction =
   | 'generate'
+  | 'generate-complement'
   | `${ConversationAction}:${string}`
   | `save:${string}`
   | `library-add:${string}`
@@ -61,6 +63,8 @@ type GenerationSessionStatus = 'running' | 'complete' | 'failed';
 
 interface GenerationSession {
   id: string;
+  title: string;
+  detail: string;
   setNumber: number;
   conversationCount: number;
   textModelLabel: string;
@@ -276,8 +280,8 @@ function LoadingPanel({ session }: { session: GenerationSession }) {
         </div>
         <div>
           <p className="eyebrow">Generation request</p>
-          <h3>{session.status === 'failed' ? 'Generation failed' : 'Generating a new listening set'}</h3>
-          <p>Set {session.setNumber} - {session.conversationCount} conversations - {session.textModelLabel}</p>
+          <h3>{session.status === 'failed' ? 'Generation failed' : session.title}</h3>
+          <p>{session.detail}</p>
         </div>
         <span className={`agentStatus ${session.status}`}>
           {session.status === 'running' ? <LoaderCircle className="spin" size={15} /> : <CircleAlert size={15} />}
@@ -336,6 +340,8 @@ function StudioApp() {
   const [librarySets, setLibrarySets] = useState<CuratedSet[]>([]);
   const [recommendations, setRecommendations] = useState<LibraryRecommendations | null>(null);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [libraryBalance, setLibraryBalance] = useState<LibraryBalancePlan | null>(null);
+  const [libraryBalanceLoading, setLibraryBalanceLoading] = useState(false);
   const [currentRun, setCurrentRun] = useState<PracticeRun | null>(null);
   const [boardMode, setBoardMode] = useState<BoardMode>('runs');
   const [textModels, setTextModels] = useState<TextModelInfo[]>([]);
@@ -355,6 +361,7 @@ function StudioApp() {
   const currentSet = useMemo(() => sets.find((item) => item.set === setNumber), [sets, setNumber]);
   const currentTextModel = useMemo(() => textModels.find((model) => model.id === textModelId), [textModels, textModelId]);
   const currentLibrarySet = useMemo(() => librarySets.find((item) => item.setNumber === setNumber), [librarySets, setNumber]);
+  const currentLibraryBalance = libraryBalance?.setNumber === setNumber ? libraryBalance : null;
   const curatedLibrarySets = useMemo(() => librarySets.filter((item) => item.conversations.length > 0), [librarySets]);
   const leastCoveredWordSet = useMemo(() => new Set(recommendations?.leastCoveredWords.map((word) => word.japanese) ?? []), [recommendations]);
   const showRunContent = Boolean(boardMode === 'runs' && currentRun && !generationSession);
@@ -390,6 +397,19 @@ function StudioApp() {
     }
   }
 
+  async function loadLibraryBalance(targetSet = setNumber) {
+    setLibraryBalanceLoading(true);
+    setError(null);
+    try {
+      const payload = await api<{ balance: LibraryBalancePlan }>(`/api/library/sets/${encodeURIComponent(targetSet)}/balance`);
+      setLibraryBalance(payload.balance);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setLibraryBalanceLoading(false);
+    }
+  }
+
   useEffect(() => {
     loadInitial().catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
   }, []);
@@ -399,6 +419,12 @@ function StudioApp() {
       loadRecommendations().catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
     }
   }, [boardMode, generationSession, setNumber]);
+
+  useEffect(() => {
+    if (boardMode === 'library' && !generationSession) {
+      loadLibraryBalance().catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
+    }
+  }, [boardMode, generationSession, setNumber, currentLibrarySet?.updatedAt]);
 
   useEffect(() => {
     setRevealedAnswers({});
@@ -507,6 +533,8 @@ function StudioApp() {
     setCurrentRun(null);
     setGenerationSession({
       id: sessionId,
+      title: 'Generating a new listening set',
+      detail: `Set ${setNumber} - ${conversationCount} conversations - ${modelLabel}`,
       setNumber,
       conversationCount,
       textModelLabel: modelLabel,
@@ -524,6 +552,67 @@ function StudioApp() {
         method: 'POST',
         body: JSON.stringify(requestBody)
       });
+      setCurrentRun(payload.run);
+      setBoardMode('runs');
+      setGenerationSession(null);
+      await loadInitial();
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : String(caught);
+      setError(message);
+      setGenerationSession((previous) => previous?.id === sessionId
+        ? {
+            ...previous,
+            status: 'failed',
+            exchange: previous.exchange ? { ...previous.exchange, status: 'failed', error: message, receivedAt: new Date().toISOString() } : undefined,
+            error: message,
+            completedAt: new Date().toISOString()
+          }
+        : previous);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function generateLibraryComplement() {
+    const sessionId = makeSessionId();
+    const modelLabel = currentTextModel?.label ?? (textModelId === 'gemini' ? 'Gemini' : textModelId);
+    const requestBody = { textModelId };
+    setBusy('generate-complement');
+    setError(null);
+    setEdit(null);
+    setAuditOpen(false);
+    setBoardMode('runs');
+    setCurrentRun(null);
+    setGenerationSession({
+      id: sessionId,
+      title: 'Generating a library balance batch',
+      detail: `Set ${setNumber} - choosing a small complementary batch - ${modelLabel}`,
+      setNumber,
+      conversationCount: currentLibraryBalance?.suggestedConversationCount ?? 0,
+      textModelLabel: modelLabel,
+      startedAt: new Date().toISOString(),
+      status: 'running'
+    });
+    try {
+      const preview = await api<{ exchange: LlmExchange; balance: LibraryBalancePlan }>(`/api/library/sets/${encodeURIComponent(setNumber)}/complement/preview`, {
+        method: 'POST',
+        body: JSON.stringify(requestBody)
+      });
+      setLibraryBalance(preview.balance);
+      setGenerationSession((previous) => previous?.id === sessionId
+        ? {
+            ...previous,
+            conversationCount: preview.balance.suggestedConversationCount,
+            detail: `Set ${setNumber} - ${preview.balance.suggestedConversationCount} balance conversations - ${modelLabel}`,
+            exchange: preview.exchange
+          }
+        : previous);
+
+      const payload = await api<{ run: PracticeRun; balance: LibraryBalancePlan }>(`/api/library/sets/${encodeURIComponent(setNumber)}/complement`, {
+        method: 'POST',
+        body: JSON.stringify(requestBody)
+      });
+      setLibraryBalance(payload.balance);
       setCurrentRun(payload.run);
       setBoardMode('runs');
       setGenerationSession(null);
@@ -575,6 +664,7 @@ function StudioApp() {
     try {
       const payload = await api<{ set: CuratedSet }>(`/api/library/sets/${encodeURIComponent(setNumber)}/reanalyze`, { method: 'POST' });
       setLibrarySets((existing) => [payload.set, ...existing.filter((set) => set.setNumber !== payload.set.setNumber)].sort((a, b) => a.setNumber - b.setNumber));
+      await loadLibraryBalance(payload.set.setNumber);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -609,6 +699,9 @@ function StudioApp() {
       if (boardMode === 'recommendations') {
         await loadRecommendations();
       }
+      if (boardMode === 'library') {
+        await loadLibraryBalance();
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       await refreshRun(sourceRunId).catch(() => undefined);
@@ -633,6 +726,9 @@ function StudioApp() {
       await loadInitial();
       if (boardMode === 'recommendations') {
         await loadRecommendations();
+      }
+      if (boardMode === 'library') {
+        await loadLibraryBalance();
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -661,6 +757,9 @@ function StudioApp() {
       }
       if (boardMode === 'recommendations') {
         await loadRecommendations();
+      }
+      if (boardMode === 'library') {
+        await loadLibraryBalance(conversation.setNumber);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -1136,7 +1235,11 @@ function StudioApp() {
           ) : boardMode === 'library' ? (
             <div className="runStats">
               <span>{currentLibrarySet?.conversations.length ?? 0} curated</span>
-              <span>Set {setNumber}</span>
+              <span>{currentLibraryBalance ? `${currentLibraryBalance.suggestedConversationCount} suggested` : `Set ${setNumber}`}</span>
+              <button className="auditToggle" onClick={generateLibraryComplement} disabled={busy === 'generate-complement' || libraryBalanceLoading}>
+                {busy === 'generate-complement' || libraryBalanceLoading ? <RefreshCw className="spin" size={15} /> : <Sparkles size={15} />}
+                Balance
+              </button>
               <button className="auditToggle" onClick={reanalyzeCurrentLibrarySet} disabled={busy === `reanalyze-library:${setNumber}`}>
                 {busy === `reanalyze-library:${setNumber}` ? <RefreshCw className="spin" size={15} /> : <RefreshCw size={15} />}
                 Reanalyze
@@ -1184,6 +1287,28 @@ function StudioApp() {
         {showRunContent && currentRun ? <AnalyticsPanel analytics={currentRun.analytics} setNumber={currentRun.setNumber} label="Generation analytics" /> : null}
 
         {showLibraryContent && currentLibrarySet ? <AnalyticsPanel analytics={currentLibrarySet.analytics} setNumber={setNumber} label="Library analytics" /> : null}
+
+        {showLibraryContent && currentLibraryBalance ? (
+          <section className="recommendationSummary" aria-label="Library balance plan">
+            <div>
+              <span>Balance Priority</span>
+              <div className="miniChips coverage">
+                {currentLibraryBalance.priorityWords.slice(0, 24).map((word) => (
+                  <span className={coverageCountClass(word.libraryCount)} key={word.japanese}>
+                    {word.japanese}
+                    <b>{word.libraryCount}</b>
+                  </span>
+                ))}
+                {currentLibraryBalance.priorityWords.length === 0 ? <span>Balanced</span> : null}
+              </div>
+            </div>
+            <div>
+              <span>Plan</span>
+              <strong>{currentLibraryBalance.suggestedConversationCount}</strong>
+              <p>{currentLibraryBalance.zeroCount} zero - stdev {currentLibraryBalance.standardDeviation}</p>
+            </div>
+          </section>
+        ) : null}
 
         {showRecommendationsContent ? (
           recommendationsLoading && !recommendations ? (
