@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { RUNS_DIR } from './paths.ts';
 import type { PracticeConversation, PracticeRun } from '../shared/types.ts';
@@ -62,6 +62,16 @@ export async function listRuns(): Promise<PracticeRun[]> {
   return runs
     .filter((run): run is PracticeRun => Boolean(run))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function deleteRun(runId: string): Promise<void> {
+  const root = path.resolve(RUNS_DIR);
+  const target = path.resolve(runDir(runId));
+  if (target === root || !target.startsWith(`${root}${path.sep}`)) {
+    throw new Error('Invalid run path.');
+  }
+  await readRun(runId);
+  await rm(target, { recursive: true, force: true });
 }
 
 export async function reanalyzeRun(runId: string): Promise<PracticeRun> {

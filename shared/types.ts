@@ -172,6 +172,7 @@ export interface PracticeRun {
   analytics: RunAnalytics;
   status: 'generated' | 'partial_audio' | 'complete';
   llmExchanges?: LlmExchange[];
+  workflowAudit?: WorkflowRunAudit;
   createdAt: string;
   updatedAt: string;
   conversations: PracticeConversation[];
@@ -187,8 +188,77 @@ export interface LibraryComplementGenerateRequest {
   textModelId?: string;
 }
 
+export interface WorkflowGenerateRequest extends GenerateRequest {
+  audioCount?: number;
+}
+
+export type WorkflowNodeStatus = 'pending' | 'processing' | 'done' | 'error';
+export type WorkflowJobStatus = 'running' | 'complete' | 'failed';
+export type WorkflowNodeKind = 'generator' | 'balancer' | 'audio';
+
+export interface WorkflowAuditNode {
+  id: string;
+  kind: WorkflowNodeKind;
+  title: string;
+  status: WorkflowNodeStatus;
+  startedAt?: string;
+  completedAt?: string;
+  input?: unknown;
+  output?: unknown;
+  error?: string;
+}
+
+export interface WorkflowJob {
+  id: string;
+  status: WorkflowJobStatus;
+  setNumber: number;
+  primaryConversationCount: number;
+  balanceConversationCount: number;
+  requestedTotalConversationCount: number;
+  audioRequestedCount: number;
+  audioGeneratedCount: number;
+  audioErrors: Array<{ conversationId: string; error: string }>;
+  nodes: WorkflowAuditNode[];
+  run?: PracticeRun;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkflowRunAudit {
+  jobId: string;
+  status: WorkflowJobStatus;
+  primaryConversationCount: number;
+  balanceConversationCount: number;
+  requestedTotalConversationCount: number;
+  audioRequestedCount: number;
+  audioGeneratedCount: number;
+  audioErrors: Array<{ conversationId: string; error: string }>;
+  nodes: WorkflowAuditNode[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface GenerateResponse {
   run: PracticeRun;
+}
+
+export interface WorkflowGenerateResponse {
+  run: PracticeRun;
+  primaryConversationCount: number;
+  balanceConversationCount: number;
+  requestedTotalConversationCount: number;
+  audioRequestedCount: number;
+  audioGeneratedCount: number;
+  audioErrors: Array<{ conversationId: string; error: string }>;
+}
+
+export interface WorkflowStartResponse {
+  job: WorkflowJob;
+}
+
+export interface WorkflowStatusResponse {
+  job: WorkflowJob;
 }
 
 export interface ApiError {

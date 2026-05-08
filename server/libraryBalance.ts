@@ -1,4 +1,4 @@
-import type { LibraryBalancePlan, LibraryBalanceWord, VocabItem } from '../shared/types.ts';
+import type { LibraryBalancePlan, LibraryBalanceWord, PracticeConversation, VocabItem } from '../shared/types.ts';
 import { readCuratedSet } from './library.ts';
 import { getAllowedVocabulary } from './vocab.ts';
 
@@ -52,6 +52,42 @@ function countLibraryWords(targetWords: Set<string>, conversations: Array<{ voca
   return counts;
 }
 
+function buildBalancePlanFromConversations(
+  setNumber: number,
+  allowedVocabulary: VocabItem[],
+  conversations: Array<Pick<PracticeConversation, 'vocabularyUsed'>>,
+  conversationCount: number
+): LibraryBalancePlan {
+  const targetVocabulary = uniqueVocabularyByWord(allowedVocabulary.filter((item) => item.set === setNumber));
+  const targetWords = new Set(targetVocabulary.map((item) => item.japanese));
+  const counts = countLibraryWords(targetWords, conversations);
+  const countValues = targetVocabulary.map((item) => counts.get(item.japanese) ?? 0);
+  const average = mean(countValues);
+  const deviation = standardDeviation(countValues, average);
+  const targetCount = chooseTargetCount(countValues);
+  const words = targetVocabulary.map((item) => toBalanceWord(item, counts.get(item.japanese) ?? 0, targetCount));
+  const requiredZeroWords = sortByNeed(words.filter((word) => word.libraryCount === 0));
+  const priorityWords = sortByNeed(words.filter((word) => word.neededCount > 0));
+  const lowCoverageCount = words.filter((word) => word.libraryCount > 0 && word.libraryCount < targetCount).length;
+  const overrepresentedWords = sortOverrepresented(words.filter((word) => word.libraryCount > targetCount + Math.max(1, deviation)));
+
+  return {
+    setNumber,
+    targetWordCount: targetVocabulary.length,
+    libraryConversationCount: conversations.length,
+    zeroCount: requiredZeroWords.length,
+    lowCoverageCount,
+    meanCount: roundMetric(average),
+    standardDeviation: roundMetric(deviation),
+    targetCount,
+    preferredMaxConversationCount: PREFERRED_MAX_CONVERSATIONS,
+    suggestedConversationCount: conversationCount,
+    requiredZeroWords,
+    priorityWords,
+    overrepresentedWords: overrepresentedWords.slice(0, 30)
+  };
+}
+
 function toBalanceWord(item: VocabItem, libraryCount: number, targetCount: number): LibraryBalanceWord {
   return {
     japanese: item.japanese,
@@ -101,33 +137,19 @@ function chooseConversationCount(words: LibraryBalanceWord[], zeroCount: number)
 
 export async function buildLibraryBalancePlan(setNumber: number): Promise<LibraryBalancePlan> {
   const allowedVocabulary = await getAllowedVocabulary(setNumber);
-  const targetVocabulary = uniqueVocabularyByWord(allowedVocabulary.filter((item) => item.set === setNumber));
-  const targetWords = new Set(targetVocabulary.map((item) => item.japanese));
   const librarySet = await readCuratedSet(setNumber);
-  const counts = countLibraryWords(targetWords, librarySet.conversations);
-  const countValues = targetVocabulary.map((item) => counts.get(item.japanese) ?? 0);
-  const average = mean(countValues);
-  const deviation = standardDeviation(countValues, average);
-  const targetCount = chooseTargetCount(countValues);
-  const words = targetVocabulary.map((item) => toBalanceWord(item, counts.get(item.japanese) ?? 0, targetCount));
-  const requiredZeroWords = sortByNeed(words.filter((word) => word.libraryCount === 0));
-  const priorityWords = sortByNeed(words.filter((word) => word.neededCount > 0));
-  const lowCoverageCount = words.filter((word) => word.libraryCount > 0 && word.libraryCount < targetCount).length;
-  const overrepresentedWords = sortOverrepresented(words.filter((word) => word.libraryCount > targetCount + Math.max(1, deviation)));
-
+  const initialPlan = buildBalancePlanFromConversations(setNumber, allowedVocabulary, librarySet.conversations, 1);
   return {
-    setNumber,
-    targetWordCount: targetVocabulary.length,
-    libraryConversationCount: librarySet.conversations.length,
-    zeroCount: requiredZeroWords.length,
-    lowCoverageCount,
-    meanCount: roundMetric(average),
-    standardDeviation: roundMetric(deviation),
-    targetCount,
-    preferredMaxConversationCount: PREFERRED_MAX_CONVERSATIONS,
-    suggestedConversationCount: chooseConversationCount(priorityWords, requiredZeroWords.length),
-    requiredZeroWords,
-    priorityWords,
-    overrepresentedWords: overrepresentedWords.slice(0, 30)
+    ...initialPlan,
+    suggestedConversationCount: chooseConversationCount(initialPlan.priorityWords, initialPlan.requiredZeroWords.length)
   };
+}
+
+export function buildGeneratedRunBalancePlan(
+  setNumber: number,
+  allowedVocabulary: VocabItem[],
+  conversations: Array<Pick<PracticeConversation, 'vocabularyUsed'>>,
+  conversationCount: number
+): LibraryBalancePlan {
+  return buildBalancePlanFromConversations(setNumber, allowedVocabulary, conversations, conversationCount);
 }

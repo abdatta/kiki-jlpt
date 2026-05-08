@@ -31,8 +31,13 @@ import type {
   LlmExchange,
   PracticeConversation,
   PracticeRun,
+  RunAnalytics,
   SetSummary,
-  TextModelInfo
+  TextModelInfo,
+  WorkflowAuditNode,
+  WorkflowJob,
+  WorkflowStartResponse,
+  WorkflowStatusResponse
 } from '../shared/types.ts';
 import { BrandLogo } from './components/BrandLogo.tsx';
 import { ConsumerApp } from './consumer/ConsumerApp.tsx';
@@ -42,10 +47,12 @@ type BoardMode = 'runs' | 'library' | 'recommendations';
 type BusyAction =
   | 'generate'
   | 'generate-complement'
+  | 'workflow'
   | `${ConversationAction}:${string}`
   | `save:${string}`
   | `library-add:${string}`
   | `library-remove:${string}`
+  | `delete-run:${string}`
   | `reanalyze-run:${string}`
   | `reanalyze-library:${number}`
   | null;
@@ -108,6 +115,136 @@ function audioSrc(conversation: PracticeConversation | CuratedConversation): str
 
 function makeSessionId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `generation-${Date.now()}`;
+}
+
+function workflowTotalCount(conversationCount: number): number {
+  return conversationCount + Math.ceil(conversationCount / 2);
+}
+
+function makeClientWorkflowJob(setNumber: number, conversationCount: number, audioCount: number): WorkflowJob {
+  const timestamp = new Date().toISOString();
+  const balanceConversationCount = Math.ceil(conversationCount / 2);
+  return {
+    id: makeSessionId(),
+    status: 'running',
+    setNumber,
+    primaryConversationCount: conversationCount,
+    balanceConversationCount,
+    requestedTotalConversationCount: conversationCount + balanceConversationCount,
+    audioRequestedCount: audioCount,
+    audioGeneratedCount: 0,
+    audioErrors: [],
+    nodes: [
+      {
+        id: 'generator',
+        kind: 'generator',
+        title: 'Generator Agent',
+        status: 'pending'
+      },
+      {
+        id: 'balancer',
+        kind: 'balancer',
+        title: 'Balancer Agent',
+        status: 'pending'
+      },
+      ...Array.from({ length: audioCount }, (_, index) => ({
+        id: `audio-${index + 1}`,
+        kind: 'audio' as const,
+        title: `Audio Agent: Conversation ${index + 1}`,
+        status: 'pending' as const
+      }))
+    ],
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+}
+
+function workflowJobForRun(run: PracticeRun | null): WorkflowJob | null {
+  if (!run) return null;
+  if (run.workflowAudit) {
+    return {
+      id: run.workflowAudit.jobId,
+      status: run.workflowAudit.status,
+      setNumber: run.setNumber,
+      primaryConversationCount: run.workflowAudit.primaryConversationCount,
+      balanceConversationCount: run.workflowAudit.balanceConversationCount,
+      requestedTotalConversationCount: run.workflowAudit.requestedTotalConversationCount,
+      audioRequestedCount: run.workflowAudit.audioRequestedCount,
+      audioGeneratedCount: run.workflowAudit.audioGeneratedCount,
+      audioErrors: run.workflowAudit.audioErrors,
+      nodes: run.workflowAudit.nodes,
+      run,
+      createdAt: run.workflowAudit.createdAt,
+      updatedAt: run.workflowAudit.updatedAt
+    };
+  }
+
+  const exchanges = run.llmExchanges ?? [];
+  if (exchanges.length < 2) return null;
+
+  const primaryConversationCount = Math.max(1, Math.floor(run.conversations.length * 2 / 3));
+  const balanceConversationCount = Math.max(0, run.conversations.length - primaryConversationCount);
+  const audioConversations = run.conversations.slice(0, 2).filter((conversation) => conversation.audioFileName || conversation.error);
+  const nodes: WorkflowAuditNode[] = [
+    {
+      id: 'generator',
+      kind: 'generator',
+      title: 'Generator Agent',
+      status: exchanges[0].status === 'complete' ? 'done' : exchanges[0].status === 'failed' ? 'error' : 'pending',
+      startedAt: exchanges[0].requestedAt,
+      completedAt: exchanges[0].receivedAt,
+      input: { model: exchanges[0].model, prompt: exchanges[0].prompt },
+      output: exchanges[0],
+      error: exchanges[0].error
+    },
+    {
+      id: 'balancer',
+      kind: 'balancer',
+      title: 'Balancer Agent',
+      status: exchanges[1].status === 'complete' ? 'done' : exchanges[1].status === 'failed' ? 'error' : 'pending',
+      startedAt: exchanges[1].requestedAt,
+      completedAt: exchanges[1].receivedAt,
+      input: { model: exchanges[1].model, prompt: exchanges[1].prompt },
+      output: exchanges[1],
+      error: exchanges[1].error
+    },
+    ...audioConversations.map((conversation, index) => ({
+      id: `audio-${index + 1}`,
+      kind: 'audio' as const,
+      title: `Audio Agent: Conversation ${index + 1}`,
+      status: conversation.audioFileName ? 'done' as const : 'error' as const,
+      startedAt: conversation.updatedAt,
+      completedAt: conversation.updatedAt,
+      input: {
+        conversationId: conversation.id,
+        conversationTitle: conversation.title
+      },
+      output: conversation.audioFileName ? {
+        fileName: conversation.audioFileName,
+        audioUrl: conversation.audioUrl
+      } : undefined,
+      error: conversation.error
+    }))
+  ];
+
+  return {
+    id: `run-${run.id}-workflow-audit`,
+    status: nodes.some((node) => node.status === 'error') ? 'failed' : 'complete',
+    setNumber: run.setNumber,
+    primaryConversationCount,
+    balanceConversationCount,
+    requestedTotalConversationCount: run.conversations.length,
+    audioRequestedCount: audioConversations.length,
+    audioGeneratedCount: audioConversations.filter((conversation) => conversation.audioFileName).length,
+    audioErrors: audioConversations.filter((conversation) => conversation.error).map((conversation) => ({
+      conversationId: conversation.id,
+      error: conversation.error ?? 'Audio generation failed.'
+    })),
+    nodes,
+    run,
+    createdAt: run.createdAt,
+    updatedAt: run.updatedAt
+  };
 }
 
 function formatAuditTime(value?: string): string {
@@ -205,6 +342,563 @@ function formatAuditOutput(value?: string): string | undefined {
   } catch {
     return value;
   }
+}
+
+function formatAuditValue(value: unknown): string {
+  if (value === undefined) return 'Pending';
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function parseAuditJsonString(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return value;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+}
+
+function findStringPropertyDeep(value: unknown, propertyNames: string[], seen = new WeakSet<object>()): string | undefined {
+  const item = parseAuditJsonString(value);
+  if (!item || typeof item !== 'object') return undefined;
+  if (seen.has(item)) return undefined;
+  seen.add(item);
+
+  if (Array.isArray(item)) {
+    for (const entry of item) {
+      const found = findStringPropertyDeep(entry, propertyNames, seen);
+      if (found) return found;
+    }
+    return undefined;
+  }
+
+  const record = item as Record<string, unknown>;
+  for (const propertyName of propertyNames) {
+    const entry = record[propertyName];
+    if (typeof entry === 'string' && entry.trim()) return entry;
+  }
+
+  for (const entry of Object.values(record)) {
+    const found = findStringPropertyDeep(entry, propertyNames, seen);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function omitStringPropertiesDeep(value: unknown, propertyNames: string[], seen = new WeakSet<object>()): unknown {
+  const item = parseAuditJsonString(value);
+  if (!item || typeof item !== 'object') return item;
+  if (seen.has(item)) return '[Circular]';
+  seen.add(item);
+
+  if (Array.isArray(item)) {
+    return item.map((entry) => omitStringPropertiesDeep(entry, propertyNames, seen));
+  }
+
+  const entries = Object.entries(item as Record<string, unknown>)
+    .flatMap(([key, entry]) => {
+      if (propertyNames.includes(key) && typeof entry === 'string') {
+        return [];
+      }
+      return [[key, omitStringPropertiesDeep(entry, propertyNames, seen)] as const];
+    });
+
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
+function splitStringPropertyFromAuditValue(value: unknown, propertyNames: string[]): { text?: string; value?: unknown } {
+  return {
+    text: findStringPropertyDeep(value, propertyNames),
+    value: omitStringPropertiesDeep(value, propertyNames)
+  };
+}
+
+function splitPromptFromAuditValue(value: unknown): { prompt?: string; value?: unknown } {
+  const result = splitStringPropertyFromAuditValue(value, ['prompt']);
+  return {
+    prompt: result.text,
+    value: result.value
+  };
+}
+
+function splitResponseFromAuditValue(value: unknown): { response?: string; value?: unknown } {
+  const result = splitStringPropertyFromAuditValue(value, ['output', 'response', 'text']);
+  return {
+    response: result.text,
+    value: result.value
+  };
+}
+
+function workflowNodeTitle(node: WorkflowAuditNode): string {
+  if (node.kind === 'generator') return 'Generator Agent';
+  if (node.kind === 'balancer') return 'Balancer Agent';
+  return node.title.replace('Audio LLM:', 'Audio Agent:');
+}
+
+function objectValue(value: unknown): Record<string, unknown> | undefined {
+  const parsed = parseAuditJsonString(value);
+  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : undefined;
+}
+
+function isRunAnalytics(value: unknown): value is RunAnalytics {
+  const record = objectValue(value);
+  return Boolean(record
+    && typeof record.currentSetTotal === 'number'
+    && typeof record.currentSetUsedCount === 'number'
+    && typeof record.currentSetMissingCount === 'number'
+    && Array.isArray(record.currentSetMissingWords)
+    && typeof record.allowedVocabTotal === 'number'
+    && typeof record.allowedVocabUsedCount === 'number'
+    && typeof record.allowedVocabUsedPercentage === 'number'
+    && typeof record.outOfAllowedCount === 'number'
+    && Array.isArray(record.outOfAllowedWords));
+}
+
+function workflowNodeAnalytics(node?: WorkflowAuditNode): RunAnalytics | undefined {
+  const output = objectValue(node?.output);
+  const analytics = output?.analytics;
+  return isRunAnalytics(analytics) ? analytics : undefined;
+}
+
+function isPracticeConversationList(value: unknown): value is PracticeConversation[] {
+  return Array.isArray(value) && value.every((item) => {
+    const record = objectValue(item);
+    return Boolean(record && Array.isArray(record.vocabularyUsed));
+  });
+}
+
+function workflowNodeConversations(node?: WorkflowAuditNode): PracticeConversation[] {
+  const output = objectValue(node?.output);
+  return isPracticeConversationList(output?.conversations) ? output.conversations : [];
+}
+
+interface WorkflowDistributionStats {
+  missingCount: number;
+  atMostOnceCount: number;
+  atMostTwiceCount: number;
+}
+
+function exactOccurrenceBuckets(conversations: PracticeConversation[]): { once: number; twice: number } {
+  const counts = new Map<string, number>();
+  for (const conversation of conversations) {
+    for (const word of conversation.vocabularyUsed) {
+      const cleaned = word.trim();
+      if (!cleaned) continue;
+      counts.set(cleaned, (counts.get(cleaned) ?? 0) + 1);
+    }
+  }
+
+  return {
+    once: Array.from(counts.values()).filter((count) => count === 1).length,
+    twice: Array.from(counts.values()).filter((count) => count === 2).length
+  };
+}
+
+function workflowDistributionStats(
+  node: WorkflowAuditNode | undefined,
+  analytics: RunAnalytics | undefined,
+  conversations: PracticeConversation[]
+): WorkflowDistributionStats | undefined {
+  const output = objectValue(node?.output);
+  const persisted = objectValue(output?.distributionStats);
+  if (
+    typeof persisted?.missingCount === 'number'
+    && typeof persisted.atMostOnceCount === 'number'
+    && typeof persisted.atMostTwiceCount === 'number'
+  ) {
+    return {
+      missingCount: persisted.missingCount,
+      atMostOnceCount: persisted.atMostOnceCount,
+      atMostTwiceCount: persisted.atMostTwiceCount
+    };
+  }
+
+  if (!analytics) return undefined;
+  const exact = exactOccurrenceBuckets(conversations);
+  return {
+    missingCount: analytics.currentSetMissingCount,
+    atMostOnceCount: analytics.currentSetMissingCount + exact.once,
+    atMostTwiceCount: analytics.currentSetMissingCount + exact.once + exact.twice
+  };
+}
+
+function workflowAudioUrl(node?: WorkflowAuditNode): string | undefined {
+  return findStringPropertyDeep(node?.output, ['audioUrl']);
+}
+
+function deltaText(before: number, after: number, suffix = ''): string {
+  const delta = after - before;
+  if (delta === 0) return `0${suffix}`;
+  return `${delta > 0 ? '+' : ''}${delta}${suffix}`;
+}
+
+function WorkflowMetricCard({
+  label,
+  value,
+  detail,
+  trend
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  trend?: string;
+}) {
+  return (
+    <div className="workflowMetricCard">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      <p>{detail}</p>
+      {trend ? <em>{trend}</em> : null}
+    </div>
+  );
+}
+
+function WorkflowStatsPanel({
+  selectedNode,
+  generatorNode
+}: {
+  selectedNode: WorkflowAuditNode;
+  generatorNode?: WorkflowAuditNode;
+}) {
+  const analytics = workflowNodeAnalytics(selectedNode);
+  if (!analytics || selectedNode.kind === 'audio') return null;
+  const generatorConversations = workflowNodeConversations(generatorNode);
+  const selectedConversations = workflowNodeConversations(selectedNode);
+  const generatorDistribution = workflowDistributionStats(
+    generatorNode,
+    workflowNodeAnalytics(generatorNode),
+    generatorConversations
+  );
+  const selectedDistribution = workflowDistributionStats(
+    selectedNode,
+    analytics,
+    selectedNode.kind === 'balancer' ? [...generatorConversations, ...selectedConversations] : selectedConversations
+  );
+
+  if (selectedNode.kind === 'balancer') {
+    const before = workflowNodeAnalytics(generatorNode);
+    if (!before || !generatorDistribution || !selectedDistribution) return null;
+    const recoveredWords = before.currentSetMissingWords.filter((word) => !analytics.currentSetMissingWords.includes(word));
+
+    return (
+      <section className="workflowStatsBlock" aria-label="Balance stats">
+        <div className="workflowTabbedHeader">
+          <span>Balance Stats</span>
+        </div>
+        <div className="workflowMetricGrid">
+          <WorkflowMetricCard
+            label="Allowed Coverage"
+            value={`${before.allowedVocabUsedPercentage}% -> ${analytics.allowedVocabUsedPercentage}%`}
+            detail={`${analytics.allowedVocabUsedCount} of ${analytics.allowedVocabTotal} allowed words used`}
+            trend={deltaText(before.allowedVocabUsedPercentage, analytics.allowedVocabUsedPercentage, '%')}
+          />
+          <WorkflowMetricCard
+            label="Missing Words"
+            value={`${generatorDistribution.missingCount} -> ${selectedDistribution.missingCount}`}
+            detail="Words not used at all"
+            trend={deltaText(generatorDistribution.missingCount, selectedDistribution.missingCount)}
+          />
+          <WorkflowMetricCard
+            label="Barely Touched"
+            value={`${generatorDistribution.atMostOnceCount} -> ${selectedDistribution.atMostOnceCount}`}
+            detail="Words used once or not yet used"
+            trend={deltaText(generatorDistribution.atMostOnceCount, selectedDistribution.atMostOnceCount)}
+          />
+          <WorkflowMetricCard
+            label="Needs More Reps"
+            value={`${generatorDistribution.atMostTwiceCount} -> ${selectedDistribution.atMostTwiceCount}`}
+            detail="Words used two times or fewer"
+            trend={deltaText(generatorDistribution.atMostTwiceCount, selectedDistribution.atMostTwiceCount)}
+          />
+        </div>
+        <div className="workflowStatsChips">
+          <span>Recovered Words</span>
+          <div className="miniChips coverage">
+            {recoveredWords.length === 0 ? <span>None</span> : null}
+            {recoveredWords.slice(0, 48).map((word) => <span key={word}>{word}</span>)}
+            {recoveredWords.length > 48 ? <span>+{recoveredWords.length - 48}</span> : null}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="workflowStatsBlock" aria-label="Generator stats">
+      <div className="workflowTabbedHeader">
+        <span>Generator Stats</span>
+      </div>
+      <div className="workflowMetricGrid">
+        <WorkflowMetricCard
+          label="Allowed Coverage"
+          value={`${analytics.allowedVocabUsedPercentage}%`}
+          detail={`${analytics.allowedVocabUsedCount} of ${analytics.allowedVocabTotal} allowed words used`}
+        />
+        <WorkflowMetricCard
+          label="Missing Words"
+          value={String(selectedDistribution?.missingCount ?? analytics.currentSetMissingCount)}
+          detail="Words not used at all"
+        />
+        <WorkflowMetricCard
+          label="Barely Touched"
+          value={String(selectedDistribution?.atMostOnceCount ?? analytics.currentSetMissingCount)}
+          detail="Words used once or not yet used"
+        />
+        <WorkflowMetricCard
+          label="Needs More Reps"
+          value={String(selectedDistribution?.atMostTwiceCount ?? analytics.currentSetMissingCount)}
+          detail="Words used two times or fewer"
+        />
+      </div>
+      <div className="workflowStatsChips">
+        <span>Needs Balancing</span>
+        <div className="miniChips">
+          {analytics.currentSetMissingWords.length === 0 ? <span>None</span> : null}
+          {analytics.currentSetMissingWords.slice(0, 48).map((word) => <span key={word}>{word}</span>)}
+          {analytics.currentSetMissingWords.length > 48 ? <span>+{analytics.currentSetMissingWords.length - 48}</span> : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function WorkflowAudioResponse({ audioUrl }: { audioUrl: string }) {
+  return (
+    <div className="workflowAudioResponse">
+      <Headphones size={22} />
+      <div>
+        <strong>Generated audio</strong>
+        <audio controls preload="metadata" src={audioUrl} />
+      </div>
+    </div>
+  );
+}
+
+function PendingAuditOutput({ label }: { label: string }) {
+  return (
+    <div className="workflowPendingOutput" role="status">
+      <span className="workflowPendingSpinner" aria-hidden="true" />
+      <strong>{label}</strong>
+    </div>
+  );
+}
+
+function EmptyAuditPane({ label }: { label: string }) {
+  return (
+    <div className="workflowEmptyPane">
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function WorkflowTabs<T extends string>({
+  active,
+  onChange,
+  tabs
+}: {
+  active: T;
+  onChange: (tab: T) => void;
+  tabs: Array<{ id: T; label: string }>;
+}) {
+  return (
+    <div className="workflowTabs" role="tablist">
+      {tabs.map((tab) => (
+        <button
+          aria-selected={active === tab.id}
+          className={active === tab.id ? 'active' : ''}
+          key={tab.id}
+          onClick={() => onChange(tab.id)}
+          role="tab"
+          type="button"
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function workflowStatusText(status: WorkflowJob['status'] | WorkflowAuditNode['status']): string {
+  return status === 'done' ? 'done' : status;
+}
+
+function WorkflowNodeButton({
+  node,
+  selected,
+  onSelect
+}: {
+  node: WorkflowAuditNode;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button className={`workflowNode ${node.status} ${selected ? 'selected' : ''}`} onClick={onSelect} type="button">
+      <span className="workflowNodeIcon">
+        {node.status === 'processing' ? <LoaderCircle className="spin" size={18} /> : node.status === 'error' ? <CircleAlert size={18} /> : node.kind === 'audio' ? <Headphones size={18} /> : <Bot size={18} />}
+      </span>
+      <span>
+        <strong>{workflowNodeTitle(node)}</strong>
+        <small>{workflowStatusText(node.status)}</small>
+      </span>
+    </button>
+  );
+}
+
+function WorkflowAuditFlow({
+  job,
+  selectedNodeId,
+  onSelectNode
+}: {
+  job: WorkflowJob;
+  selectedNodeId?: string;
+  onSelectNode: (nodeId: string) => void;
+}) {
+  const [inputTab, setInputTab] = useState<'prompt' | 'settings'>('prompt');
+  const [outputTab, setOutputTab] = useState<'response' | 'metadata'>('response');
+  const generator = job.nodes.find((node) => node.id === 'generator');
+  const balancer = job.nodes.find((node) => node.id === 'balancer');
+  const audioNodes = job.nodes.filter((node) => node.kind === 'audio');
+  const selectedNode = selectedNodeId ? job.nodes.find((node) => node.id === selectedNodeId) : undefined;
+  const selectedInput = splitPromptFromAuditValue(selectedNode?.input);
+  const selectedOutput = splitResponseFromAuditValue(selectedNode?.output);
+  const selectedAudioUrl = selectedNode?.kind === 'audio' ? workflowAudioUrl(selectedNode) : undefined;
+  const selectedOutputMetadata = selectedNode?.kind === 'audio'
+    ? omitStringPropertiesDeep(selectedNode.output, ['audioUrl'])
+    : selectedOutput.value;
+  const selectedPrompt = selectedInput.prompt;
+  const isOutputPending = selectedNode?.status === 'pending' || selectedNode?.status === 'processing';
+
+  useEffect(() => {
+    setInputTab('prompt');
+    setOutputTab('response');
+  }, [selectedNodeId]);
+
+  return (
+    <section className={`workflowPanel ${job.status}`} aria-label="End-to-end workflow audit">
+      <div className="workflowHeader">
+        <div>
+          <p className="eyebrow">Live LLM pipeline</p>
+          <h3>Generator to balancer to audio</h3>
+          <p>{job.primaryConversationCount} primary + {job.balanceConversationCount} balanced - {job.audioRequestedCount} audio calls</p>
+        </div>
+        <span className={`workflowJobStatus ${job.status}`}>
+          {job.status === 'running' ? <LoaderCircle className="spin" size={15} /> : job.status === 'failed' ? <CircleAlert size={15} /> : <Sparkles size={15} />}
+          {job.status}
+        </span>
+      </div>
+
+      <div className="workflowGraph">
+        {generator ? <WorkflowNodeButton node={generator} selected={selectedNode?.id === generator.id} onSelect={() => onSelectNode(generator.id)} /> : null}
+        <span className="workflowArrow" aria-hidden="true">&rarr;</span>
+        {balancer ? <WorkflowNodeButton node={balancer} selected={selectedNode?.id === balancer.id} onSelect={() => onSelectNode(balancer.id)} /> : null}
+        <span className="workflowArrow branch" aria-hidden="true">&rarr;</span>
+        <div className="workflowAudioBranch">
+          {audioNodes.map((node) => (
+            <WorkflowNodeButton key={node.id} node={node} selected={selectedNode?.id === node.id} onSelect={() => onSelectNode(node.id)} />
+          ))}
+        </div>
+      </div>
+
+      {selectedNode ? (
+        <section className="workflowInspector" aria-label={`${workflowNodeTitle(selectedNode)} audit details`}>
+          <div className="workflowInspectorHeader">
+            <span>{workflowNodeTitle(selectedNode)}</span>
+            <small>{workflowStatusText(selectedNode.status)}</small>
+          </div>
+          <div className="auditGrid">
+            <div className="auditMeta">
+              <span>Started</span>
+              <strong>{formatAuditTime(selectedNode.startedAt)}</strong>
+            </div>
+            <div className="auditMeta">
+              <span>Finished</span>
+              <strong>{formatAuditTime(selectedNode.completedAt)}</strong>
+            </div>
+            <div className="auditMeta">
+              <span>Kind</span>
+              <strong>{selectedNode.kind}</strong>
+            </div>
+            <div className="auditMeta">
+              <span>Status</span>
+              <strong>{workflowStatusText(selectedNode.status)}</strong>
+            </div>
+          </div>
+          <section className="workflowTabbedBlock" aria-label="Input details">
+            <div className="workflowTabbedHeader">
+              <span>Input</span>
+              <WorkflowTabs
+                active={inputTab}
+                onChange={setInputTab}
+                tabs={[
+                  { id: 'prompt', label: 'Prompt' },
+                  { id: 'settings', label: 'Settings' }
+                ]}
+              />
+            </div>
+            <div className="workflowTabPane">
+              {inputTab === 'prompt' ? (
+                selectedPrompt ? (
+                  <pre className="workflowPromptText">{selectedPrompt}</pre>
+                ) : selectedNode.status === 'pending' ? (
+                  <PendingAuditOutput label="Waiting for prompt" />
+                ) : (
+                  <EmptyAuditPane label="No prompt text was captured for this node." />
+                )
+              ) : selectedInput.value === undefined ? (
+                <PendingAuditOutput label="Waiting for settings" />
+              ) : (
+                <pre>{formatAuditValue(selectedInput.value)}</pre>
+              )}
+            </div>
+          </section>
+          <section className="workflowTabbedBlock" aria-label="Output details">
+            <div className="workflowTabbedHeader">
+              <span>Output</span>
+              <WorkflowTabs
+                active={outputTab}
+                onChange={setOutputTab}
+                tabs={[
+                  { id: 'response', label: 'Response' },
+                  { id: 'metadata', label: 'Metadata' }
+                ]}
+              />
+            </div>
+            <div className="workflowTabPane">
+              {outputTab === 'response' ? (
+                selectedNode.error ? (
+                  <pre>{selectedNode.error}</pre>
+                ) : selectedAudioUrl ? (
+                  <WorkflowAudioResponse audioUrl={selectedAudioUrl} />
+                ) : selectedOutput.response ? (
+                  <pre className="workflowPromptText">{selectedOutput.response}</pre>
+                ) : isOutputPending ? (
+                  <PendingAuditOutput label="Waiting for model output" />
+                ) : (
+                  <EmptyAuditPane label="No response text was returned for this node." />
+                )
+              ) : selectedNode.error ? (
+                <pre>{formatAuditValue({ error: selectedNode.error })}</pre>
+              ) : selectedOutputMetadata === undefined && isOutputPending ? (
+                <PendingAuditOutput label="Waiting for output metadata" />
+              ) : selectedOutputMetadata === undefined ? (
+                <EmptyAuditPane label="No output metadata was captured for this node." />
+              ) : (
+                <pre>{formatAuditValue(selectedOutputMetadata)}</pre>
+              )}
+            </div>
+          </section>
+          <WorkflowStatsPanel selectedNode={selectedNode} generatorNode={generator} />
+        </section>
+      ) : null}
+    </section>
+  );
 }
 
 function AuditLog({ exchange, fallbackLabel }: { exchange?: LlmExchange; fallbackLabel?: string }) {
@@ -352,6 +1046,8 @@ function StudioApp() {
   const [error, setError] = useState<string | null>(null);
   const [edit, setEdit] = useState<EditState | null>(null);
   const [generationSession, setGenerationSession] = useState<GenerationSession | null>(null);
+  const [workflowJob, setWorkflowJob] = useState<WorkflowJob | null>(null);
+  const [selectedWorkflowNodeId, setSelectedWorkflowNodeId] = useState<string | undefined>();
   const [auditOpen, setAuditOpen] = useState(false);
   const [revealedAnswers, setRevealedAnswers] = useState<Record<string, boolean>>({});
   const [revealedTranslations, setRevealedTranslations] = useState<Record<string, boolean>>({});
@@ -367,7 +1063,10 @@ function StudioApp() {
   const showRunContent = Boolean(boardMode === 'runs' && currentRun && !generationSession);
   const showLibraryContent = Boolean(boardMode === 'library' && !generationSession);
   const showRecommendationsContent = Boolean(boardMode === 'recommendations' && !generationSession);
-  const currentExchange = currentRun?.llmExchanges?.[0];
+  const currentExchanges = currentRun?.llmExchanges ?? [];
+  const currentExchange = currentExchanges[0];
+  const savedWorkflowJob = useMemo(() => workflowJobForRun(currentRun), [currentRun]);
+  const visibleWorkflowJob = workflowJob ?? (auditOpen ? savedWorkflowJob : null);
 
   async function loadInitial() {
     const [setPayload, runPayload, modelPayload, libraryPayload] = await Promise.all([
@@ -529,6 +1228,8 @@ function StudioApp() {
     setError(null);
     setEdit(null);
     setAuditOpen(false);
+    setWorkflowJob(null);
+    setSelectedWorkflowNodeId(undefined);
     setBoardMode('runs');
     setCurrentRun(null);
     setGenerationSession({
@@ -573,6 +1274,63 @@ function StudioApp() {
     }
   }
 
+  async function generateWorkflow() {
+    const requestBody = { setNumber, conversationCount, textModelId, audioCount: 2 };
+    setBusy('workflow');
+    setError(null);
+    setEdit(null);
+    setAuditOpen(false);
+    setWorkflowJob(null);
+    setSelectedWorkflowNodeId(undefined);
+    setBoardMode('runs');
+    setCurrentRun(null);
+    setGenerationSession(null);
+    const pendingJob = makeClientWorkflowJob(setNumber, conversationCount, requestBody.audioCount);
+    setWorkflowJob(pendingJob);
+    setSelectedWorkflowNodeId(undefined);
+    try {
+      const started = await api<WorkflowStartResponse>('/api/workflow/start', {
+        method: 'POST',
+        body: JSON.stringify(requestBody)
+      });
+      setWorkflowJob(started.job);
+      setSelectedWorkflowNodeId(undefined);
+
+      let latest = started.job;
+      while (latest.status === 'running') {
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        const payload = await api<WorkflowStatusResponse>(`/api/workflow/jobs/${encodeURIComponent(started.job.id)}`);
+        latest = payload.job;
+        setWorkflowJob(latest);
+      }
+
+      if (latest.run) {
+        setCurrentRun(latest.run);
+        await loadInitial();
+        await refreshRun(latest.run.id).catch(() => undefined);
+      }
+      if (latest.audioErrors.length > 0) {
+        setError(`Pipeline finished, but ${latest.audioErrors.length} audio file${latest.audioErrors.length === 1 ? '' : 's'} failed to generate.`);
+      } else if (latest.status === 'failed') {
+        setError(latest.error ?? 'Pipeline failed.');
+      }
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : String(caught);
+      setError(message);
+      setWorkflowJob((previous) => previous ? {
+        ...previous,
+        status: 'failed',
+        error: message,
+        updatedAt: new Date().toISOString(),
+        nodes: previous.nodes.map((node) => node.status === 'processing' || node.id === 'generator'
+          ? { ...node, status: 'error', completedAt: new Date().toISOString(), error: message }
+          : node)
+      } : previous);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function generateLibraryComplement() {
     const sessionId = makeSessionId();
     const modelLabel = currentTextModel?.label ?? (textModelId === 'gemini' ? 'Gemini' : textModelId);
@@ -581,6 +1339,8 @@ function StudioApp() {
     setError(null);
     setEdit(null);
     setAuditOpen(false);
+    setWorkflowJob(null);
+    setSelectedWorkflowNodeId(undefined);
     setBoardMode('runs');
     setCurrentRun(null);
     setGenerationSession({
@@ -639,6 +1399,33 @@ function StudioApp() {
     const payload = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(runId)}`);
     setCurrentRun(payload.run);
     setRuns((existing) => [payload.run, ...existing.filter((run) => run.id !== payload.run.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+  }
+
+  async function deleteRun(run: PracticeRun) {
+    if (!window.confirm(`Delete this run from ${formatRunHistoryTitle(run.createdAt)}? This removes its generated conversations and audio files.`)) {
+      return;
+    }
+
+    const marker = `delete-run:${run.id}` as BusyAction;
+    setBusy(marker);
+    setError(null);
+    try {
+      const payload = await api<{ deletedRunId: string; runs: PracticeRun[] }>(`/api/runs/${encodeURIComponent(run.id)}`, {
+        method: 'DELETE'
+      });
+      setRuns(payload.runs);
+      if (currentRun?.id === payload.deletedRunId) {
+        setCurrentRun(payload.runs[0] ?? null);
+        setWorkflowJob(null);
+        setSelectedWorkflowNodeId(undefined);
+        setAuditOpen(false);
+        setEdit(null);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBusy(null);
+    }
   }
 
   async function reanalyzeCurrentRun() {
@@ -793,6 +1580,8 @@ function StudioApp() {
   async function openRun(runId: string) {
     setGenerationSession(null);
     setAuditOpen(false);
+    setWorkflowJob(null);
+    setSelectedWorkflowNodeId(undefined);
     setBoardMode('runs');
     await refreshRun(runId);
   }
@@ -1132,9 +1921,19 @@ function StudioApp() {
             <span>{currentSet ? `${currentSet.cumulativeCount} allowed words through Set ${currentSet.set}` : 'Loading vocab'}</span>
           </div>
 
-          <button className="primaryButton" onClick={generate} disabled={busy === 'generate'}>
+          <button className="primaryButton" onClick={generate} disabled={busy !== null}>
             {busy === 'generate' ? <RefreshCw className="spin" size={18} /> : <Sparkles size={18} />}
             Generate
+          </button>
+
+          <button
+            className="secondaryButton"
+            onClick={generateWorkflow}
+            disabled={busy !== null}
+            title={`Create ${workflowTotalCount(conversationCount)} total conversations and synthesize audio for the first 2.`}
+          >
+            {busy === 'workflow' ? <RefreshCw className="spin" size={18} /> : <Headphones size={18} />}
+            End-to-end
           </button>
         </section>
 
@@ -1168,6 +1967,8 @@ function StudioApp() {
               onClick={() => {
                 setGenerationSession(null);
                 setAuditOpen(false);
+                setWorkflowJob(null);
+                setSelectedWorkflowNodeId(undefined);
                 setBoardMode('runs');
                 refreshRun(run.id);
               }}
@@ -1196,6 +1997,8 @@ function StudioApp() {
               onClick={() => {
                 setGenerationSession(null);
                 setAuditOpen(false);
+                setWorkflowJob(null);
+                setSelectedWorkflowNodeId(undefined);
                 setBoardMode('library');
                 setSetNumber(set.setNumber);
               }}
@@ -1213,9 +2016,11 @@ function StudioApp() {
       <section className="workspace">
         <header className="topBar">
           <div>
-            <p className="eyebrow">{generationSession ? 'Generate, inspect, review' : boardMode === 'library' ? 'Curated listening shelf' : boardMode === 'recommendations' ? 'Coverage recommendation queue' : 'Generate, edit, synthesize'}</p>
+            <p className="eyebrow">{workflowJob ? 'Live pipeline audit' : visibleWorkflowJob ? 'Saved pipeline audit' : generationSession ? 'Generate, inspect, review' : boardMode === 'library' ? 'Curated listening shelf' : boardMode === 'recommendations' ? 'Coverage recommendation queue' : 'Generate, edit, synthesize'}</p>
             <h2>
-              {generationSession
+              {visibleWorkflowJob
+                ? `Set ${visibleWorkflowJob.setNumber} workflow`
+                : generationSession
                 ? `Set ${generationSession.setNumber} generation`
                 : boardMode === 'library'
                   ? `Set ${setNumber} Library`
@@ -1226,7 +2031,13 @@ function StudioApp() {
                     : 'Create a listening batch'}
             </h2>
           </div>
-          {generationSession ? (
+          {workflowJob ? (
+            <div className="runStats">
+              <span>{workflowJob.requestedTotalConversationCount} requested</span>
+              <span>{workflowJob.audioRequestedCount} audio nodes</span>
+              <span>{workflowJob.status}</span>
+            </div>
+          ) : generationSession ? (
             <div className="runStats">
               <span>{generationSession.conversationCount} requested</span>
               <span>{generationSession.textModelLabel}</span>
@@ -1263,10 +2074,14 @@ function StudioApp() {
                 {busy === `reanalyze-run:${currentRun.id}` ? <RefreshCw className="spin" size={15} /> : <RefreshCw size={15} />}
                 Reanalyze
               </button>
-              {currentExchange ? (
+              <button className="auditToggle danger" onClick={() => deleteRun(currentRun)} disabled={busy === `delete-run:${currentRun.id}`}>
+                {busy === `delete-run:${currentRun.id}` ? <RefreshCw className="spin" size={15} /> : <Trash2 size={15} />}
+                Delete
+              </button>
+              {currentExchange || savedWorkflowJob ? (
                 <button className="auditToggle" onClick={() => setAuditOpen((open) => !open)}>
                   <Eye size={15} />
-                  LLM audit
+                  {auditOpen ? 'Hide audit' : savedWorkflowJob ? 'LLM audit' : currentExchanges.length > 1 ? 'LLM audits' : 'LLM audit'}
                 </button>
               ) : null}
             </div>
@@ -1282,7 +2097,21 @@ function StudioApp() {
 
         {generationSession ? <LoadingPanel session={generationSession} /> : null}
 
-        {boardMode === 'runs' && !generationSession && auditOpen && currentExchange ? <AuditLog exchange={currentExchange} /> : null}
+        {visibleWorkflowJob ? (
+          <WorkflowAuditFlow
+            job={visibleWorkflowJob}
+            selectedNodeId={selectedWorkflowNodeId}
+            onSelectNode={setSelectedWorkflowNodeId}
+          />
+        ) : null}
+
+        {boardMode === 'runs' && !generationSession && auditOpen && !visibleWorkflowJob && currentExchanges.length > 0 ? (
+          <>
+            {currentExchanges.map((exchange) => (
+              <AuditLog exchange={exchange} key={exchange.id} />
+            ))}
+          </>
+        ) : null}
 
         {showRunContent && currentRun ? <AnalyticsPanel analytics={currentRun.analytics} setNumber={currentRun.setNumber} label="Generation analytics" /> : null}
 
@@ -1361,7 +2190,7 @@ function StudioApp() {
               <p>Generate audio from a run, then add conversations to Library.</p>
             </div>
           )
-        ) : boardMode === 'runs' && !generationSession && !currentRun ? (
+        ) : boardMode === 'runs' && !generationSession && !visibleWorkflowJob && !currentRun ? (
           <div className="blankState">
             <Disc3 size={42} />
             <h3>No batch selected</h3>

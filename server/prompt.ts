@@ -23,13 +23,14 @@ function formatBalanceWords(words: LibraryBalanceWord[]): string {
 export function buildLibraryComplementPrompt(
   setNumber: number,
   allowedVocabulary: VocabItem[],
-  balance: LibraryBalancePlan
+  balance: LibraryBalancePlan,
+  sourceLabel = 'curated library'
 ): string {
   return `You are helping create controlled JLPT N5 listening practice.
 
 Goal:
-Generate a small complementary batch of Japanese listening conversations for the existing curated library.
-This is not a fresh full set. It must repair the library's word distribution for Set ${setNumber}.
+Generate a small complementary batch of Japanese listening conversations for the existing ${sourceLabel}.
+This is not a fresh full set. It must repair the existing batch's word distribution for Set ${setNumber}.
 
 Current stage:
 Set ${setNumber}
@@ -42,7 +43,7 @@ Allowed vocabulary table:
 ${formatVocabForPrompt(allowedVocabulary)}
 
 Library balancing context:
-- Existing curated library conversations for Set ${setNumber}: ${balance.libraryConversationCount}
+- Existing ${sourceLabel} conversations for Set ${setNumber}: ${balance.libraryConversationCount}
 - Tracked target words: Set ${setNumber} vocabulary only (${balance.targetWordCount} words)
 - Current target-word mean count: ${balance.meanCount}
 - Current target-word standard deviation: ${balance.standardDeviation}
