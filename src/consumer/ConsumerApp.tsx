@@ -48,11 +48,20 @@ import type {
 import './consumer.css';
 
 type VocabPracticeCard = VocabCard & PracticeCard;
-const VOCAB_LISTENING_UNLOCK_RATIO = 0.0;
-const LEVEL_MASTERY_RATIO = 0.8;
 const LEVEL_LISTENING_TARGET = 20;
 const PRACTICE_ONLY = import.meta.env.VITE_PRACTICE_ONLY === 'true';
 const CONVERSATION_PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25] as const;
+
+function envRatio(value: unknown, fallback: number): number {
+  const parsed = typeof value === 'string' ? Number(value) : NaN;
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return Math.min(parsed, 1);
+}
+
+const LISTENING_UNLOCK_RATIO = envRatio(import.meta.env.VITE_LISTENING_UNLOCK_RATIO, 0.5);
+const LISTENING_UNLOCK_PERCENT = percent(LISTENING_UNLOCK_RATIO);
+const LEVEL_MASTERY_RATIO = envRatio(import.meta.env.VITE_LEVEL_MASTERY_RATIO, 0.8);
+const LEVEL_MASTERY_PERCENT = percent(LEVEL_MASTERY_RATIO);
 
 function normalizePlaybackSpeed(speed: number): number {
   return CONVERSATION_PLAYBACK_SPEEDS.some((option) => option === speed) ? speed : 1;
@@ -249,7 +258,7 @@ function buildLevelProgress(vocabStats: StatsMap, conversationProgress: Conversa
       strongVocabCount,
       vocabMasteryRatio,
       listeningAttemptCount,
-      listeningUnlocked: vocabMasteryRatio >= VOCAB_LISTENING_UNLOCK_RATIO,
+      listeningUnlocked: vocabMasteryRatio >= LISTENING_UNLOCK_RATIO,
       complete,
       unlocked
     };
@@ -454,9 +463,9 @@ function VocabStatsModal({
   const progressPercent = percent(progress.vocabMasteryRatio);
   const progressLabel = progress.complete
     ? 'Next Level Unlocked'
-    : progress.vocabMasteryRatio >= VOCAB_LISTENING_UNLOCK_RATIO
-      ? 'Unlock next level at 80%'
-      : 'Unlock Conversations at 50%';
+    : progress.vocabMasteryRatio >= LISTENING_UNLOCK_RATIO
+      ? `Unlock next level at ${LEVEL_MASTERY_PERCENT}%`
+      : `Unlock Conversations at ${LISTENING_UNLOCK_PERCENT}%`;
 
   return (
     <div className="statsModal" role="dialog" aria-modal="true" aria-labelledby="word-stats-title">
@@ -1009,8 +1018,8 @@ function ConversationsPage({
       ) : null}
       {!progress.listeningUnlocked ? (
         <LockedPanel
-          title="Listening unlocks at 50% vocabulary mastery"
-          body={`You have ${progress.strongVocabCount} of ${Math.ceil(progress.vocabTotal * VOCAB_LISTENING_UNLOCK_RATIO)} required strong words (${percent(progress.vocabMasteryRatio)}%). Keep practicing Level ${level} vocabulary to unlock conversations.`}
+          title={`Listening unlocks at ${LISTENING_UNLOCK_PERCENT}% vocabulary mastery`}
+          body={`You have ${progress.strongVocabCount} of ${Math.ceil(progress.vocabTotal * LISTENING_UNLOCK_RATIO)} required strong words (${percent(progress.vocabMasteryRatio)}%). Keep practicing Level ${level} vocabulary to unlock conversations.`}
         />
       ) : conversations.length === 0 ? (
         <EmptyState title="No published conversations yet" body={emptyBody} />
@@ -1064,7 +1073,7 @@ function SettingsPage({
           <Trophy size={22} />
         </div>
         <p className="settingsHelp">
-          Listening opens after 50% of a level's words are strong. The next level opens after 80% strong vocabulary and 20 attempted listening questions.
+          Listening opens after {LISTENING_UNLOCK_PERCENT}% of a level's words are strong. The next level opens after {LEVEL_MASTERY_PERCENT}% strong vocabulary and 20 completed listening conversations.
         </p>
         <div className="levelButtonGrid">
           {levelProgress.map((progress) => {
@@ -1100,12 +1109,12 @@ function SettingsPage({
             <div className={selectedProgress.listeningUnlocked ? 'ruleCard done' : 'ruleCard'}>
               <span>{percent(selectedProgress.vocabMasteryRatio)}%</span>
               <strong>Listening access</strong>
-              <p>{selectedProgress.listeningUnlocked ? 'Unlocked for this level.' : `${Math.max(0, Math.ceil(selectedProgress.vocabTotal * VOCAB_LISTENING_UNLOCK_RATIO) - selectedProgress.strongVocabCount)} more strong words needed.`}</p>
+              <p>{selectedProgress.listeningUnlocked ? 'Unlocked for this level.' : `${Math.max(0, Math.ceil(selectedProgress.vocabTotal * LISTENING_UNLOCK_RATIO) - selectedProgress.strongVocabCount)} more strong words needed.`}</p>
             </div>
             <div className={selectedProgress.complete ? 'ruleCard done' : 'ruleCard'}>
               <span>{selectedProgress.listeningAttemptCount}</span>
               <strong>Next level</strong>
-              <p>{selectedProgress.complete ? 'Next level is open.' : 'Reach 80% strong vocab and 20 listening attempts.'}</p>
+              <p>{selectedProgress.complete ? 'Next level is open.' : `Reach ${LEVEL_MASTERY_PERCENT}% strong vocab and 20 completed listening conversations.`}</p>
             </div>
           </div>
         </section>
