@@ -55,6 +55,10 @@ export interface LearnerSettings {
   showKana: boolean;
 }
 
+export interface ConversationProgress {
+  completedConversationIds: string[];
+}
+
 export interface StaticLibraryConversation {
   id: string;
   level: number;

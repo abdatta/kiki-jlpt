@@ -1,8 +1,9 @@
-import type { LearnerSettings, StatsMap } from './types.ts';
+import type { ConversationProgress, LearnerSettings, StatsMap } from './types.ts';
 
 const SETTINGS_KEY = 'kiki-jlpt.practice.settings';
 const VOCAB_STATS_KEY = 'kiki-jlpt.practice.vocabStats';
-const QUESTION_STATS_KEY = 'kiki-jlpt.practice.questionStats';
+const CONVERSATION_PROGRESS_KEY = 'kiki-jlpt.practice.conversationProgress';
+const CONVERSATION_PLAYBACK_SPEED_KEY = 'kiki-jlpt.practice.conversationPlaybackSpeed';
 
 function readJson<TValue>(key: string, fallback: TValue): TValue {
   if (typeof window === 'undefined') return fallback;
@@ -40,10 +41,24 @@ export function saveVocabStats(stats: StatsMap): void {
   writeJson(VOCAB_STATS_KEY, stats);
 }
 
-export function loadQuestionStats(): StatsMap {
-  return readJson<StatsMap>(QUESTION_STATS_KEY, {});
+export function loadConversationProgress(): ConversationProgress {
+  const stored = readJson<Partial<ConversationProgress>>(CONVERSATION_PROGRESS_KEY, {});
+  return {
+    completedConversationIds: Array.isArray(stored.completedConversationIds)
+      ? stored.completedConversationIds.filter((id): id is string => typeof id === 'string')
+      : []
+  };
 }
 
-export function saveQuestionStats(stats: StatsMap): void {
-  writeJson(QUESTION_STATS_KEY, stats);
+export function saveConversationProgress(progress: ConversationProgress): void {
+  writeJson(CONVERSATION_PROGRESS_KEY, progress);
+}
+
+export function loadConversationPlaybackSpeed(fallback = 1): number {
+  const stored = readJson<number>(CONVERSATION_PLAYBACK_SPEED_KEY, fallback);
+  return typeof stored === 'number' && Number.isFinite(stored) ? stored : fallback;
+}
+
+export function saveConversationPlaybackSpeed(speed: number): void {
+  writeJson(CONVERSATION_PLAYBACK_SPEED_KEY, speed);
 }

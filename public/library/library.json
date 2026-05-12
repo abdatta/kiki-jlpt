@@ -1,7 +1,2192 @@
 {
   "version": 1,
-  "generatedAt": "2026-05-02T23:07:49.125Z",
+  "generatedAt": "2026-05-05T19:22:24.999Z",
   "conversations": [
+    {
+      "id": "set-01-20260505T191031Z-2qqr8c-convo-02",
+      "level": 1,
+      "title": "Family Morning",
+      "scene": "A family is waking up and discussing breakfast.",
+      "sampleContext": "A sister and brother are talking in the kitchen early in the morning.",
+      "audioUrl": "library/audio/set-01/set-01-20260505T191031Z-2qqr8c-convo-02.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "おはようございます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "sleepy",
+            "slow"
+          ],
+          "japanese": "おはようございます。お父さんはどこですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "お父さんはあそこです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "お母さんは？"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "お母さんはまだ寝ます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "弟はもう起きましたか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いえ、まだです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "excited",
+            "slow"
+          ],
+          "japanese": "私はこれを食べます。美味しいです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "あなたは何を飲みますか。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Good morning."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Good morning. Where is father?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Father is over there."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "How about mother?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Mother is still sleeping."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Has younger brother woken up already?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No, not yet."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I will eat this. It is delicious."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "What will you drink?"
+        }
+      ],
+      "listeningQuestions": [
+        "Where is the father?",
+        "What is the mother doing?",
+        "Has the younger brother woken up yet?",
+        "What does Speaker 2 say about what he is eating?"
+      ],
+      "answerKey": [
+        "He is over there.",
+        "She is still sleeping.",
+        "No, not yet.",
+        "He says it is delicious."
+      ],
+      "createdAt": "2026-05-05T19:21:00.204Z"
+    },
+    {
+      "id": "set-01-20260505T191031Z-2qqr8c-convo-04",
+      "level": 1,
+      "title": "Evening Departure",
+      "scene": "Two people are leaving a building in the evening.",
+      "sampleContext": "They are confirming times and using a door code.",
+      "audioUrl": "library/audio/set-01/set-01-20260505T191031Z-2qqr8c-convo-04.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "こんばんは。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "こんばんは。もう帰りますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。七。帰ります。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "兄はそこに居ますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "いえ、兄は来ません。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "七、ゼロ、八。開きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "失礼します。さようなら。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "さようなら。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Good evening."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Good evening. Are you going home already?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. Seven. I am going home."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is your older brother there?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No, my older brother is not coming."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Seven, zero, eight. It opens."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Excuse me. Goodbye."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Goodbye."
+        }
+      ],
+      "listeningQuestions": [
+        "What time is Speaker 1 going home?",
+        "Is Speaker 1's older brother coming?",
+        "What is the three-number code used?",
+        "What does Speaker 1 say before saying goodbye?"
+      ],
+      "answerKey": [
+        "Seven (Shichi).",
+        "No, he is not coming.",
+        "7, 0, 8 (Shichi, zero, hachi).",
+        "Shitsurei shimasu (Excuse me)."
+      ],
+      "createdAt": "2026-05-05T19:18:16.362Z"
+    },
+    {
+      "id": "set-01-20260505T191031Z-2qqr8c-convo-01",
+      "level": 1,
+      "title": "Meeting at School",
+      "scene": "A female student meets a new male student and asks about people nearby.",
+      "sampleContext": "Speaker 1 introduces herself politely and asks Speaker 2 about his role and the people around them.",
+      "audioUrl": "library/audio/set-01/set-01-20260505T191031Z-2qqr8c-convo-01.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "こんにちは。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "こんにちは。初めまして。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "初めまして。田中です。学生ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい。佐藤です。よろしくお願いします。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あの人はどなたですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "あの男の人は先生です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あの女の人は？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "あの人は姉です。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Hello."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Hello. Nice to meet you."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Nice to meet you. I am Tanaka. Are you a student?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. I am Sato. Please treat me well."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Who is that person over there?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That man is a teacher."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "How about that woman?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That person is my older sister."
+        }
+      ],
+      "listeningQuestions": [
+        "What greeting does Speaker 1 use first?",
+        "Is Speaker 2 a student?",
+        "Who is the man mentioned in the conversation?",
+        "What is the relationship between Speaker 2 and the woman?"
+      ],
+      "answerKey": [
+        "Konnichiwa (Hello/Good afternoon).",
+        "Yes, he is a student.",
+        "He is a teacher.",
+        "She is Speaker 2's older sister."
+      ],
+      "createdAt": "2026-05-05T19:16:48.394Z"
+    },
+    {
+      "id": "set-01-20260429T152528Z-jhir19-convo-11",
+      "level": 1,
+      "title": "Evening Plans",
+      "scene": "Sakura meets Taro in the evening.",
+      "sampleContext": "They meet on the street as the sun is going down.",
+      "audioUrl": "library/audio/set-01/set-01-20260429T152528Z-jhir19-convo-11.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "こんばんは、たろうさん。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "あ、さくらさん、こんばんは。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "どこへ行きますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "あちらへ帰ります。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "家族はそこにいますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、母と妹がいます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "そうですか。さようなら。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Good evening, Taro."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Ah, Sakura, good evening."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Where are you going?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I am returning over there."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is your family there?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, my mother and younger sister are there."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I see. Goodbye."
+        }
+      ],
+      "listeningQuestions": [
+        "What time of day is it?",
+        "What is Taro doing?",
+        "Who is at the place Taro is going to?",
+        "How many family members are mentioned as being there?"
+      ],
+      "answerKey": [
+        "It is evening.",
+        "He is returning (going home).",
+        "His mother and younger sister.",
+        "Two family members."
+      ],
+      "createdAt": "2026-05-05T18:43:19.044Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-20",
+      "level": 1,
+      "title": "A Small Child",
+      "scene": "Two people talk about a child nearby.",
+      "sampleContext": "They sound kind and observant.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-20.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "あの子供を見てください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "はい。小さい女の子ですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "そして、あそこに男の子もいます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "二人は友達ですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thinking",
+            "slow"
+          ],
+          "japanese": "はい、友達だと思います。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "いいですね。二人で話しています。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "はい、楽しそうです。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Please look at that child."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. She is a small girl, isn't she?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "And there is also a boy over there."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Are the two friends?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, I think they are friends."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That's nice. The two are talking."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, they seem happy."
+        }
+      ],
+      "listeningQuestions": [
+        "Who does Speaker 1 ask Speaker 2 to look at first?",
+        "How does Speaker 2 describe the girl?",
+        "Who is also over there?",
+        "What does Speaker 2 ask about the two children?",
+        "What are the two children doing?"
+      ],
+      "answerKey": [
+        "That child over there.",
+        "He says she is a small girl.",
+        "A boy is also over there.",
+        "He asks whether they are friends.",
+        "They are talking together."
+      ],
+      "createdAt": "2026-05-04T14:01:11.726Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-19",
+      "level": 1,
+      "title": "Here to There",
+      "scene": "Two people discuss moving from one place to another.",
+      "sampleContext": "They are planning a simple route.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-19.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "ここからそこまで行きますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、行きます。そして、あそこまで行きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thinking",
+            "slow"
+          ],
+          "japanese": "あそこは遠いですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいえ、遠くありません。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "一人で行きますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "いいえ、二人で行きましょう。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "はい、お願いします。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Will we go from here to there?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, we will go. And then we will go to over there."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is over there far?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, it is not far."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Will you go alone?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, let's go as two people."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, please."
+        }
+      ],
+      "listeningQuestions": [
+        "Where does Speaker 1 ask if they will go first?",
+        "Where does Speaker 2 say they will go after that?",
+        "Does Speaker 2 say the place over there is far?",
+        "Does Speaker 2 plan to go alone?",
+        "How many people does Speaker 2 suggest should go?"
+      ],
+      "answerKey": [
+        "From here to there.",
+        "To over there.",
+        "No, he says it is not far.",
+        "No, he suggests not going alone.",
+        "Two people."
+      ],
+      "createdAt": "2026-05-04T14:00:26.611Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-18",
+      "level": 1,
+      "title": "Who Said It",
+      "scene": "Two people talk about something someone said.",
+      "sampleContext": "They are trying to understand who spoke.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-18.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "今、何を言いましたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "「いいです」と言いました。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "どなたが言いましたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "thinking",
+            "slow"
+          ],
+          "japanese": "あの先生が言いました。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "understanding",
+            "slow"
+          ],
+          "japanese": "先生ですか。分かりました。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "はい。もう一度聞きますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい、お願いします。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "What did you say just now?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I said, 'It is good.'"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Who said it?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That teacher said it."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "The teacher? I understand."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. Shall I ask/listen one more time?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, please."
+        }
+      ],
+      "listeningQuestions": [
+        "What does Speaker 1 ask at the beginning?",
+        "What phrase did Speaker 2 say was spoken?",
+        "Who said the phrase?",
+        "Does Speaker 1 understand who said it?",
+        "What does Speaker 1 ask for at the end?"
+      ],
+      "answerKey": [
+        "She asks what was said just now.",
+        "Good / it is good.",
+        "That teacher over there said it.",
+        "Yes, she says she understands.",
+        "She asks him to say/listen once more, using please."
+      ],
+      "createdAt": "2026-05-04T13:59:13.676Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-17",
+      "level": 1,
+      "title": "Excuse Me",
+      "scene": "Two people apologize and respond politely.",
+      "sampleContext": "They speak softly after a small mistake.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-17.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "apologetic",
+            "slow"
+          ],
+          "japanese": "すみません。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいえ、いいですよ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "apologetic",
+            "slow"
+          ],
+          "japanese": "ごめんなさい。これ、悪いですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、悪くありません。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "relieved",
+            "slow"
+          ],
+          "japanese": "ああ、ありがとうございます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "どうも。では、失礼します。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい、失礼します。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Excuse me / sorry."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, it is okay."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Sorry. Is this bad?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, it is not bad."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, thank you very much."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Thanks. Well then, excuse me."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, excuse me."
+        }
+      ],
+      "listeningQuestions": [
+        "What does Speaker 1 say first?",
+        "Does Speaker 2 accept the apology?",
+        "What does Speaker 1 ask about 'this'?",
+        "Does Speaker 2 say it is bad?",
+        "What polite phrase do both speakers use at the end?"
+      ],
+      "answerKey": [
+        "She says excuse me / sorry.",
+        "Yes, he says no, it is okay.",
+        "She asks whether it is bad.",
+        "No, he says it is not bad.",
+        "They say excuse me / I will take my leave."
+      ],
+      "createdAt": "2026-05-04T13:58:46.921Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-16",
+      "level": 1,
+      "title": "Like and Dislike",
+      "scene": "Two people discuss preferences.",
+      "sampleContext": "They are honest but polite.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-16.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あなたは何が好きですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "私は美味しいのが好きです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "赤いのは好きですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、好きです。でも青いのより赤いのが好きです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "私は赤いのが嫌いです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "surprised",
+            "slow"
+          ],
+          "japanese": "ああ、そうですか。青いのは好きですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "はい、青いのは好きです。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "What do you like?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I like delicious things."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you like red things?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I like them. But I like red things more than blue things."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I dislike red things."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Oh, is that so? Do you like blue things?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, I like blue things."
+        }
+      ],
+      "listeningQuestions": [
+        "What does Speaker 2 say he likes generally?",
+        "Which color does Speaker 2 prefer, red or blue?",
+        "What does Speaker 1 dislike?",
+        "Does Speaker 1 like blue?",
+        "How does Speaker 2 react when he hears Speaker 1 dislikes red?"
+      ],
+      "answerKey": [
+        "He likes delicious things.",
+        "He prefers red.",
+        "She dislikes red things.",
+        "Yes, she likes blue things.",
+        "He is surprised and asks whether she likes blue."
+      ],
+      "createdAt": "2026-05-04T13:56:42.695Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-15",
+      "level": 1,
+      "title": "Mother and Father",
+      "scene": "Two people talk about parents.",
+      "sampleContext": "They speak politely about family.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-15.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "お父さんはいますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、います。お母さんもいます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいですね。私の父と母もいます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あなたの家族は大きいですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、小さいです。父、母、私だけです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "understanding",
+            "slow"
+          ],
+          "japanese": "三人ですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "agreeing",
+            "slow"
+          ],
+          "japanese": "はい、三人です。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you have a father?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I do. I also have a mother."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "That's nice. My father and mother are also here."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is your family big?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No, it is small. Just my father, mother, and me."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Three people, right?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, three people."
+        }
+      ],
+      "listeningQuestions": [
+        "Does Speaker 2 have a father?",
+        "Who else does Speaker 2 say he has?",
+        "Is Speaker 1's family big?",
+        "Who are in Speaker 1's family?",
+        "How many people are in Speaker 1's family?"
+      ],
+      "answerKey": [
+        "Yes, he has a father.",
+        "He also has a mother.",
+        "No, it is small.",
+        "Her father, her mother, and herself.",
+        "Three people."
+      ],
+      "createdAt": "2026-05-04T13:51:48.850Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-14",
+      "level": 1,
+      "title": "Big Numbers",
+      "scene": "Two people review larger numbers.",
+      "sampleContext": "They speak slowly like a listening drill.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-14.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "これは百ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、百です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "それは千ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "careful",
+            "slow"
+          ],
+          "japanese": "いいえ、それは十です。千ではありません。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thinking",
+            "slow"
+          ],
+          "japanese": "ああ、十ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい。百より小さいです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "understanding",
+            "slow"
+          ],
+          "japanese": "分かりました。ありがとうございます。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Is this one hundred?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, it is one hundred."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is that one thousand?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, that is ten. It is not one thousand."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, it is ten?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. It is smaller than one hundred."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I understand. Thank you very much."
+        }
+      ],
+      "listeningQuestions": [
+        "What number is 'this'?",
+        "What number does Speaker 1 mistakenly think 'that' is?",
+        "What number is 'that' actually?",
+        "Is ten larger or smaller than one hundred according to Speaker 2?",
+        "How does Speaker 1 show understanding?"
+      ],
+      "answerKey": [
+        "It is one hundred.",
+        "She thinks it is one thousand.",
+        "It is ten.",
+        "It is smaller than one hundred.",
+        "She says she understands and thanks him."
+      ],
+      "createdAt": "2026-05-04T13:50:59.574Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-13",
+      "level": 1,
+      "title": "Number Practice",
+      "scene": "Two people practice numbers.",
+      "sampleContext": "Speaker 2 helps Speaker 1 review carefully.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-13.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "focused",
+            "slow"
+          ],
+          "japanese": "ゼロから十まで言います。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "encouraging",
+            "slow"
+          ],
+          "japanese": "はい、どうぞ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "careful",
+            "slow"
+          ],
+          "japanese": "ゼロ、一、二、三、四、五。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいです。そして。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "careful",
+            "slow"
+          ],
+          "japanese": "六、七、八、九、十。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "はい、よいです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "I will say from zero to ten."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, please."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Zero, one, two, three, four, five."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Good. And?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Six, seven, eight, nine, ten."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, good."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Thank you very much."
+        }
+      ],
+      "listeningQuestions": [
+        "From which number does Speaker 1 start?",
+        "To which number does Speaker 1 plan to count?",
+        "What number does Speaker 1 say after five?",
+        "Does Speaker 2 correct Speaker 1?",
+        "How does Speaker 1 respond at the end?"
+      ],
+      "answerKey": [
+        "She starts from zero.",
+        "She plans to count to ten.",
+        "Six.",
+        "No, he says it is good.",
+        "She says thank you very much."
+      ],
+      "createdAt": "2026-05-04T13:50:12.089Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-12",
+      "level": 1,
+      "title": "Where Is the Friend",
+      "scene": "Two people look for a friend.",
+      "sampleContext": "They sound curious but calm.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-12.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "友達はどこですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "thinking",
+            "slow"
+          ],
+          "japanese": "あそこにいます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "careful",
+            "slow"
+          ],
+          "japanese": "あの人ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、その人ではありません。あちらの人です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "understanding",
+            "slow"
+          ],
+          "japanese": "ああ、分かりました。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "一緒に行きましょう。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "はい、行きましょう。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Where is your friend?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Over there."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is it that person?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, not that person. It is the person that way."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, I understand."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Let's go together."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, let's go."
+        }
+      ],
+      "listeningQuestions": [
+        "Who is Speaker 1 looking for?",
+        "Where does Speaker 2 first say the friend is?",
+        "Is the friend the person Speaker 1 first points out?",
+        "Which person does Speaker 2 identify instead?",
+        "What do they decide to do together?"
+      ],
+      "answerKey": [
+        "His friend.",
+        "Over there.",
+        "No, not that person.",
+        "The person that way / over there politely.",
+        "They decide to go together."
+      ],
+      "createdAt": "2026-05-04T13:49:19.728Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-10",
+      "level": 1,
+      "title": "Opening",
+      "scene": "Two people notice something has opened.",
+      "sampleContext": "They speak quietly and carefully.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-10.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "すみません。あれが開いています。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "ああ、あれですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。ここから見てください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "focused",
+            "slow"
+          ],
+          "japanese": "見ました。大きく開いていますね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "slightly worried",
+            "slow"
+          ],
+          "japanese": "悪いですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、悪くありません。でも聞いてください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "attentive",
+            "slow"
+          ],
+          "japanese": "はい、聞きます。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Excuse me. That over there is open."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Oh, that?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. Please look from here."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I looked. It is open wide, isn't it?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is it bad?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, it isn't bad. But please listen."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, I will listen."
+        }
+      ],
+      "listeningQuestions": [
+        "What does Speaker 1 notice about the thing over there?",
+        "From where does Speaker 1 ask Speaker 2 to look?",
+        "How open does Speaker 2 say it is?",
+        "Does Speaker 2 say it is bad?",
+        "What does Speaker 2 ask Speaker 1 to do at the end?"
+      ],
+      "answerKey": [
+        "It is open.",
+        "From here.",
+        "He says it is opened widely/big.",
+        "No, he says it is not bad.",
+        "He asks her to listen."
+      ],
+      "createdAt": "2026-05-03T05:11:55.756Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-09",
+      "level": 1,
+      "title": "New and Old",
+      "scene": "Two people compare nearby things.",
+      "sampleContext": "They are deciding which item is better.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-09.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "この新しいのを見ますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "interested",
+            "slow"
+          ],
+          "japanese": "はい、見ます。大きいですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "その古いのは小さいです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "thinking",
+            "slow"
+          ],
+          "japanese": "でも、古いのも好きです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "どののがいいですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "careful",
+            "slow"
+          ],
+          "japanese": "新しいのがいいです。でも古いのは悪いではありません。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "はい、私もそう思います。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Will you look at this new one?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I will look. It is big, isn't it?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "That old one is small."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "But I also like the old one."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Which one is good?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "The new one is good. But the old one is not bad."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, I think so too."
+        }
+      ],
+      "listeningQuestions": [
+        "What does Speaker 1 ask Speaker 2 to look at first?",
+        "How does Speaker 2 describe the new thing?",
+        "How does Speaker 1 describe the old thing?",
+        "Does Speaker 2 also like the old thing?",
+        "Which thing does Speaker 2 finally say is good?"
+      ],
+      "answerKey": [
+        "The new thing.",
+        "He says it is big.",
+        "She says it is small.",
+        "Yes, he likes the old one too.",
+        "He says the new one is good."
+      ],
+      "createdAt": "2026-05-03T05:11:04.083Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-08",
+      "level": 1,
+      "title": "Counting People",
+      "scene": "Two people count who is present.",
+      "sampleContext": "They are checking a small group.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-08.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "ここに何人いますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "careful",
+            "slow"
+          ],
+          "japanese": "一人います。そして、あそこに二人います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thinking",
+            "slow"
+          ],
+          "japanese": "三人ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、三人です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "男の子はいますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、男の子が一人います。女の子も一人います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "子供は二人ですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "agreeing",
+            "slow"
+          ],
+          "japanese": "はい、そうです。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "How many people are here?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "There is one person. And there are two people over there."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Three people?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, three people."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is there a boy?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, there is one boy. There is also one girl."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "There are two children, right?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, that's right."
+        }
+      ],
+      "listeningQuestions": [
+        "How many people are here and over there in total?",
+        "How many people are over there?",
+        "Is there a boy?",
+        "How many girls are mentioned?",
+        "How many children does Speaker 1 conclude there are?"
+      ],
+      "answerKey": [
+        "Three people total.",
+        "Two people are over there.",
+        "Yes, there is one boy.",
+        "One girl is mentioned.",
+        "Two children."
+      ],
+      "createdAt": "2026-05-03T05:06:09.441Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-07",
+      "level": 1,
+      "title": "Teacher and Student",
+      "scene": "A student speaks with a teacher politely.",
+      "sampleContext": "They are in a calm learning situation.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-07.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "先生、すみません。聞いてもいいですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "はい、どうぞ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "これは何ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "これは一です。そして、それは二です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "focused",
+            "slow"
+          ],
+          "japanese": "ああ、見ます。三、四、五。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "encouraging",
+            "slow"
+          ],
+          "japanese": "いいです。六まで言ってください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "careful",
+            "slow"
+          ],
+          "japanese": "一、二、三、四、五、六。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "よいです。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Teacher, excuse me. May I ask?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, please."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "What is this?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "This is one. And that is two."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, I see. Three, four, five."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Good. Please say up to six."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "One, two, three, four, five, six."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Good."
+        }
+      ],
+      "listeningQuestions": [
+        "How does Speaker 1 address Speaker 2?",
+        "What does Speaker 1 ask permission to do?",
+        "Which numbers does Speaker 2 first explain?",
+        "Up to what number does Speaker 2 ask Speaker 1 to say?",
+        "Does Speaker 2 think Speaker 1 did well?"
+      ],
+      "answerKey": [
+        "She addresses him as teacher.",
+        "She asks if it is okay to ask/listen.",
+        "One and two.",
+        "Up to six.",
+        "Yes, he says it is good."
+      ],
+      "createdAt": "2026-05-03T05:05:20.057Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-06",
+      "level": 1,
+      "title": "Sleepy Morning",
+      "scene": "Two people talk after getting up.",
+      "sampleContext": "Speaker 1 is gentle, and Speaker 2 sounds sleepy.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-06.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "おはようございます。もう起きましたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "sleepy",
+            "slow"
+          ],
+          "japanese": "いいえ、まだ寝たいです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "でも、起きてください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "apologetic",
+            "slow"
+          ],
+          "japanese": "ごめんなさい。今、起きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。ここへ来てください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "sleepy",
+            "slow"
+          ],
+          "japanese": "はい、行きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "そして、話しましょう。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Good morning. Have you gotten up already?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, I still want to sleep."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "But please get up."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Sorry. I will get up now."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Thank you. Please come here."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I will go."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "And let's talk."
+        }
+      ],
+      "listeningQuestions": [
+        "Has Speaker 2 already gotten up at first?",
+        "What does Speaker 2 still want to do?",
+        "What does Speaker 1 ask Speaker 2 to do?",
+        "How does Speaker 2 apologize?",
+        "What does Speaker 1 suggest doing after he comes?"
+      ],
+      "answerKey": [
+        "No, he has not gotten up yet.",
+        "He still wants to sleep.",
+        "She asks him to get up and come here.",
+        "He says sorry.",
+        "She suggests talking."
+      ],
+      "createdAt": "2026-05-03T05:04:20.055Z"
+    },
+    {
+      "id": "set-01-20260430T042620Z-s4nxnk-convo-05",
+      "level": 1,
+      "title": "Eating and Drinking",
+      "scene": "Two friends talk about what they want to eat and drink.",
+      "sampleContext": "They sound relaxed and friendly.",
+      "audioUrl": "library/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-05.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "何を食べたいですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "美味しいのを食べたいです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "これを食べますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "はい、食べます。美味しいですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "何を飲みたいですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "それを飲みたいです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "どうぞ。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "grateful",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "What do you want to eat?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I want to eat something delicious."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Will you eat this?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I will eat it. It's delicious, isn't it?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "What do you want to drink?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I want to drink that."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Please, go ahead."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Thank you very much."
+        }
+      ],
+      "listeningQuestions": [
+        "What kind of thing does Speaker 2 want to eat?",
+        "Does Speaker 2 eat what Speaker 1 offers?",
+        "What does Speaker 2 say about the food?",
+        "What does Speaker 1 ask after eating is discussed?",
+        "Which thing does Speaker 2 want to drink?"
+      ],
+      "answerKey": [
+        "He wants to eat something delicious.",
+        "Yes, he eats it.",
+        "He says it is delicious.",
+        "She asks what he wants to drink.",
+        "He wants to drink that one."
+      ],
+      "createdAt": "2026-05-03T04:59:14.151Z"
+    },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-03",
       "level": 1,

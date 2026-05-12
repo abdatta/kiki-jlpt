@@ -1,15 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, Dispatch, ReactNode, SetStateAction } from 'react';
 import {
   BookOpen,
   Check,
+  ChevronLeft,
   ChevronRight,
   Eye,
+  Gauge,
   Headphones,
+  Languages,
   Library,
   Lock,
+  Pause,
   Play,
+  RotateCcw,
   Settings,
+  SkipBack,
+  SkipForward,
   Trophy,
   X
 } from 'lucide-react';
@@ -18,10 +25,12 @@ import { buildSessionQueue, calculateNextStats, getBucket, getStats } from './de
 import { levelSummaries, vocabCards } from './vocabData.ts';
 import { loadLibrary } from './library.ts';
 import {
-  loadQuestionStats,
   loadSettings,
   loadVocabStats,
-  saveQuestionStats,
+  loadConversationPlaybackSpeed,
+  loadConversationProgress,
+  saveConversationPlaybackSpeed,
+  saveConversationProgress,
   saveSettings,
   saveVocabStats
 } from './storage.ts';
@@ -29,6 +38,7 @@ import type {
   LearnerSettings,
   PracticeArea,
   PracticeCard,
+  ConversationProgress,
   ReviewResult,
   StaticLibraryConversation,
   StaticLibraryManifest,
@@ -38,10 +48,15 @@ import type {
 import './consumer.css';
 
 type VocabPracticeCard = VocabCard & PracticeCard;
-const VOCAB_LISTENING_UNLOCK_RATIO = 0.5;
+const VOCAB_LISTENING_UNLOCK_RATIO = 0.0;
 const LEVEL_MASTERY_RATIO = 0.8;
 const LEVEL_LISTENING_TARGET = 20;
 const PRACTICE_ONLY = import.meta.env.VITE_PRACTICE_ONLY === 'true';
+const CONVERSATION_PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25] as const;
+
+function normalizePlaybackSpeed(speed: number): number {
+  return CONVERSATION_PLAYBACK_SPEEDS.some((option) => option === speed) ? speed : 1;
+}
 
 interface QuestionState {
   revealed: boolean;
@@ -209,17 +224,17 @@ function routeForArea(area: PracticeArea): string {
   return '#/practice';
 }
 
-function buildLevelProgress(vocabStats: StatsMap, questionStats: StatsMap, library: StaticLibraryManifest): LevelProgress[] {
+function buildLevelProgress(vocabStats: StatsMap, conversationProgress: ConversationProgress, library: StaticLibraryManifest): LevelProgress[] {
   let previousLevelsComplete = true;
+  const completedConversationIds = new Set(conversationProgress.completedConversationIds);
 
   return levelSummaries.map((summary) => {
     const cards = vocabCards.filter((card) => card.level === summary.set);
     const strongVocabCount = cards.filter((card) => getBucket(getStats(vocabStats, card.id)) === 'strong').length;
     const vocabMasteryRatio = cards.length > 0 ? strongVocabCount / cards.length : 0;
-    const listeningQuestionIds = library.conversations
-      .filter((conversation) => conversation.level === summary.set)
-      .flatMap((conversation) => conversation.listeningQuestions.map((_, index) => `conversation:${conversation.id}:q:${index}`));
-    const listeningAttemptCount = listeningQuestionIds.filter((id) => getStats(questionStats, id).reviews > 0).length;
+    const listeningAttemptCount = library.conversations
+      .filter((conversation) => conversation.level === summary.set && completedConversationIds.has(conversation.id))
+      .length;
     const unlocked = previousLevelsComplete;
     const complete = vocabMasteryRatio >= LEVEL_MASTERY_RATIO && listeningAttemptCount >= LEVEL_LISTENING_TARGET;
 
@@ -603,24 +618,19 @@ function QuestionCard({
   conversation,
   questionIndex,
   state,
-  stats,
   onReveal,
   onReview
 }: {
   conversation: StaticLibraryConversation;
   questionIndex: number;
   state: QuestionState;
-  stats: StatsMap;
   onReveal: () => void;
   onReview: (result: ReviewResult) => void;
 }) {
-  const id = `conversation:${conversation.id}:q:${questionIndex}`;
-
   return (
     <article className={`questionCard ${state.revealed ? 'revealed' : ''} ${state.result ?? ''}`}>
       <div className="cardMeta">
         <span>Question {questionIndex + 1}</span>
-        <span>{strengthLabel(id, stats)}</span>
       </div>
       <h3>{conversation.listeningQuestions[questionIndex]}</h3>
       {state.revealed ? <p>{conversation.answerKey[questionIndex] ?? 'No answer provided.'}</p> : null}
@@ -647,101 +657,201 @@ function QuestionCard({
 
 function ConversationPractice({
   conversation,
-  stats,
-  setStats,
+  isCompleted,
+  playbackSpeed,
+  onComplete,
   onNext
 }: {
   conversation: StaticLibraryConversation;
-  stats: StatsMap;
-  setStats: (stats: StatsMap) => void;
+  isCompleted: boolean;
+  playbackSpeed: number;
+  onComplete: (conversationId: string) => void;
   onNext: () => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [played, setPlayed] = useState(false);
-  const [showTranslations, setShowTranslations] = useState(false);
+  const [hasCompletedInitialPlay, setHasCompletedInitialPlay] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [visibleTranslations, setVisibleTranslations] = useState<Record<number, boolean>>({});
   const [questionStates, setQuestionStates] = useState<Record<number, QuestionState>>({});
+  const completionNotifiedRef = useRef(false);
 
   useEffect(() => {
-    setPlayed(!conversation.audioUrl);
-    setShowTranslations(false);
+    const completedOrNoAudio = isCompleted || !conversation.audioUrl;
+    setPlayed(completedOrNoAudio);
+    setHasCompletedInitialPlay(isCompleted || !conversation.audioUrl);
+    setIsPlaying(false);
+    setVisibleTranslations({});
     setQuestionStates({});
-  }, [conversation.id, conversation.audioUrl]);
+    completionNotifiedRef.current = false;
+  }, [conversation.id, conversation.audioUrl, isCompleted]);
 
-  function playAudio() {
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackSpeed;
+    }
+  }, [conversation.id, playbackSpeed]);
+
+  function skipAudio(seconds: number) {
+    const audio = audioRef.current;
+    if (!hasCompletedInitialPlay) return;
+    if (!conversation.audioUrl || !audio) {
+      setPlayed(true);
+      return;
+    }
+
+    const upperBound = Number.isFinite(audio.duration) ? audio.duration : Number.POSITIVE_INFINITY;
+    audio.currentTime = Math.min(Math.max(audio.currentTime + seconds, 0), upperBound);
+  }
+
+  async function toggleAudioPlayback() {
     if (!conversation.audioUrl) {
       setPlayed(true);
       return;
     }
-    void audioRef.current?.play();
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!audio.paused && !audio.ended) {
+      audio.pause();
+      return;
+    }
+
+    if (audio.ended) {
+      audio.currentTime = 0;
+    }
+
+    audio.playbackRate = playbackSpeed;
+    try {
+      await audio.play();
+    } catch {
+      setIsPlaying(false);
+    }
   }
 
   function reviewQuestion(questionIndex: number, result: ReviewResult) {
-    const id = `conversation:${conversation.id}:q:${questionIndex}`;
-    const nextStats = applyReview(stats, id, result);
-    setStats(nextStats);
-    saveQuestionStats(nextStats);
     setQuestionStates((current) => ({
       ...current,
       [questionIndex]: { revealed: true, result }
     }));
   }
 
+  function retryConversation() {
+    audioRef.current?.pause();
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+    }
+    setPlayed(false);
+    setIsPlaying(false);
+    setVisibleTranslations({});
+    setQuestionStates({});
+    completionNotifiedRef.current = false;
+  }
+
+  function toggleTranslation(lineIndex: number) {
+    setVisibleTranslations((current) => ({
+      ...current,
+      [lineIndex]: !current[lineIndex]
+    }));
+  }
+
   const allAttempted = conversation.listeningQuestions.length > 0
     && conversation.listeningQuestions.every((_, index) => questionStates[index]?.result);
+  const shouldShowTranscript = isCompleted || allAttempted;
+  const hasAnsweredAny = Object.values(questionStates).some((state) => Boolean(state.result));
+
+  useEffect(() => {
+    if (allAttempted && !completionNotifiedRef.current) {
+      completionNotifiedRef.current = true;
+      onComplete(conversation.id);
+    }
+  }, [allAttempted, conversation.id, onComplete]);
 
   return (
     <div className="conversationPractice">
       <article className="listenCard">
         <div>
-          <p>Listening Practice</p>
           <h2>{conversation.title}</h2>
           <span>{conversation.scene}</span>
         </div>
-        <button className="roundPlayButton" onClick={playAudio} aria-label="Play conversation">
-          <Play size={30} fill="currentColor" />
-        </button>
+        <div className="listenControls" aria-label="Conversation audio controls">
+          <button className="seekButton" onClick={() => skipAudio(-5)} type="button" aria-label="Back 5 seconds" disabled={!hasCompletedInitialPlay}>
+            <SkipBack size={19} fill="currentColor" />
+          </button>
+          <button className="roundPlayButton" onClick={toggleAudioPlayback} type="button" aria-label={isPlaying ? 'Pause conversation' : 'Play conversation'}>
+            {isPlaying ? <Pause size={30} fill="currentColor" /> : <Play size={30} fill="currentColor" />}
+          </button>
+          <button className="seekButton" onClick={() => skipAudio(5)} type="button" aria-label="Forward 5 seconds" disabled={!hasCompletedInitialPlay}>
+            <SkipForward size={19} fill="currentColor" />
+          </button>
+        </div>
         {conversation.audioUrl ? (
-          <audio ref={audioRef} src={conversation.audioUrl} onEnded={() => setPlayed(true)}>
+          <audio
+            ref={audioRef}
+            src={conversation.audioUrl}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onEnded={() => {
+              setPlayed(true);
+              setHasCompletedInitialPlay(true);
+              setIsPlaying(false);
+            }}
+          >
             <track kind="captions" />
           </audio>
         ) : null}
       </article>
 
       {played ? (
-        <div className="questionGrid">
-          {conversation.listeningQuestions.map((_, questionIndex) => (
-            <QuestionCard
-              key={`${conversation.id}:${questionIndex}`}
-              conversation={conversation}
-              questionIndex={questionIndex}
-              state={questionStates[questionIndex] ?? { revealed: false, result: null }}
-              stats={stats}
-              onReveal={() => setQuestionStates((current) => ({ ...current, [questionIndex]: { revealed: true, result: null } }))}
-              onReview={(result) => reviewQuestion(questionIndex, result)}
-            />
-          ))}
-        </div>
+        <>
+          {hasAnsweredAny ? (
+            <div className="questionActionBar">
+              <button className="iconTextButton" onClick={retryConversation} type="button">
+                <RotateCcw size={17} />
+                Retry
+              </button>
+            </div>
+          ) : null}
+          <div className="questionGrid">
+            {conversation.listeningQuestions.map((_, questionIndex) => (
+              <QuestionCard
+                key={`${conversation.id}:${questionIndex}`}
+                conversation={conversation}
+                questionIndex={questionIndex}
+                state={questionStates[questionIndex] ?? { revealed: false, result: null }}
+                onReveal={() => setQuestionStates((current) => ({ ...current, [questionIndex]: { revealed: true, result: null } }))}
+                onReview={(result) => reviewQuestion(questionIndex, result)}
+              />
+            ))}
+          </div>
+        </>
       ) : (
         <p className="listenHint">Questions unlock when the audio finishes.</p>
       )}
 
-      {allAttempted ? (
+      {shouldShowTranscript ? (
         <section className="transcriptPanel">
           <div className="panelHeader compact">
             <div>
               <p>Transcript</p>
-              <h2>Japanese lines</h2>
             </div>
-            <button className="iconTextButton" onClick={() => setShowTranslations((value) => !value)}>
-              <BookOpen size={17} />
-              {showTranslations ? 'Hide translations' : 'Show translations'}
-            </button>
           </div>
           {conversation.text.map((line, index) => (
             <div className="transcriptPracticeLine" key={`${conversation.id}:line:${index}`}>
-              <strong>{line.speaker}</strong>
+              <div className="transcriptLineHeader">
+                <strong>{line.speaker}</strong>
+                <button
+                  className={visibleTranslations[index] ? 'lineTranslationButton active' : 'lineTranslationButton'}
+                  onClick={() => toggleTranslation(index)}
+                  type="button"
+                  aria-label={visibleTranslations[index] ? 'Hide translation' : 'Show translation'}
+                >
+                  <Languages size={16} />
+                </button>
+              </div>
               <span>{line.japanese}</span>
-              {showTranslations ? <p>{conversation.englishTranslation[index]?.english ?? ''}</p> : null}
+              {visibleTranslations[index] ? <p>{conversation.englishTranslation[index]?.english ?? ''}</p> : null}
             </div>
           ))}
           <button className="primaryPracticeButton nextConversation" onClick={onNext}>
@@ -757,27 +867,90 @@ function ConversationPractice({
 function ConversationsPage({
   level,
   library,
-  stats,
-  setStats,
+  conversationProgress,
+  setConversationProgress,
   progress
 }: {
   level: number;
   library: StaticLibraryManifest;
-  stats: StatsMap;
-  setStats: (stats: StatsMap) => void;
+  conversationProgress: ConversationProgress;
+  setConversationProgress: Dispatch<SetStateAction<ConversationProgress>>;
   progress: LevelProgress;
 }) {
   const conversations = useMemo(() => library.conversations.filter((conversation) => conversation.level === level), [library, level]);
-  const [index, setIndex] = useState(0);
+  const [playbackSpeed, setPlaybackSpeed] = useState(() => normalizePlaybackSpeed(loadConversationPlaybackSpeed()));
+  const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
+  const speedMenuRef = useRef<HTMLDivElement | null>(null);
+  const completedIds = useMemo(() => new Set(conversationProgress.completedConversationIds), [conversationProgress.completedConversationIds]);
   const emptyBody = PRACTICE_ONLY
     ? 'Published conversations will appear after the curated library is exported.'
     : 'Run the library export after approving conversations and generating audio in Kiki JLPT Studio.';
 
   useEffect(() => {
-    setIndex(0);
-  }, [level, library.generatedAt]);
+    const firstUncompleted = conversations.find((conversation) => !completedIds.has(conversation.id)) ?? conversations[0] ?? null;
+    setSelectedConversationId(firstUncompleted?.id ?? null);
+  }, [level, library.generatedAt, conversations]);
 
-  const current = conversations[index % Math.max(1, conversations.length)];
+  useEffect(() => {
+    if (!isSpeedMenuOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!speedMenuRef.current?.contains(event.target as Node)) {
+        setIsSpeedMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsSpeedMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSpeedMenuOpen]);
+
+  const current = conversations.find((conversation) => conversation.id === selectedConversationId) ?? conversations.find((conversation) => !completedIds.has(conversation.id)) ?? conversations[0];
+  const completedConversationIdsForLevel = conversationProgress.completedConversationIds.filter((id) => conversations.some((conversation) => conversation.id === id));
+  const currentCompletedIndex = current ? completedConversationIdsForLevel.indexOf(current.id) : -1;
+  const previousConversationId = currentCompletedIndex > 0
+    ? completedConversationIdsForLevel[currentCompletedIndex - 1]
+    : completedConversationIdsForLevel[completedConversationIdsForLevel.length - 1];
+  const canGoPrevious = Boolean(previousConversationId && previousConversationId !== current?.id);
+  const canGoNext = Boolean(current && completedIds.has(current.id) && conversations.length > 1);
+
+  function updatePlaybackSpeed(speed: number) {
+    setPlaybackSpeed(speed);
+    saveConversationPlaybackSpeed(speed);
+    setIsSpeedMenuOpen(false);
+  }
+
+  function completeConversation(conversationId: string) {
+    setConversationProgress((currentProgress) => {
+      const withoutCurrent = currentProgress.completedConversationIds.filter((id) => id !== conversationId);
+      const nextProgress = {
+        completedConversationIds: [...withoutCurrent, conversationId]
+      };
+      saveConversationProgress(nextProgress);
+      return nextProgress;
+    });
+  }
+
+  function showNextConversation() {
+    if (!current) return;
+    const currentIndex = conversations.findIndex((conversation) => conversation.id === current.id);
+    const nextUncompleted = conversations
+      .slice(currentIndex + 1)
+      .find((conversation) => !completedIds.has(conversation.id))
+      ?? conversations.find((conversation) => !completedIds.has(conversation.id) && conversation.id !== current.id)
+      ?? conversations[(currentIndex + 1) % conversations.length];
+    setSelectedConversationId(nextUncompleted?.id ?? null);
+  }
 
   return (
     <section className="practicePanel widePanel">
@@ -788,6 +961,52 @@ function ConversationsPage({
         </div>
         <span className="libraryCount">{conversations.length} ready</span>
       </div>
+      {progress.listeningUnlocked && conversations.length > 0 ? (
+        <div className="conversationToolbar">
+          <button className="prevConversationButton" onClick={() => setSelectedConversationId(previousConversationId ?? null)} type="button" disabled={!canGoPrevious}>
+            <ChevronLeft size={17} />
+            Prev
+          </button>
+          <div className="speedControl" aria-label="Conversation playback speed">
+            <label className="speedControlLabel" htmlFor="conversation-speed">
+              <Gauge size={17} />
+              <span>Speed</span>
+            </label>
+            <div className="speedMenu" ref={speedMenuRef}>
+              <button
+                id="conversation-speed"
+                className="speedMenuButton"
+                type="button"
+                aria-haspopup="listbox"
+                aria-expanded={isSpeedMenuOpen}
+                onClick={() => setIsSpeedMenuOpen((open) => !open)}
+              >
+                {playbackSpeed}x
+              </button>
+              {isSpeedMenuOpen ? (
+                <div className="speedMenuList" role="listbox" aria-label="Conversation playback speed">
+                  {CONVERSATION_PLAYBACK_SPEEDS.map((speed) => (
+                    <button
+                      className={playbackSpeed === speed ? 'active' : ''}
+                      key={speed}
+                      role="option"
+                      aria-selected={playbackSpeed === speed}
+                      onClick={() => updatePlaybackSpeed(speed)}
+                      type="button"
+                    >
+                      {speed}x
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <button className="nextConversationButton" onClick={showNextConversation} type="button" disabled={!canGoNext}>
+            Next
+            <ChevronRight size={17} />
+          </button>
+        </div>
+      ) : null}
       {!progress.listeningUnlocked ? (
         <LockedPanel
           title="Listening unlocks at 50% vocabulary mastery"
@@ -799,9 +1018,10 @@ function ConversationsPage({
         <ConversationPractice
           key={current.id}
           conversation={current}
-          stats={stats}
-          setStats={setStats}
-          onNext={() => setIndex((currentIndex) => currentIndex + 1)}
+          isCompleted={completedIds.has(current.id)}
+          playbackSpeed={playbackSpeed}
+          onComplete={completeConversation}
+          onNext={showNextConversation}
         />
       )}
     </section>
@@ -946,7 +1166,7 @@ export function ConsumerApp() {
   const [settings, setSettings] = useState<LearnerSettings>(() => loadSettings(levelSummaries[0]?.set ?? 1));
   const [mikanTheme, setMikanTheme] = useState<MikanTheme>(deviceMikanTheme);
   const [vocabStats, setVocabStats] = useState<StatsMap>(loadVocabStats);
-  const [questionStats, setQuestionStats] = useState<StatsMap>(loadQuestionStats);
+  const [conversationProgress, setConversationProgress] = useState<ConversationProgress>(loadConversationProgress);
   const [library, setLibrary] = useState<StaticLibraryManifest>({ version: 1, generatedAt: '', conversations: [] });
   const [libraryError, setLibraryError] = useState<string | null>(null);
 
@@ -979,7 +1199,7 @@ export function ConsumerApp() {
       .catch((error) => setLibraryError(error instanceof Error ? error.message : String(error)));
   }, []);
 
-  const levelProgress = useMemo(() => buildLevelProgress(vocabStats, questionStats, library), [vocabStats, questionStats, library]);
+  const levelProgress = useMemo(() => buildLevelProgress(vocabStats, conversationProgress, library), [vocabStats, conversationProgress, library]);
   const currentProgress = levelProgress.find((progress) => progress.level === settings.level) ?? levelProgress[0];
   const settingsHref = area === 'settings' ? routeForArea(lastPracticeArea) : '#/practice/settings';
 
@@ -1039,7 +1259,13 @@ export function ConsumerApp() {
           <VocabPage level={settings.level} showKana={settings.showKana} stats={vocabStats} setStats={setVocabStats} progress={currentProgress} />
         ) : null}
         {area === 'conversations' ? (
-          <ConversationsPage level={settings.level} library={library} stats={questionStats} setStats={setQuestionStats} progress={currentProgress} />
+          <ConversationsPage
+            level={settings.level}
+            library={library}
+            conversationProgress={conversationProgress}
+            setConversationProgress={setConversationProgress}
+            progress={currentProgress}
+          />
         ) : null}
         {area === 'settings' ? (
           <SettingsPage settings={settings} setSettings={setSettings} library={library} levelProgress={levelProgress} />
