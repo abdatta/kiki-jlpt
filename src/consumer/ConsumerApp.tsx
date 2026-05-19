@@ -6,10 +6,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  Gauge,
   Headphones,
   Languages,
   Library,
+  ListOrdered,
   Lock,
   Pause,
   Play,
@@ -225,6 +225,11 @@ function analyzeVocabStats(cards: VocabPracticeCard[], stats: StatsMap): VocabSt
 
 function percent(value: number): number {
   return Math.round(value * 100);
+}
+
+function targetProgressPercent(value: number, target: number): number {
+  if (target <= 0) return 100;
+  return Math.min(100, (value / target) * 100);
 }
 
 function routeForArea(area: PracticeArea): string {
@@ -532,6 +537,97 @@ function VocabStatsModal({
   );
 }
 
+function ProgressMeter({
+  label,
+  value,
+  target,
+  complete
+}: {
+  label: string;
+  value: string;
+  target: string;
+  complete: boolean;
+}) {
+  return (
+    <div className={complete ? 'unlockMeter done' : 'unlockMeter'}>
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+      <i><b style={{ width: target }} /></i>
+    </div>
+  );
+}
+
+function LevelUnlockModal({
+  level,
+  nextLevel,
+  progress,
+  reason,
+  onClose
+}: {
+  level: number;
+  nextLevel: number | null;
+  progress: LevelProgress;
+  reason: 'listening' | 'vocab';
+  onClose: () => void;
+}) {
+  const listeningComplete = progress.listeningAttemptCount >= LEVEL_LISTENING_TARGET;
+  const vocabComplete = progress.vocabMasteryRatio >= LEVEL_MASTERY_RATIO;
+  const listeningRemaining = Math.max(0, LEVEL_LISTENING_TARGET - progress.listeningAttemptCount);
+  const strongVocabTarget = Math.ceil(progress.vocabTotal * LEVEL_MASTERY_RATIO);
+  const strongVocabRemaining = Math.max(0, strongVocabTarget - progress.strongVocabCount);
+  const hasVocabGate = LEVEL_MASTERY_RATIO > 0;
+  const title = reason === 'listening'
+    ? `${listeningRemaining} more listening ${listeningRemaining === 1 ? 'exercise' : 'exercises'} to go`
+    : strongVocabRemaining > 0
+      ? `${strongVocabRemaining} more strong ${strongVocabRemaining === 1 ? 'word' : 'words'} needed`
+      : 'Vocabulary requirement met';
+  const vocabRequirementText = hasVocabGate
+    ? `make ${LEVEL_MASTERY_PERCENT}% of this level's vocabulary strong`
+    : 'meet this build\'s vocabulary requirement';
+
+  return (
+    <div className="statsModal" role="dialog" aria-modal="true" aria-labelledby="level-unlock-title">
+      <button className="statsModalBackdrop" aria-label="Close level progress" onClick={onClose} type="button" />
+      <section className="statsModalPanel levelUnlockPanel">
+        <header className="statsModalHeader">
+          <div>
+            <p>Level {level} progress</p>
+            <h2 id="level-unlock-title">{title}</h2>
+          </div>
+          <button className="modalCloseButton" aria-label="Close level progress" onClick={onClose} type="button">
+            <X size={18} />
+          </button>
+        </header>
+
+        <p className="unlockModalIntro">
+          {nextLevel ? `Level ${nextLevel} opens when both requirements are complete.` : 'This is the final published level for now.'}
+        </p>
+
+        <div className="unlockMeterGrid">
+          <ProgressMeter
+            label="Listening"
+            value={`${Math.min(progress.listeningAttemptCount, LEVEL_LISTENING_TARGET)} / ${LEVEL_LISTENING_TARGET}`}
+            target={`${targetProgressPercent(progress.listeningAttemptCount, LEVEL_LISTENING_TARGET)}%`}
+            complete={listeningComplete}
+          />
+          <ProgressMeter
+            label="Vocabulary"
+            value={hasVocabGate ? `${percent(progress.vocabMasteryRatio)}% / ${LEVEL_MASTERY_PERCENT}%` : 'No gate'}
+            target={`${targetProgressPercent(progress.vocabMasteryRatio, LEVEL_MASTERY_RATIO)}%`}
+            complete={vocabComplete}
+          />
+        </div>
+
+        <p className="unlockModalRule">
+          Finish 20 listening conversations and {vocabRequirementText} to unlock the next level.
+        </p>
+      </section>
+    </div>
+  );
+}
+
 function VocabPage({
   level,
   showKana,
@@ -693,7 +789,7 @@ function ConversationPractice({
     setVisibleTranslations({});
     setQuestionStates({});
     completionNotifiedRef.current = false;
-  }, [conversation.id, conversation.audioUrl, isCompleted]);
+  }, [conversation.id, conversation.audioUrl]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -878,17 +974,22 @@ function ConversationsPage({
   library,
   conversationProgress,
   setConversationProgress,
-  progress
+  progress,
+  nextProgress,
+  onOpenNextLevel
 }: {
   level: number;
   library: StaticLibraryManifest;
   conversationProgress: ConversationProgress;
   setConversationProgress: Dispatch<SetStateAction<ConversationProgress>>;
   progress: LevelProgress;
+  nextProgress: LevelProgress | null;
+  onOpenNextLevel: (level: number) => void;
 }) {
   const conversations = useMemo(() => library.conversations.filter((conversation) => conversation.level === level), [library, level]);
   const [playbackSpeed, setPlaybackSpeed] = useState(() => normalizePlaybackSpeed(loadConversationPlaybackSpeed()));
   const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false);
+  const [unlockModalReason, setUnlockModalReason] = useState<'listening' | 'vocab' | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const speedMenuRef = useRef<HTMLDivElement | null>(null);
   const completedIds = useMemo(() => new Set(conversationProgress.completedConversationIds), [conversationProgress.completedConversationIds]);
@@ -925,8 +1026,17 @@ function ConversationsPage({
   }, [isSpeedMenuOpen]);
 
   const current = conversations.find((conversation) => conversation.id === selectedConversationId) ?? conversations.find((conversation) => !completedIds.has(conversation.id)) ?? conversations[0];
+  const currentConversationIndex = current ? conversations.findIndex((conversation) => conversation.id === current.id) + 1 : 0;
   const completedConversationIdsForLevel = conversationProgress.completedConversationIds.filter((id) => conversations.some((conversation) => conversation.id === id));
   const currentCompletedIndex = current ? completedConversationIdsForLevel.indexOf(current.id) : -1;
+  const listeningComplete = progress.listeningAttemptCount >= LEVEL_LISTENING_TARGET;
+  const nextLevelNumber = nextProgress?.level ?? null;
+  const levelProgressLabel = progress.complete && nextLevelNumber
+    ? `Level ${nextLevelNumber} unlocked!`
+    : listeningComplete
+      ? 'Vocabulary needed'
+      : `${Math.max(0, LEVEL_LISTENING_TARGET - progress.listeningAttemptCount)} more to unlock!`;
+  const listeningProgressWidth = `${targetProgressPercent(progress.listeningAttemptCount, LEVEL_LISTENING_TARGET)}%`;
   const previousConversationId = currentCompletedIndex > 0
     ? completedConversationIdsForLevel[currentCompletedIndex - 1]
     : completedConversationIdsForLevel[completedConversationIdsForLevel.length - 1];
@@ -961,6 +1071,15 @@ function ConversationsPage({
     setSelectedConversationId(nextUncompleted?.id ?? null);
   }
 
+  function handleLevelProgressClick() {
+    if (progress.complete && nextLevelNumber) {
+      onOpenNextLevel(nextLevelNumber);
+      return;
+    }
+
+    setUnlockModalReason(listeningComplete ? 'vocab' : 'listening');
+  }
+
   return (
     <section className="practicePanel widePanel">
       <div className="panelHeader">
@@ -968,7 +1087,14 @@ function ConversationsPage({
           <p>Level {level}</p>
           <h2>{progress.theme}</h2>
         </div>
-        <span className="libraryCount">{conversations.length} ready</span>
+        <button
+          className={progress.complete ? 'levelProgressBadge complete' : 'levelProgressBadge'}
+          onClick={handleLevelProgressClick}
+          style={{ '--progress': listeningProgressWidth } as CSSProperties}
+          type="button"
+        >
+          <span>{levelProgressLabel}</span>
+        </button>
       </div>
       {progress.listeningUnlocked && conversations.length > 0 ? (
         <div className="conversationToolbar">
@@ -978,13 +1104,14 @@ function ConversationsPage({
           </button>
           <div className="speedControl" aria-label="Conversation playback speed">
             <label className="speedControlLabel" htmlFor="conversation-speed">
-              <Gauge size={17} />
-              <span>Speed</span>
+              <ListOrdered size={17} />
+              <span>{currentConversationIndex} / {conversations.length}</span>
             </label>
             <div className="speedMenu" ref={speedMenuRef}>
               <button
                 id="conversation-speed"
                 className="speedMenuButton"
+                aria-label={`Playback speed ${playbackSpeed}x`}
                 type="button"
                 aria-haspopup="listbox"
                 aria-expanded={isSpeedMenuOpen}
@@ -1033,6 +1160,15 @@ function ConversationsPage({
           onNext={showNextConversation}
         />
       )}
+      {unlockModalReason ? (
+        <LevelUnlockModal
+          level={level}
+          nextLevel={nextLevelNumber}
+          progress={progress}
+          reason={unlockModalReason}
+          onClose={() => setUnlockModalReason(null)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -1210,6 +1346,7 @@ export function ConsumerApp() {
 
   const levelProgress = useMemo(() => buildLevelProgress(vocabStats, conversationProgress, library), [vocabStats, conversationProgress, library]);
   const currentProgress = levelProgress.find((progress) => progress.level === settings.level) ?? levelProgress[0];
+  const nextProgress = levelProgress.find((progress) => progress.level === settings.level + 1) ?? null;
   const settingsHref = area === 'settings' ? routeForArea(lastPracticeArea) : '#/practice/settings';
 
   useEffect(() => {
@@ -1220,6 +1357,13 @@ export function ConsumerApp() {
     setSettings(nextSettings);
     saveSettings(nextSettings);
   }, [currentProgress, levelProgress, settings]);
+
+  function openLevelVocab(level: number) {
+    const nextSettings = { ...settings, level };
+    setSettings(nextSettings);
+    saveSettings(nextSettings);
+    window.location.hash = routeForArea('vocab');
+  }
 
   return (
     <main className="practiceShell" data-theme={mikanTheme}>
@@ -1274,6 +1418,8 @@ export function ConsumerApp() {
             conversationProgress={conversationProgress}
             setConversationProgress={setConversationProgress}
             progress={currentProgress}
+            nextProgress={nextProgress}
+            onOpenNextLevel={openLevelVocab}
           />
         ) : null}
         {area === 'settings' ? (

@@ -551,6 +551,7 @@
 
 .speedControl {
   min-height: 44px;
+  flex: 1.1 1 160px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -563,22 +564,35 @@
 }
 
 .speedControlLabel {
+  flex: 1 1 auto;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 7px;
-  font-size: 12px;
+  color: var(--accent-text);
+  font-size: 16px;
   font-weight: 900;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
 }
 
 .speedControlLabel svg {
   color: var(--accent);
+  flex: 0 0 auto;
+}
+
+.speedControlLabel span {
+  color: var(--accent-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .speedMenu {
   position: relative;
-  flex: 0 0 auto;
+  flex: 0 0 76px;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .speedMenuButton {
@@ -1297,12 +1311,121 @@
   margin-top: 12px;
 }
 
-.libraryCount {
+.levelProgressBadge {
+  --progress: 0%;
+  position: relative;
+  overflow: hidden;
+  min-height: 40px;
+  width: min(178px, 42vw);
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 8px 12px;
-  color: var(--muted-strong);
+  background: var(--surface-soft);
+  color: var(--accent-text);
+  padding: 0 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-size: 13px;
   font-weight: 900;
+}
+
+.levelProgressBadge::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--progress);
+  background: var(--accent-soft);
+  transition: width 220ms ease;
+}
+
+.levelProgressBadge span {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.levelProgressBadge.complete {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.levelProgressBadge.complete::before {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.levelUnlockPanel {
+  width: min(460px, 100%);
+}
+
+.unlockModalIntro,
+.unlockModalRule {
+  margin: 12px 0 0;
+  color: var(--muted-strong);
+  font-size: 14px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.unlockMeterGrid {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.unlockMeter {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 12px;
+}
+
+.unlockMeter.done {
+  border-color: var(--success-border);
+  background: var(--success-bg);
+}
+
+.unlockMeter div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.unlockMeter span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.unlockMeter strong {
+  color: var(--text-strong);
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.unlockMeter i {
+  display: block;
+  height: 8px;
+  margin-top: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.unlockMeter b {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
+.unlockMeter.done b {
+  background: var(--success-text);
 }
 
 .settingsBlock {
