@@ -46,6 +46,9 @@ export function loadConversationProgress(): ConversationProgress {
   return {
     completedConversationIds: Array.isArray(stored.completedConversationIds)
       ? stored.completedConversationIds.filter((id): id is string => typeof id === 'string')
+      : [],
+    starredConversationIds: Array.isArray(stored.starredConversationIds)
+      ? stored.starredConversationIds.filter((id): id is string => typeof id === 'string')
       : []
   };
 }

@@ -17,6 +17,7 @@ import {
   Settings,
   SkipBack,
   SkipForward,
+  Star,
   Trophy,
   X
 } from 'lucide-react';
@@ -763,20 +764,28 @@ function QuestionCard({
 function ConversationPractice({
   conversation,
   isCompleted,
+  isStarred,
   playbackSpeed,
+  onPlaybackSpeedChange,
   onComplete,
+  onToggleStar,
   onNext
 }: {
   conversation: StaticLibraryConversation;
   isCompleted: boolean;
+  isStarred: boolean;
   playbackSpeed: number;
+  onPlaybackSpeedChange: (speed: number) => void;
   onComplete: (conversationId: string) => void;
+  onToggleStar: (conversationId: string) => void;
   onNext: () => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speedMenuRef = useRef<HTMLDivElement | null>(null);
   const [played, setPlayed] = useState(false);
   const [hasCompletedInitialPlay, setHasCompletedInitialPlay] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false);
   const [visibleTranslations, setVisibleTranslations] = useState<Record<number, boolean>>({});
   const [questionStates, setQuestionStates] = useState<Record<number, QuestionState>>({});
   const completionNotifiedRef = useRef(false);
@@ -796,6 +805,29 @@ function ConversationPractice({
       audioRef.current.playbackRate = playbackSpeed;
     }
   }, [conversation.id, playbackSpeed]);
+
+  useEffect(() => {
+    if (!isSpeedMenuOpen) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!speedMenuRef.current?.contains(event.target as Node)) {
+        setIsSpeedMenuOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setIsSpeedMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSpeedMenuOpen]);
 
   function skipAudio(seconds: number) {
     const audio = audioRef.current;
@@ -865,6 +897,7 @@ function ConversationPractice({
     && conversation.listeningQuestions.every((_, index) => questionStates[index]?.result);
   const shouldShowTranscript = isCompleted || allAttempted;
   const hasAnsweredAny = Object.values(questionStates).some((state) => Boolean(state.result));
+  const canStar = isStarred || isCompleted || hasCompletedInitialPlay;
 
   useEffect(() => {
     if (allAttempted && !completionNotifiedRef.current) {
@@ -876,19 +909,59 @@ function ConversationPractice({
   return (
     <div className="conversationPractice">
       <article className="listenCard">
-        <div>
-          <h2>{conversation.title}</h2>
-          <span>{conversation.scene}</span>
-        </div>
+        <h2>{conversation.title}</h2>
+        <span>{conversation.scene}</span>
         <div className="listenControls" aria-label="Conversation audio controls">
-          <button className="seekButton" onClick={() => skipAudio(-5)} type="button" aria-label="Back 5 seconds" disabled={!hasCompletedInitialPlay}>
+          <div className="playerSpeedMenu" ref={speedMenuRef}>
+            <button
+              className="playerControlButton speedButton"
+              aria-label={`Playback speed ${playbackSpeed}x`}
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={isSpeedMenuOpen}
+              onClick={() => setIsSpeedMenuOpen((open) => !open)}
+            >
+              {playbackSpeed}x
+            </button>
+            {isSpeedMenuOpen ? (
+              <div className="playerSpeedMenuList" role="listbox" aria-label="Conversation playback speed">
+                {CONVERSATION_PLAYBACK_SPEEDS.map((speed) => (
+                  <button
+                    className={playbackSpeed === speed ? 'active' : ''}
+                    key={speed}
+                    role="option"
+                    aria-selected={playbackSpeed === speed}
+                    onClick={() => {
+                      onPlaybackSpeedChange(speed);
+                      setIsSpeedMenuOpen(false);
+                    }}
+                    type="button"
+                  >
+                    {speed}x
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <button className="playerControlButton" onClick={() => skipAudio(-5)} type="button" aria-label="Back 5 seconds" disabled={!hasCompletedInitialPlay}>
             <SkipBack size={19} fill="currentColor" />
           </button>
           <button className="roundPlayButton" onClick={toggleAudioPlayback} type="button" aria-label={isPlaying ? 'Pause conversation' : 'Play conversation'}>
             {isPlaying ? <Pause size={30} fill="currentColor" /> : <Play size={30} fill="currentColor" />}
           </button>
-          <button className="seekButton" onClick={() => skipAudio(5)} type="button" aria-label="Forward 5 seconds" disabled={!hasCompletedInitialPlay}>
+          <button className="playerControlButton" onClick={() => skipAudio(5)} type="button" aria-label="Forward 5 seconds" disabled={!hasCompletedInitialPlay}>
             <SkipForward size={19} fill="currentColor" />
+          </button>
+          <button
+            className={isStarred ? 'conversationStarButton active' : 'conversationStarButton'}
+            onClick={() => onToggleStar(conversation.id)}
+            type="button"
+            aria-label={isStarred ? 'Unstar conversation' : 'Star conversation'}
+            aria-pressed={isStarred}
+            disabled={!canStar}
+            title={canStar ? (isStarred ? 'Unstar conversation' : 'Star conversation') : 'Finish listening to star'}
+          >
+            <Star size={19} fill={isStarred ? 'currentColor' : 'none'} />
           </button>
         </div>
         {conversation.audioUrl ? (
@@ -986,13 +1059,15 @@ function ConversationsPage({
   nextProgress: LevelProgress | null;
   onOpenNextLevel: (level: number) => void;
 }) {
-  const conversations = useMemo(() => library.conversations.filter((conversation) => conversation.level === level), [library, level]);
   const [playbackSpeed, setPlaybackSpeed] = useState(() => normalizePlaybackSpeed(loadConversationPlaybackSpeed()));
-  const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false);
+  const [isStarredModalOpen, setIsStarredModalOpen] = useState(false);
   const [unlockModalReason, setUnlockModalReason] = useState<'listening' | 'vocab' | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
-  const speedMenuRef = useRef<HTMLDivElement | null>(null);
+  const allConversations = useMemo(() => library.conversations.filter((conversation) => conversation.level === level), [library, level]);
   const completedIds = useMemo(() => new Set(conversationProgress.completedConversationIds), [conversationProgress.completedConversationIds]);
+  const starredIds = useMemo(() => new Set(conversationProgress.starredConversationIds), [conversationProgress.starredConversationIds]);
+  const starredConversations = useMemo(() => allConversations.filter((conversation) => starredIds.has(conversation.id)), [allConversations, starredIds]);
+  const conversations = allConversations;
   const emptyBody = PRACTICE_ONLY
     ? 'Published conversations will appear after the curated library is exported.'
     : 'Run the library export after approving conversations and generating audio in Kiki JLPT Studio.';
@@ -1000,34 +1075,11 @@ function ConversationsPage({
   useEffect(() => {
     const firstUncompleted = conversations.find((conversation) => !completedIds.has(conversation.id)) ?? conversations[0] ?? null;
     setSelectedConversationId(firstUncompleted?.id ?? null);
-  }, [level, library.generatedAt, conversations]);
-
-  useEffect(() => {
-    if (!isSpeedMenuOpen) return;
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!speedMenuRef.current?.contains(event.target as Node)) {
-        setIsSpeedMenuOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setIsSpeedMenuOpen(false);
-      }
-    }
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isSpeedMenuOpen]);
+  }, [level, library.generatedAt, conversations, completedIds]);
 
   const current = conversations.find((conversation) => conversation.id === selectedConversationId) ?? conversations.find((conversation) => !completedIds.has(conversation.id)) ?? conversations[0];
   const currentConversationIndex = current ? conversations.findIndex((conversation) => conversation.id === current.id) + 1 : 0;
-  const completedConversationIdsForLevel = conversationProgress.completedConversationIds.filter((id) => conversations.some((conversation) => conversation.id === id));
+  const completedConversationIdsForLevel = conversationProgress.completedConversationIds.filter((id) => allConversations.some((conversation) => conversation.id === id));
   const currentCompletedIndex = current ? completedConversationIdsForLevel.indexOf(current.id) : -1;
   const listeningComplete = progress.listeningAttemptCount >= LEVEL_LISTENING_TARGET;
   const nextLevelNumber = nextProgress?.level ?? null;
@@ -1046,14 +1098,32 @@ function ConversationsPage({
   function updatePlaybackSpeed(speed: number) {
     setPlaybackSpeed(speed);
     saveConversationPlaybackSpeed(speed);
-    setIsSpeedMenuOpen(false);
   }
 
   function completeConversation(conversationId: string) {
     setConversationProgress((currentProgress) => {
       const withoutCurrent = currentProgress.completedConversationIds.filter((id) => id !== conversationId);
       const nextProgress = {
+        ...currentProgress,
         completedConversationIds: [...withoutCurrent, conversationId]
+      };
+      saveConversationProgress(nextProgress);
+      return nextProgress;
+    });
+  }
+
+  function toggleStarConversation(conversationId: string) {
+    setConversationProgress((currentProgress) => {
+      const starred = new Set(currentProgress.starredConversationIds);
+      if (starred.has(conversationId)) {
+        starred.delete(conversationId);
+      } else {
+        starred.add(conversationId);
+      }
+
+      const nextProgress = {
+        ...currentProgress,
+        starredConversationIds: Array.from(starred)
       };
       saveConversationProgress(nextProgress);
       return nextProgress;
@@ -1080,6 +1150,11 @@ function ConversationsPage({
     setUnlockModalReason(listeningComplete ? 'vocab' : 'listening');
   }
 
+  function openStarredConversation(conversationId: string) {
+    setSelectedConversationId(conversationId);
+    setIsStarredModalOpen(false);
+  }
+
   return (
     <section className="practicePanel widePanel">
       <div className="panelHeader">
@@ -1102,40 +1177,23 @@ function ConversationsPage({
             <ChevronLeft size={17} />
             Prev
           </button>
-          <div className="speedControl" aria-label="Conversation playback speed">
-            <label className="speedControlLabel" htmlFor="conversation-speed">
-              <ListOrdered size={17} />
-              <span>{currentConversationIndex} / {conversations.length}</span>
-            </label>
-            <div className="speedMenu" ref={speedMenuRef}>
-              <button
-                id="conversation-speed"
-                className="speedMenuButton"
-                aria-label={`Playback speed ${playbackSpeed}x`}
-                type="button"
-                aria-haspopup="listbox"
-                aria-expanded={isSpeedMenuOpen}
-                onClick={() => setIsSpeedMenuOpen((open) => !open)}
-              >
-                {playbackSpeed}x
-              </button>
-              {isSpeedMenuOpen ? (
-                <div className="speedMenuList" role="listbox" aria-label="Conversation playback speed">
-                  {CONVERSATION_PLAYBACK_SPEEDS.map((speed) => (
-                    <button
-                      className={playbackSpeed === speed ? 'active' : ''}
-                      key={speed}
-                      role="option"
-                      aria-selected={playbackSpeed === speed}
-                      onClick={() => updatePlaybackSpeed(speed)}
-                      type="button"
-                    >
-                      {speed}x
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+          <div
+            className="starredPickerButton"
+            aria-label={`Conversation ${currentConversationIndex} of ${conversations.length}`}
+          >
+            <span className="conversationPlaylistStatus">
+              <ListOrdered size={18} />
+              <span className="conversationPositionText">{currentConversationIndex} / {conversations.length}</span>
+            </span>
+            <button
+              className="conversationStarredStatus"
+              onClick={() => setIsStarredModalOpen(true)}
+              type="button"
+              aria-label={`Open starred conversations (${starredConversations.length})`}
+            >
+              <Star size={18} fill={starredConversations.length > 0 ? 'currentColor' : 'none'} />
+              <span>{starredConversations.length}</span>
+            </button>
           </div>
           <button className="nextConversationButton" onClick={showNextConversation} type="button" disabled={!canGoNext}>
             Next
@@ -1148,18 +1206,29 @@ function ConversationsPage({
           title={`Listening unlocks at ${LISTENING_UNLOCK_PERCENT}% vocabulary mastery`}
           body={`You have ${progress.strongVocabCount} of ${Math.ceil(progress.vocabTotal * LISTENING_UNLOCK_RATIO)} required strong words (${percent(progress.vocabMasteryRatio)}%). Keep practicing Level ${level} vocabulary to unlock conversations.`}
         />
-      ) : conversations.length === 0 ? (
+      ) : allConversations.length === 0 ? (
         <EmptyState title="No published conversations yet" body={emptyBody} />
       ) : (
         <ConversationPractice
           key={current.id}
           conversation={current}
           isCompleted={completedIds.has(current.id)}
+          isStarred={starredIds.has(current.id)}
           playbackSpeed={playbackSpeed}
+          onPlaybackSpeedChange={updatePlaybackSpeed}
           onComplete={completeConversation}
+          onToggleStar={toggleStarConversation}
           onNext={showNextConversation}
         />
       )}
+      {isStarredModalOpen ? (
+        <StarredConversationModal
+          conversations={starredConversations}
+          selectedConversationId={current?.id ?? null}
+          onSelect={openStarredConversation}
+          onClose={() => setIsStarredModalOpen(false)}
+        />
+      ) : null}
       {unlockModalReason ? (
         <LevelUnlockModal
           level={level}
@@ -1170,6 +1239,57 @@ function ConversationsPage({
         />
       ) : null}
     </section>
+  );
+}
+
+function StarredConversationModal({
+  conversations,
+  selectedConversationId,
+  onSelect,
+  onClose
+}: {
+  conversations: StaticLibraryConversation[];
+  selectedConversationId: string | null;
+  onSelect: (conversationId: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="statsModal" role="dialog" aria-modal="true" aria-labelledby="starred-conversations-title">
+      <button className="statsModalBackdrop" aria-label="Close starred conversations" onClick={onClose} type="button" />
+      <section className="statsModalPanel starredConversationPanel">
+        <header className="statsModalHeader">
+          <div>
+            <h2 id="starred-conversations-title">Starred conversations</h2>
+          </div>
+          <button className="modalCloseButton" aria-label="Close starred conversations" onClick={onClose} type="button">
+            <X size={18} />
+          </button>
+        </header>
+        {conversations.length === 0 ? (
+          <p className="emptyStatText starredEmptyText">Star conversations after listening to revisit them here.</p>
+        ) : (
+          <div className="starredConversationList">
+            {conversations.map((conversation, index) => {
+              const isSelected = conversation.id === selectedConversationId;
+              return (
+                <button
+                  className={isSelected ? 'starredConversationItem active' : 'starredConversationItem'}
+                  key={conversation.id}
+                  onClick={() => onSelect(conversation.id)}
+                  type="button"
+                >
+                  <span>
+                    <strong>{index + 1}. {conversation.title}</strong>
+                    <em>{conversation.scene}</em>
+                  </span>
+                  {isSelected ? <Check size={18} /> : <ChevronRight size={18} />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 
