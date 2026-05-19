@@ -57,6 +57,7 @@ export interface LearnerSettings {
 
 export interface ConversationProgress {
   completedConversationIds: string[];
+  starredConversationIds: string[];
 }
 
 export interface StaticLibraryConversation {
