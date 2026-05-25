@@ -531,9 +531,9 @@
   flex: 0 0 auto;
   width: 42px;
   min-height: 42px;
-  border: 1px solid var(--danger-border);
-  background: var(--danger-bg);
-  color: var(--danger-text);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: var(--surface);
+  color: var(--accent-text);
 }
 
 .iconTextButton {
