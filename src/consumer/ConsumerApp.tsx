@@ -14,7 +14,6 @@ import {
   Pause,
   Play,
   RotateCcw,
-  Settings,
   SkipBack,
   SkipForward,
   Star,
@@ -61,7 +60,7 @@ function envRatio(value: unknown, fallback: number): number {
 
 const LISTENING_UNLOCK_RATIO = envRatio(import.meta.env.VITE_LISTENING_UNLOCK_RATIO, 0.5);
 const LISTENING_UNLOCK_PERCENT = percent(LISTENING_UNLOCK_RATIO);
-const LEVEL_MASTERY_RATIO = envRatio(import.meta.env.VITE_LEVEL_MASTERY_RATIO, 0.8);
+const LEVEL_MASTERY_RATIO = envRatio(import.meta.env.VITE_LEVEL_MASTERY_RATIO, 0.9);
 const LEVEL_MASTERY_PERCENT = percent(LEVEL_MASTERY_RATIO);
 
 function normalizePlaybackSpeed(speed: number): number {
@@ -239,6 +238,23 @@ function routeForArea(area: PracticeArea): string {
   return '#/practice';
 }
 
+function levelKanji(level: number): string {
+  const numerals = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  if (!Number.isInteger(level) || level < 0) return String(level);
+  if (level < 10) return numerals[level];
+  if (level === 10) return '十';
+  if (level < 20) return `十${numerals[level % 10]}`;
+  if (level < 100) {
+    const ones = level % 10;
+    return `${numerals[Math.floor(level / 10)]}十${ones === 0 ? '' : numerals[ones]}`;
+  }
+  return String(level);
+}
+
+function levelLabel(level: number): string {
+  return `${levelKanji(level)} Level ${level}`;
+}
+
 function buildLevelProgress(vocabStats: StatsMap, conversationProgress: ConversationProgress, library: StaticLibraryManifest): LevelProgress[] {
   let previousLevelsComplete = true;
   const completedConversationIds = new Set(conversationProgress.completedConversationIds);
@@ -301,7 +317,7 @@ function VocabFlashcard({
     <article className={`practiceCard vocabCard ${revealed ? 'revealed' : ''} ${result ?? ''}`}>
       <div className="cardMeta">
         <span>{strengthLabel(card.id, stats)}</span>
-        <span>{card.category || card.partOfSpeech || `Level ${card.level}`}</span>
+        <span>{card.category || card.partOfSpeech || levelLabel(card.level)}</span>
       </div>
 
       <div className="vocabPrompt">
@@ -479,7 +495,7 @@ function VocabStatsModal({
       <section className="statsModalPanel">
         <header className="statsModalHeader">
           <div>
-            <p>Level {level}</p>
+            <p>{levelLabel(level)}</p>
             <h2 id="word-stats-title">{theme}</h2>
           </div>
           <button className="modalCloseButton" aria-label="Close word stats" onClick={onClose} type="button">
@@ -594,7 +610,7 @@ function LevelUnlockModal({
       <section className="statsModalPanel levelUnlockPanel">
         <header className="statsModalHeader">
           <div>
-            <p>Level {level} progress</p>
+            <p>{levelLabel(level)} progress</p>
             <h2 id="level-unlock-title">{title}</h2>
           </div>
           <button className="modalCloseButton" aria-label="Close level progress" onClick={onClose} type="button">
@@ -603,7 +619,7 @@ function LevelUnlockModal({
         </header>
 
         <p className="unlockModalIntro">
-          {nextLevel ? `Level ${nextLevel} opens when both requirements are complete.` : 'This is the final published level for now.'}
+          {nextLevel ? `${levelLabel(nextLevel)} opens when both requirements are complete.` : 'This is the final published level for now.'}
         </p>
 
         <div className="unlockMeterGrid">
@@ -675,7 +691,7 @@ function VocabPage({
     <section className="practicePanel vocabPanel">
       <div className="panelHeader">
         <div>
-          <p>Level {level}</p>
+          <p>{levelLabel(level)}</p>
           <h2>{progress.theme}</h2>
         </div>
         <button
@@ -1086,7 +1102,7 @@ function ConversationsPage({
   const listeningComplete = progress.listeningAttemptCount >= LEVEL_LISTENING_TARGET;
   const nextLevelNumber = nextProgress?.level ?? null;
   const levelProgressLabel = progress.complete && nextLevelNumber
-    ? `Level ${nextLevelNumber} unlocked!`
+    ? 'Next level unlocked!'
     : listeningComplete
       ? 'Vocabulary needed'
       : `${Math.max(0, LEVEL_LISTENING_TARGET - progress.listeningAttemptCount)} more to unlock!`;
@@ -1160,7 +1176,7 @@ function ConversationsPage({
     <section className="practicePanel widePanel">
       <div className="panelHeader">
         <div>
-          <p>Level {level}</p>
+          <p>{levelLabel(level)}</p>
           <h2>{progress.theme}</h2>
         </div>
         <button
@@ -1205,7 +1221,7 @@ function ConversationsPage({
       {!progress.listeningUnlocked ? (
         <LockedPanel
           title={`Listening unlocks at ${LISTENING_UNLOCK_PERCENT}% vocabulary mastery`}
-          body={`You have ${progress.strongVocabCount} of ${Math.ceil(progress.vocabTotal * LISTENING_UNLOCK_RATIO)} required strong words (${percent(progress.vocabMasteryRatio)}%). Keep practicing Level ${level} vocabulary to unlock conversations.`}
+          body={`You have ${progress.strongVocabCount} of ${Math.ceil(progress.vocabTotal * LISTENING_UNLOCK_RATIO)} required strong words (${percent(progress.vocabMasteryRatio)}%). Keep practicing ${levelLabel(level)} vocabulary to unlock conversations.`}
         />
       ) : allConversations.length === 0 ? (
         <EmptyState title="No published conversations yet" body={emptyBody} />
@@ -1299,16 +1315,23 @@ function SettingsPage({
   settings,
   setSettings,
   library,
-  levelProgress
+  levelProgress,
+  closeHref
 }: {
   settings: LearnerSettings;
   setSettings: (settings: LearnerSettings) => void;
   library: StaticLibraryManifest;
   levelProgress: LevelProgress[];
+  closeHref: string;
 }) {
   function update(nextSettings: LearnerSettings) {
     setSettings(nextSettings);
     saveSettings(nextSettings);
+  }
+
+  function chooseLevel(level: number) {
+    update({ ...settings, level });
+    window.location.hash = closeHref;
   }
 
   const selectedProgress = levelProgress.find((progress) => progress.level === settings.level) ?? levelProgress[0];
@@ -1320,6 +1343,9 @@ function SettingsPage({
           <p>Settings</p>
           <h2>Practice setup</h2>
         </div>
+        <a className="settingsCloseButton" href={closeHref} aria-label="Close settings" title="Close settings">
+          <X size={20} />
+        </a>
       </div>
 
       <section className="settingsBlock">
@@ -1342,11 +1368,11 @@ function SettingsPage({
                 className={`levelButton ${isSelected ? 'active' : ''} ${progress.unlocked ? '' : 'locked'}`}
                 disabled={!progress.unlocked}
                 key={progress.level}
-                onClick={() => update({ ...settings, level: progress.level })}
+                onClick={() => chooseLevel(progress.level)}
                 type="button"
               >
                 <span className="levelButtonTop">
-                  <strong>Level {progress.level}</strong>
+                  <strong>{levelLabel(progress.level)}</strong>
                   {progress.unlocked ? progress.complete ? <Check size={17} /> : null : <Lock size={16} />}
                 </span>
                 <span className="levelTheme">{progress.theme}</span>
@@ -1469,16 +1495,19 @@ export function ConsumerApp() {
   const levelProgress = useMemo(() => buildLevelProgress(vocabStats, conversationProgress, library), [vocabStats, conversationProgress, library]);
   const currentProgress = levelProgress.find((progress) => progress.level === settings.level) ?? levelProgress[0];
   const nextProgress = levelProgress.find((progress) => progress.level === settings.level + 1) ?? null;
-  const settingsHref = area === 'settings' ? routeForArea(lastPracticeArea) : '#/practice/settings';
+  const settingsHref = '#/practice/settings';
+  const settingsCloseHref = routeForArea(lastPracticeArea);
+  const libraryReady = library.generatedAt !== '' || library.conversations.length > 0;
 
   useEffect(() => {
+    if (!libraryReady) return;
     if (!currentProgress || currentProgress.unlocked) return;
     const fallback = levelProgress.find((progress) => progress.unlocked) ?? levelProgress[0];
     if (!fallback) return;
     const nextSettings = { ...settings, level: fallback.level };
     setSettings(nextSettings);
     saveSettings(nextSettings);
-  }, [currentProgress, levelProgress, settings]);
+  }, [currentProgress, levelProgress, settings, libraryReady]);
 
   function openLevelVocab(level: number) {
     const nextSettings = { ...settings, level };
@@ -1500,12 +1529,13 @@ export function ConsumerApp() {
             </div>
           </div>
           <a
-            aria-label={area === 'settings' ? 'Close settings' : 'Settings'}
-            className={`settingsIconLink ${area === 'settings' ? 'active closeSettings' : ''}`}
+            aria-label={`Change level. Current ${levelLabel(settings.level)}`}
+            className={`settingsIconLink levelNavLink ${area === 'settings' ? 'active' : ''}`}
             href={settingsHref}
-            title={area === 'settings' ? 'Close settings' : 'Settings'}
+            title={`Change level. Current ${levelLabel(settings.level)}`}
           >
-            {area === 'settings' ? <X size={20} /> : <Settings size={20} />}
+            <span className="levelNavKanji" aria-hidden="true">{levelKanji(settings.level)}</span>
+            <span>Level {settings.level}</span>
           </a>
         </div>
         <nav className="practiceNav">
@@ -1545,7 +1575,7 @@ export function ConsumerApp() {
           />
         ) : null}
         {area === 'settings' ? (
-          <SettingsPage settings={settings} setSettings={setSettings} library={library} levelProgress={levelProgress} />
+          <SettingsPage settings={settings} setSettings={setSettings} library={library} levelProgress={levelProgress} closeHref={settingsCloseHref} />
         ) : null}
       </section>
     </main>

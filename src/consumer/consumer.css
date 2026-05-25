@@ -395,6 +395,7 @@
 .practiceNav a,
 .studioLink,
 .settingsIconLink,
+.settingsCloseButton,
 .iconTextButton,
 .primaryPracticeButton,
 .missButton,
@@ -447,6 +448,20 @@
   background: var(--surface);
   color: var(--text);
   box-shadow: 0 10px 24px var(--shadow);
+}
+
+.settingsIconLink.levelNavLink {
+  width: auto;
+  min-width: 92px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.levelNavKanji {
+  color: inherit;
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1;
 }
 
 .settingsIconLink.active {
@@ -510,6 +525,15 @@
 .panelHeader h2 {
   font-size: 26px;
   line-height: 1.1;
+}
+
+.settingsCloseButton {
+  flex: 0 0 auto;
+  width: 42px;
+  min-height: 42px;
+  border: 1px solid var(--danger-border);
+  background: var(--danger-bg);
+  color: var(--danger-text);
 }
 
 .iconTextButton {
@@ -1453,13 +1477,13 @@
 }
 
 .levelProgressBadge.complete {
-  border-color: var(--success-border);
-  background: var(--success-bg);
-  color: var(--success-text);
+  border-color: var(--border-strong);
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 .levelProgressBadge.complete::before {
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in srgb, var(--surface) 26%, transparent);
 }
 
 .levelUnlockPanel {
