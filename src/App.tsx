@@ -480,9 +480,16 @@ function workflowNodeConversations(node?: WorkflowAuditNode): PracticeConversati
 }
 
 interface WorkflowDistributionStats {
-  missingCount: number;
-  atMostOnceCount: number;
-  atMostTwiceCount: number;
+  current: {
+    missingCount: number;
+    atMostOnceCount: number;
+    atMostTwiceCount: number;
+  };
+  cumulative: {
+    missingCount: number;
+    atMostOnceCount: number;
+    atMostTwiceCount: number;
+  };
 }
 
 function exactOccurrenceBuckets(conversations: PracticeConversation[]): { once: number; twice: number } {
@@ -513,19 +520,33 @@ function workflowDistributionStats(
     && typeof persisted.atMostOnceCount === 'number'
     && typeof persisted.atMostTwiceCount === 'number'
   ) {
-    return {
+    const cumulative = {
       missingCount: persisted.missingCount,
       atMostOnceCount: persisted.atMostOnceCount,
       atMostTwiceCount: persisted.atMostTwiceCount
+    };
+    const current = {
+      missingCount: typeof persisted.currentSetMissingCount === 'number' ? persisted.currentSetMissingCount : analytics?.currentSetMissingCount ?? cumulative.missingCount,
+      atMostOnceCount: typeof persisted.currentSetAtMostOnceCount === 'number' ? persisted.currentSetAtMostOnceCount : analytics?.currentSetMissingCount ?? cumulative.atMostOnceCount,
+      atMostTwiceCount: typeof persisted.currentSetAtMostTwiceCount === 'number' ? persisted.currentSetAtMostTwiceCount : analytics?.currentSetMissingCount ?? cumulative.atMostTwiceCount
+    };
+
+    return {
+      current,
+      cumulative
     };
   }
 
   if (!analytics) return undefined;
   const exact = exactOccurrenceBuckets(conversations);
-  return {
+  const fallback = {
     missingCount: analytics.currentSetMissingCount,
     atMostOnceCount: analytics.currentSetMissingCount + exact.once,
     atMostTwiceCount: analytics.currentSetMissingCount + exact.once + exact.twice
+  };
+  return {
+    current: fallback,
+    cumulative: fallback
   };
 }
 
@@ -539,15 +560,27 @@ function deltaText(before: number, after: number, suffix = ''): string {
   return `${delta > 0 ? '+' : ''}${delta}${suffix}`;
 }
 
+function percentageText(used: number, total: number): string {
+  if (!total) return '0%';
+  return `${Math.round((used / total) * 1000) / 10}%`;
+}
+
+function percentageValue(used: number, total: number): number {
+  if (!total) return 0;
+  return Math.round((used / total) * 1000) / 10;
+}
+
 function WorkflowMetricCard({
   label,
   value,
   detail,
+  note,
   trend
 }: {
   label: string;
   value: string;
   detail: string;
+  note?: string;
   trend?: string;
 }) {
   return (
@@ -555,6 +588,7 @@ function WorkflowMetricCard({
       <span>{label}</span>
       <strong>{value}</strong>
       <p>{detail}</p>
+      {note ? <small>{note}</small> : null}
       {trend ? <em>{trend}</em> : null}
     </div>
   );
@@ -586,6 +620,8 @@ function WorkflowStatsPanel({
     const before = workflowNodeAnalytics(generatorNode);
     if (!before || !generatorDistribution || !selectedDistribution) return null;
     const recoveredWords = before.currentSetMissingWords.filter((word) => !analytics.currentSetMissingWords.includes(word));
+    const beforeCurrentSetCoverage = percentageValue(before.currentSetUsedCount, before.currentSetTotal);
+    const afterCurrentSetCoverage = percentageValue(analytics.currentSetUsedCount, analytics.currentSetTotal);
 
     return (
       <section className="workflowStatsBlock" aria-label="Balance stats">
@@ -595,27 +631,31 @@ function WorkflowStatsPanel({
         <div className="workflowMetricGrid">
           <WorkflowMetricCard
             label="Allowed Coverage"
-            value={`${before.allowedVocabUsedPercentage}% -> ${analytics.allowedVocabUsedPercentage}%`}
-            detail={`${analytics.allowedVocabUsedCount} of ${analytics.allowedVocabTotal} allowed words used`}
-            trend={deltaText(before.allowedVocabUsedPercentage, analytics.allowedVocabUsedPercentage, '%')}
+            value={`${percentageText(before.currentSetUsedCount, before.currentSetTotal)} -> ${percentageText(analytics.currentSetUsedCount, analytics.currentSetTotal)}`}
+            detail={`${analytics.currentSetUsedCount} of ${analytics.currentSetTotal} current set words used`}
+            note={`Cumulative: ${analytics.allowedVocabUsedPercentage}% (${analytics.allowedVocabUsedCount} of ${analytics.allowedVocabTotal})`}
+            trend={deltaText(beforeCurrentSetCoverage, afterCurrentSetCoverage, '%')}
           />
           <WorkflowMetricCard
             label="Missing Words"
-            value={`${generatorDistribution.missingCount} -> ${selectedDistribution.missingCount}`}
+            value={`${generatorDistribution.current.missingCount} -> ${selectedDistribution.current.missingCount}`}
             detail="Words not used at all"
-            trend={deltaText(generatorDistribution.missingCount, selectedDistribution.missingCount)}
+            note={`Cumulative: ${generatorDistribution.cumulative.missingCount} -> ${selectedDistribution.cumulative.missingCount}`}
+            trend={deltaText(generatorDistribution.current.missingCount, selectedDistribution.current.missingCount)}
           />
           <WorkflowMetricCard
             label="Barely Touched"
-            value={`${generatorDistribution.atMostOnceCount} -> ${selectedDistribution.atMostOnceCount}`}
+            value={`${generatorDistribution.current.atMostOnceCount} -> ${selectedDistribution.current.atMostOnceCount}`}
             detail="Words used once or not yet used"
-            trend={deltaText(generatorDistribution.atMostOnceCount, selectedDistribution.atMostOnceCount)}
+            note={`Cumulative: ${generatorDistribution.cumulative.atMostOnceCount} -> ${selectedDistribution.cumulative.atMostOnceCount}`}
+            trend={deltaText(generatorDistribution.current.atMostOnceCount, selectedDistribution.current.atMostOnceCount)}
           />
           <WorkflowMetricCard
             label="Needs More Reps"
-            value={`${generatorDistribution.atMostTwiceCount} -> ${selectedDistribution.atMostTwiceCount}`}
+            value={`${generatorDistribution.current.atMostTwiceCount} -> ${selectedDistribution.current.atMostTwiceCount}`}
             detail="Words used two times or fewer"
-            trend={deltaText(generatorDistribution.atMostTwiceCount, selectedDistribution.atMostTwiceCount)}
+            note={`Cumulative: ${generatorDistribution.cumulative.atMostTwiceCount} -> ${selectedDistribution.cumulative.atMostTwiceCount}`}
+            trend={deltaText(generatorDistribution.current.atMostTwiceCount, selectedDistribution.current.atMostTwiceCount)}
           />
         </div>
         <div className="workflowStatsChips">
@@ -638,23 +678,27 @@ function WorkflowStatsPanel({
       <div className="workflowMetricGrid">
         <WorkflowMetricCard
           label="Allowed Coverage"
-          value={`${analytics.allowedVocabUsedPercentage}%`}
-          detail={`${analytics.allowedVocabUsedCount} of ${analytics.allowedVocabTotal} allowed words used`}
+          value={percentageText(analytics.currentSetUsedCount, analytics.currentSetTotal)}
+          detail={`${analytics.currentSetUsedCount} of ${analytics.currentSetTotal} current set words used`}
+          note={`Cumulative: ${analytics.allowedVocabUsedPercentage}% (${analytics.allowedVocabUsedCount} of ${analytics.allowedVocabTotal})`}
         />
         <WorkflowMetricCard
           label="Missing Words"
-          value={String(selectedDistribution?.missingCount ?? analytics.currentSetMissingCount)}
+          value={String(selectedDistribution?.current.missingCount ?? analytics.currentSetMissingCount)}
           detail="Words not used at all"
+          note={selectedDistribution ? `Cumulative: ${selectedDistribution.cumulative.missingCount}` : undefined}
         />
         <WorkflowMetricCard
           label="Barely Touched"
-          value={String(selectedDistribution?.atMostOnceCount ?? analytics.currentSetMissingCount)}
+          value={String(selectedDistribution?.current.atMostOnceCount ?? analytics.currentSetMissingCount)}
           detail="Words used once or not yet used"
+          note={selectedDistribution ? `Cumulative: ${selectedDistribution.cumulative.atMostOnceCount}` : undefined}
         />
         <WorkflowMetricCard
           label="Needs More Reps"
-          value={String(selectedDistribution?.atMostTwiceCount ?? analytics.currentSetMissingCount)}
+          value={String(selectedDistribution?.current.atMostTwiceCount ?? analytics.currentSetMissingCount)}
           detail="Words used two times or fewer"
+          note={selectedDistribution ? `Cumulative: ${selectedDistribution.cumulative.atMostTwiceCount}` : undefined}
         />
       </div>
       <div className="workflowStatsChips">

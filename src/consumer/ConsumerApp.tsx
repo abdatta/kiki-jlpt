@@ -769,7 +769,8 @@ function ConversationPractice({
   onPlaybackSpeedChange,
   onComplete,
   onToggleStar,
-  onNext
+  onNext,
+  canGoNext
 }: {
   conversation: StaticLibraryConversation;
   isCompleted: boolean;
@@ -779,6 +780,7 @@ function ConversationPractice({
   onComplete: (conversationId: string) => void;
   onToggleStar: (conversationId: string) => void;
   onNext: () => void;
+  canGoNext: boolean;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const speedMenuRef = useRef<HTMLDivElement | null>(null);
@@ -1032,7 +1034,7 @@ function ConversationPractice({
               {visibleTranslations[index] ? <p>{conversation.englishTranslation[index]?.english ?? ''}</p> : null}
             </div>
           ))}
-          <button className="primaryPracticeButton nextConversation" onClick={onNext}>
+          <button className="primaryPracticeButton nextConversation" onClick={onNext} disabled={!canGoNext}>
             Next Conversation
             <ChevronRight size={18} />
           </button>
@@ -1075,7 +1077,7 @@ function ConversationsPage({
   useEffect(() => {
     const firstUncompleted = conversations.find((conversation) => !completedIds.has(conversation.id)) ?? conversations[0] ?? null;
     setSelectedConversationId(firstUncompleted?.id ?? null);
-  }, [level, library.generatedAt, conversations, completedIds]);
+  }, [level, library.generatedAt, conversations]);
 
   const current = conversations.find((conversation) => conversation.id === selectedConversationId) ?? conversations.find((conversation) => !completedIds.has(conversation.id)) ?? conversations[0];
   const currentConversationIndex = current ? conversations.findIndex((conversation) => conversation.id === current.id) + 1 : 0;
@@ -1092,8 +1094,13 @@ function ConversationsPage({
   const previousConversationId = currentCompletedIndex > 0
     ? completedConversationIdsForLevel[currentCompletedIndex - 1]
     : completedConversationIdsForLevel[completedConversationIdsForLevel.length - 1];
+  const nextConversationId = current
+    ? conversations
+      .slice(conversations.findIndex((conversation) => conversation.id === current.id) + 1)
+      .find((conversation) => !completedIds.has(conversation.id))?.id ?? null
+    : null;
   const canGoPrevious = Boolean(previousConversationId && previousConversationId !== current?.id);
-  const canGoNext = Boolean(current && completedIds.has(current.id) && conversations.length > 1);
+  const canGoNext = Boolean(current && completedIds.has(current.id) && nextConversationId);
 
   function updatePlaybackSpeed(speed: number) {
     setPlaybackSpeed(speed);
@@ -1131,14 +1138,8 @@ function ConversationsPage({
   }
 
   function showNextConversation() {
-    if (!current) return;
-    const currentIndex = conversations.findIndex((conversation) => conversation.id === current.id);
-    const nextUncompleted = conversations
-      .slice(currentIndex + 1)
-      .find((conversation) => !completedIds.has(conversation.id))
-      ?? conversations.find((conversation) => !completedIds.has(conversation.id) && conversation.id !== current.id)
-      ?? conversations[(currentIndex + 1) % conversations.length];
-    setSelectedConversationId(nextUncompleted?.id ?? null);
+    if (!nextConversationId) return;
+    setSelectedConversationId(nextConversationId);
   }
 
   function handleLevelProgressClick() {
@@ -1219,6 +1220,7 @@ function ConversationsPage({
           onComplete={completeConversation}
           onToggleStar={toggleStarConversation}
           onNext={showNextConversation}
+          canGoNext={canGoNext}
         />
       )}
       {isStarredModalOpen ? (

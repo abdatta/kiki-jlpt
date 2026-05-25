@@ -237,15 +237,14 @@ function runStatusFor(conversations: PracticeConversation[]): PracticeRun['statu
   return 'generated';
 }
 
-function calculateWorkflowDistributionStats(allowedVocabulary: VocabItem[], conversations: PracticeConversation[]) {
-  const allowedWords = allowedVocabulary.map((item) => item.japanese);
-  const allowedWordSet = new Set(allowedWords);
-  const counts = new Map(allowedWords.map((word) => [word, 0]));
+function countWorkflowVocabularyDistribution(words: string[], conversations: PracticeConversation[]) {
+  const wordSet = new Set(words);
+  const counts = new Map(words.map((word) => [word, 0]));
 
   for (const conversation of conversations) {
     for (const word of conversation.vocabularyUsed) {
       const cleaned = word.trim();
-      if (allowedWordSet.has(cleaned)) {
+      if (wordSet.has(cleaned)) {
         counts.set(cleaned, (counts.get(cleaned) ?? 0) + 1);
       }
     }
@@ -253,10 +252,28 @@ function calculateWorkflowDistributionStats(allowedVocabulary: VocabItem[], conv
 
   const values = Array.from(counts.values());
   return {
-    allowedVocabularyTotal: allowedWords.length,
+    vocabularyTotal: words.length,
     missingCount: values.filter((count) => count <= 0).length,
     atMostOnceCount: values.filter((count) => count <= 1).length,
     atMostTwiceCount: values.filter((count) => count <= 2).length
+  };
+}
+
+function calculateWorkflowDistributionStats(setNumber: number, allowedVocabulary: VocabItem[], conversations: PracticeConversation[]) {
+  const allowedWords = allowedVocabulary.map((item) => item.japanese);
+  const currentSetWords = allowedVocabulary.filter((item) => item.set === setNumber).map((item) => item.japanese);
+  const cumulative = countWorkflowVocabularyDistribution(allowedWords, conversations);
+  const currentSet = countWorkflowVocabularyDistribution(currentSetWords, conversations);
+
+  return {
+    allowedVocabularyTotal: allowedWords.length,
+    currentSetTotal: currentSetWords.length,
+    missingCount: cumulative.missingCount,
+    atMostOnceCount: cumulative.atMostOnceCount,
+    atMostTwiceCount: cumulative.atMostTwiceCount,
+    currentSetMissingCount: currentSet.missingCount,
+    currentSetAtMostOnceCount: currentSet.atMostOnceCount,
+    currentSetAtMostTwiceCount: currentSet.atMostTwiceCount
   };
 }
 
@@ -406,7 +423,7 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
         exchange: primary.exchange,
         conversations: primary.conversations,
         analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, primary.conversations),
-        distributionStats: calculateWorkflowDistributionStats(context.allowedVocabulary, primary.conversations)
+        distributionStats: calculateWorkflowDistributionStats(context.setNumber, context.allowedVocabulary, primary.conversations)
       }
     });
 
@@ -457,7 +474,7 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
         },
         conversations: complementConversations,
         analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
-        distributionStats: calculateWorkflowDistributionStats(context.allowedVocabulary, conversations)
+        distributionStats: calculateWorkflowDistributionStats(context.setNumber, context.allowedVocabulary, conversations)
       }
     });
 
