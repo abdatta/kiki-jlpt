@@ -1,0 +1,521 @@
+{
+  "setNumber": 2,
+  "analytics": {
+    "currentSetTotal": 100,
+    "currentSetUsedCount": 12,
+    "currentSetMissingCount": 88,
+    "currentSetMissingWords": [
+      "秋",
+      "遊ぶ",
+      "一日",
+      "五日",
+      "いつも",
+      "おととし",
+      "かかる",
+      "～月",
+      "火曜日",
+      "去年",
+      "金曜日",
+      "月曜日",
+      "午後",
+      "九日",
+      "午前",
+      "今年",
+      "今月",
+      "今週",
+      "今晩",
+      "さ来年",
+      "時間",
+      "～時間",
+      "水曜日",
+      "先月",
+      "先週",
+      "誕生日",
+      "一日",
+      "十日",
+      "時々",
+      "時計",
+      "年",
+      "土曜日",
+      "夏",
+      "夏休み",
+      "七日",
+      "～日",
+      "日曜日",
+      "～年",
+      "初めて",
+      "二十日",
+      "春",
+      "晩",
+      "晩御飯",
+      "一月",
+      "暇",
+      "昼",
+      "二日",
+      "冬",
+      "毎朝",
+      "毎月",
+      "毎週",
+      "毎日",
+      "毎年",
+      "毎晩",
+      "万年筆",
+      "三日",
+      "アパート",
+      "うち",
+      "上着",
+      "お手洗い",
+      "お風呂",
+      "階段",
+      "鍵",
+      "掛ける",
+      "傘",
+      "角",
+      "かばん",
+      "靴",
+      "靴下",
+      "玄関",
+      "交番",
+      "コート",
+      "差す",
+      "シャツ",
+      "スカート",
+      "戸",
+      "ドア",
+      "トイレ",
+      "脱ぐ",
+      "箱",
+      "バス",
+      "服",
+      "洗う",
+      "入れる",
+      "終る",
+      "かぶる",
+      "着る",
+      "閉める"
+    ],
+    "allowedVocabTotal": 200,
+    "allowedVocabUsedCount": 33,
+    "allowedVocabUsedPercentage": 16.5,
+    "outOfAllowedCount": 3,
+    "outOfAllowedWords": [
+      "では",
+      "でも",
+      "もう"
+    ]
+  },
+  "conversations": [
+    {
+      "id": "set-02-20260525T213201Z-fztc4b-convo-01",
+      "number": 1,
+      "title": "Good Morning at Home",
+      "scene": "Two family members talk in the morning at home.",
+      "sampleContext": "They sound sleepy but friendly before breakfast.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "sleepy",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "おはようございます。今朝、七時に起きました。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "おはようございます。私は六時に起きました。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "朝御飯を食べますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、食べます。お母さんも来ますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "はい、母はもう起きました。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "では、朝御飯を食べましょう。"
+        }
+      ],
+      "listeningQuestions": [
+        "What time did Speaker 1 get up this morning?",
+        "What time did Speaker 2 get up?",
+        "What does Speaker 1 ask about?",
+        "Has Speaker 1's mother already gotten up?",
+        "What do they decide to do?"
+      ],
+      "answerKey": [
+        "She got up at seven o'clock.",
+        "He got up at six o'clock.",
+        "She asks whether they will eat breakfast.",
+        "Yes, her mother has already gotten up.",
+        "They decide to eat breakfast."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Good morning. This morning, I got up at seven."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Good morning. I got up at six."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Will you eat breakfast?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I will. Will your mother come too?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, my mother has already gotten up."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Then, let's eat breakfast."
+        }
+      ],
+      "vocabularyUsed": [
+        "～時",
+        "おはようございます",
+        "お母さん",
+        "はい",
+        "起きる",
+        "今朝",
+        "私",
+        "七",
+        "食べる",
+        "朝",
+        "朝御飯",
+        "二",
+        "母",
+        "来る",
+        "六"
+      ],
+      "outOfVocabularyAudit": [
+        "では",
+        "もう"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-25T21:44:22.597Z",
+      "updatedAt": "2026-05-25T21:44:22.597Z",
+      "audioFileName": "set-02-20260525T213201Z-fztc4b-convo-01.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-01.wav",
+      "sourceRunId": "set-02-20260525T213201Z-fztc4b",
+      "sourceConversationId": "convo-01",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-01.wav",
+      "curatedId": "set-02-20260525T213201Z-fztc4b-convo-01",
+      "curatedAt": "2026-05-25T21:44:22.597Z"
+    },
+    {
+      "id": "set-02-20260525T213201Z-fztc4b-convo-03",
+      "number": 3,
+      "title": "In the Room",
+      "scene": "Two people talk about things in a room.",
+      "sampleContext": "They speak gently while looking around the room.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "この部屋は新しいです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "いいですね。机はどこですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "机は窓の隣です。テーブルはあそこです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "ベッドは大きいですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "いいえ、小さいです。でも、いいベッドです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "窓を開けてもいいですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい、どうぞ。"
+        }
+      ],
+      "listeningQuestions": [
+        "What is new?",
+        "Where is the desk?",
+        "Where is the table?",
+        "Is the bed big?",
+        "What does Speaker 2 want to open?"
+      ],
+      "answerKey": [
+        "The room is new.",
+        "It is next to the window.",
+        "It is over there.",
+        "No, it is small, but it is good.",
+        "He wants to open the window."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "This room is new."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That's nice. Where is the desk?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "The desk is next to the window. The table is over there."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is the bed big?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No, it is small. But it is a good bed."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "May I open the window?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, please."
+        }
+      ],
+      "vocabularyUsed": [
+        "あそこ",
+        "いい",
+        "いいえ",
+        "この",
+        "テーブル",
+        "どうぞ",
+        "どこ",
+        "はい",
+        "ベッド",
+        "開ける",
+        "机",
+        "小さい",
+        "新しい",
+        "窓",
+        "大きい",
+        "部屋",
+        "隣"
+      ],
+      "outOfVocabularyAudit": [
+        "でも"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-25T21:44:24.752Z",
+      "updatedAt": "2026-05-25T21:44:24.752Z",
+      "audioFileName": "set-02-20260525T213201Z-fztc4b-convo-03.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-03.wav",
+      "sourceRunId": "set-02-20260525T213201Z-fztc4b",
+      "sourceConversationId": "convo-03",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-03.wav",
+      "curatedId": "set-02-20260525T213201Z-fztc4b-convo-03",
+      "curatedAt": "2026-05-25T21:44:24.752Z"
+    },
+    {
+      "id": "set-02-20260525T213201Z-fztc4b-convo-02",
+      "number": 2,
+      "title": "At the Apartment Door",
+      "scene": "Two friends meet at an apartment entrance.",
+      "sampleContext": "They are polite and calm at the door.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "こんにちは。ここが私のアパートです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "こんにちは。玄関はどこですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "あちらです。このドアを開けてください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "apologetic",
+            "slow"
+          ],
+          "japanese": "すみません、鍵はありますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、かばんに入れました。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。失礼します。"
+        }
+      ],
+      "listeningQuestions": [
+        "Where are the speakers?",
+        "What does Speaker 2 ask about first?",
+        "Which door does Speaker 1 tell him to open?",
+        "Where is the key?",
+        "What polite phrase does Speaker 2 say at the end?"
+      ],
+      "answerKey": [
+        "They are at Speaker 1's apartment.",
+        "He asks where the entrance is.",
+        "She tells him to open this door.",
+        "It is in her bag.",
+        "He says, 'Excuse me for entering' / 'Shitsurei shimasu.'"
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Hello. This is my apartment."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Hello. Where is the entrance?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "It is that way. Please open this door."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Excuse me, do you have the key?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, I put it in my bag."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Thank you very much. Excuse me."
+        }
+      ],
+      "vocabularyUsed": [
+        "あちら",
+        "アパート",
+        "ありがとうございます",
+        "かばん",
+        "ここ",
+        "この",
+        "こんにちは",
+        "すみません",
+        "する",
+        "ドア",
+        "どこ",
+        "はい",
+        "開ける",
+        "鍵",
+        "玄関",
+        "在る",
+        "四",
+        "私",
+        "失礼します",
+        "二",
+        "入れる",
+        "有る"
+      ],
+      "outOfVocabularyAudit": [
+        "くださる"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-25T22:08:27.427Z",
+      "updatedAt": "2026-05-25T22:08:27.427Z",
+      "audioFileName": "set-02-20260525T213201Z-fztc4b-convo-02.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-02.wav",
+      "sourceRunId": "set-02-20260525T213201Z-fztc4b",
+      "sourceConversationId": "convo-02",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-02.wav",
+      "curatedId": "set-02-20260525T213201Z-fztc4b-convo-02",
+      "curatedAt": "2026-05-25T22:08:27.427Z"
+    }
+  ],
+  "createdAt": "2026-05-25T21:44:22.592Z",
+  "updatedAt": "2026-05-25T22:08:27.427Z"
+}
