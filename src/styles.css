@@ -290,6 +290,7 @@ textarea:focus {
   gap: 8px;
 }
 
+.boardTabs a,
 .boardTabs button {
   min-height: 40px;
   border: 1px solid var(--studio-border);
@@ -301,8 +302,10 @@ textarea:focus {
   justify-content: center;
   gap: 8px;
   font-weight: 850;
+  text-decoration: none;
 }
 
+.boardTabs a.active,
 .boardTabs button.active {
   background: var(--studio-accent-soft);
   border-color: var(--studio-accent-border);

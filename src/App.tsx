@@ -44,6 +44,10 @@ import { ConsumerApp } from './consumer/ConsumerApp.tsx';
 
 type ConversationAction = 'audio' | 'delete-audio';
 type BoardMode = 'runs' | 'library' | 'recommendations';
+type StudioRoute =
+  | { boardMode: 'runs'; runId?: string; auditOpen: boolean }
+  | { boardMode: 'recommendations'; setNumber: number }
+  | { boardMode: 'library'; setNumber: number };
 type BusyAction =
   | 'generate'
   | 'generate-complement'
@@ -80,6 +84,76 @@ interface GenerationSession {
   status: GenerationSessionStatus;
   exchange?: LlmExchange;
   error?: string;
+}
+
+function parsePositiveInt(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function decodeRoutePart(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return undefined;
+  }
+}
+
+function studioRunsRoute(runId?: string, auditOpen = false): string {
+  if (!runId) return '#/studio/runs';
+  return `#/studio/runs/${encodeURIComponent(runId)}${auditOpen ? '/audit' : ''}`;
+}
+
+function studioQueueRoute(setNumber: number): string {
+  return `#/studio/queue/set/${encodeURIComponent(setNumber)}`;
+}
+
+function studioLibraryRoute(setNumber: number): string {
+  return `#/studio/library/set/${encodeURIComponent(setNumber)}`;
+}
+
+function parseStudioRoute(hash = typeof window === 'undefined' ? '' : window.location.hash): StudioRoute {
+  if (!hash || hash === '#' || hash === '#/' || hash === '#/studio') {
+    return { boardMode: 'runs', auditOpen: false };
+  }
+
+  const [path] = hash.replace(/^#\/?/, '').split(/[?#]/);
+  const parts = path.split('/').filter(Boolean);
+  if (parts[0] !== 'studio') {
+    return { boardMode: 'runs', auditOpen: false };
+  }
+
+  if (parts.length === 1 || (parts[1] === 'runs' && parts.length === 2)) {
+    return { boardMode: 'runs', auditOpen: false };
+  }
+
+  if (parts[1] === 'runs' && (parts.length === 3 || (parts.length === 4 && parts[3] === 'audit'))) {
+    const runId = decodeRoutePart(parts[2]);
+    return runId ? { boardMode: 'runs', runId, auditOpen: parts[3] === 'audit' } : { boardMode: 'runs', auditOpen: false };
+  }
+
+  if (parts[1] === 'queue' && parts[2] === 'set' && parts.length === 4) {
+    const setNumber = parsePositiveInt(parts[3]);
+    return setNumber ? { boardMode: 'recommendations', setNumber } : { boardMode: 'runs', auditOpen: false };
+  }
+
+  if (parts[1] === 'library' && parts[2] === 'set' && parts.length === 4) {
+    const setNumber = parsePositiveInt(parts[3]);
+    return setNumber ? { boardMode: 'library', setNumber } : { boardMode: 'runs', auditOpen: false };
+  }
+
+  return { boardMode: 'runs', auditOpen: false };
+}
+
+function navigateToStudioRoute(route: string) {
+  if (typeof window === 'undefined') return;
+  if (window.location.hash === route) {
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+    return;
+  }
+  window.location.hash = route;
 }
 
 async function api<T>(url: string, options?: RequestInit): Promise<T> {
@@ -1073,6 +1147,7 @@ function AnalyticsPanel({ analytics, setNumber, label }: { analytics: PracticeRu
 }
 
 function StudioApp() {
+  const [studioRoute, setStudioRoute] = useState(parseStudioRoute);
   const [sets, setSets] = useState<SetSummary[]>([]);
   const [runs, setRuns] = useState<PracticeRun[]>([]);
   const [librarySets, setLibrarySets] = useState<CuratedSet[]>([]);
@@ -1081,10 +1156,10 @@ function StudioApp() {
   const [libraryBalance, setLibraryBalance] = useState<LibraryBalancePlan | null>(null);
   const [libraryBalanceLoading, setLibraryBalanceLoading] = useState(false);
   const [currentRun, setCurrentRun] = useState<PracticeRun | null>(null);
-  const [boardMode, setBoardMode] = useState<BoardMode>('runs');
+  const [boardMode, setBoardMode] = useState<BoardMode>(studioRoute.boardMode);
   const [textModels, setTextModels] = useState<TextModelInfo[]>([]);
   const [textModelId, setTextModelId] = useState('gemini');
-  const [setNumber, setSetNumber] = useState(1);
+  const [setNumber, setSetNumber] = useState(studioRoute.boardMode === 'runs' ? 1 : studioRoute.setNumber);
   const [conversationCount, setConversationCount] = useState(4);
   const [busy, setBusy] = useState<BusyAction>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1092,25 +1167,38 @@ function StudioApp() {
   const [generationSession, setGenerationSession] = useState<GenerationSession | null>(null);
   const [workflowJob, setWorkflowJob] = useState<WorkflowJob | null>(null);
   const [selectedWorkflowNodeId, setSelectedWorkflowNodeId] = useState<string | undefined>();
-  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(studioRoute.boardMode === 'runs' && studioRoute.auditOpen);
   const [revealedAnswers, setRevealedAnswers] = useState<Record<string, boolean>>({});
   const [revealedTranslations, setRevealedTranslations] = useState<Record<string, boolean>>({});
   const [audioStates, setAudioStates] = useState<Record<string, AudioPlaybackState>>({});
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
 
   const currentSet = useMemo(() => sets.find((item) => item.set === setNumber), [sets, setNumber]);
-  const currentTextModel = useMemo(() => textModels.find((model) => model.id === textModelId), [textModels, textModelId]);
+  const textModelOptions = useMemo(() => {
+    if (!currentRun || textModels.some((model) => model.id === currentRun.textModel.id)) {
+      return textModels;
+    }
+    return [currentRun.textModel, ...textModels];
+  }, [currentRun, textModels]);
+  const currentTextModel = useMemo(() => textModelOptions.find((model) => model.id === textModelId), [textModelOptions, textModelId]);
   const currentLibrarySet = useMemo(() => librarySets.find((item) => item.setNumber === setNumber), [librarySets, setNumber]);
   const currentLibraryBalance = libraryBalance?.setNumber === setNumber ? libraryBalance : null;
-  const curatedLibrarySets = useMemo(() => librarySets.filter((item) => item.conversations.length > 0), [librarySets]);
-  const leastCoveredWordSet = useMemo(() => new Set(recommendations?.leastCoveredWords.map((word) => word.japanese) ?? []), [recommendations]);
-  const showRunContent = Boolean(boardMode === 'runs' && currentRun && !generationSession);
+  const filteredRuns = useMemo(() => runs.filter((run) => run.setNumber === setNumber), [runs, setNumber]);
+  const currentCuratedLibrarySets = useMemo(() => currentLibrarySet && currentLibrarySet.conversations.length > 0 ? [currentLibrarySet] : [], [currentLibrarySet]);
+  const currentRecommendations = recommendations?.setNumber === setNumber ? recommendations : null;
+  const leastCoveredWordSet = useMemo(() => new Set(currentRecommendations?.leastCoveredWords.map((word) => word.japanese) ?? []), [currentRecommendations]);
+  const showRunContent = Boolean(boardMode === 'runs' && currentRun && currentRun.setNumber === setNumber && !generationSession);
   const showLibraryContent = Boolean(boardMode === 'library' && !generationSession);
   const showRecommendationsContent = Boolean(boardMode === 'recommendations' && !generationSession);
   const currentExchanges = currentRun?.llmExchanges ?? [];
   const currentExchange = currentExchanges[0];
   const savedWorkflowJob = useMemo(() => workflowJobForRun(currentRun), [currentRun]);
   const visibleWorkflowJob = workflowJob ?? (auditOpen ? savedWorkflowJob : null);
+
+  function applyRunGeneratorDefaults(run: PracticeRun) {
+    setSetNumber(run.setNumber);
+    setTextModelId(run.textModel.id);
+  }
 
   async function loadInitial() {
     const [setPayload, runPayload, modelPayload, libraryPayload] = await Promise.all([
@@ -1123,13 +1211,28 @@ function StudioApp() {
     setRuns(runPayload.runs);
     setTextModels(modelPayload.models);
     setLibrarySets(libraryPayload.sets);
-    setTextModelId((previous) => modelPayload.models.some((model) => model.id === previous) ? previous : 'gemini');
-    setCurrentRun((previous) => previous ?? runPayload.runs[0] ?? null);
+    const routedRun = studioRoute.boardMode === 'runs' && studioRoute.runId
+      ? runPayload.runs.find((run) => run.id === studioRoute.runId) ?? null
+      : null;
+    const defaultRun = studioRoute.boardMode === 'runs'
+      ? routedRun ?? (!studioRoute.runId ? runPayload.runs[0] ?? null : null)
+      : currentRun ?? runPayload.runs[0] ?? null;
+    if (studioRoute.boardMode === 'runs' && defaultRun) {
+      applyRunGeneratorDefaults(defaultRun);
+    } else {
+      setTextModelId((previous) => modelPayload.models.some((model) => model.id === previous) ? previous : 'gemini');
+    }
+    setCurrentRun((previous) => {
+      if (studioRoute.boardMode === 'runs') return defaultRun;
+      if (previous) return previous;
+      return defaultRun;
+    });
   }
 
   async function loadRecommendations(targetSet = setNumber) {
     setRecommendationsLoading(true);
     setError(null);
+    setRecommendations((previous) => previous?.setNumber === targetSet ? previous : null);
     try {
       const payload = await api<{ recommendations: LibraryRecommendations }>(`/api/library/sets/${encodeURIComponent(targetSet)}/recommendations`);
       setRecommendations(payload.recommendations);
@@ -1156,6 +1259,53 @@ function StudioApp() {
   useEffect(() => {
     loadInitial().catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
   }, []);
+
+  useEffect(() => {
+    const handleHashChange = () => setStudioRoute(parseStudioRoute());
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  useEffect(() => {
+    setBoardMode(studioRoute.boardMode);
+    setGenerationSession(null);
+    setWorkflowJob(null);
+    setSelectedWorkflowNodeId(undefined);
+    setEdit(null);
+
+    if (studioRoute.boardMode === 'runs') {
+      setAuditOpen(studioRoute.auditOpen);
+      return;
+    }
+
+    setAuditOpen(false);
+    setSetNumber(studioRoute.setNumber);
+  }, [studioRoute]);
+
+  useEffect(() => {
+    if (studioRoute.boardMode !== 'runs') return;
+    if (!studioRoute.runId) {
+      const nextRun = runs[0] ?? null;
+      if (currentRun?.id !== nextRun?.id) {
+        if (nextRun) {
+          applyRunGeneratorDefaults(nextRun);
+        }
+        setCurrentRun(nextRun);
+      }
+      return;
+    }
+
+    if (currentRun?.id === studioRoute.runId) return;
+    const listedRun = runs.find((run) => run.id === studioRoute.runId);
+    if (listedRun) {
+      applyRunGeneratorDefaults(listedRun);
+      setCurrentRun(listedRun);
+      return;
+    }
+
+    setCurrentRun(null);
+    refreshRun(studioRoute.runId).catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
+  }, [currentRun, runs, setNumber, studioRoute]);
 
   useEffect(() => {
     if (boardMode === 'recommendations' && !generationSession) {
@@ -1264,6 +1414,31 @@ function StudioApp() {
     return runId ? `${runId}:${conversationId}` : conversationId;
   }
 
+  function handleSetNumberChange(nextSetNumber: number) {
+    setSetNumber(nextSetNumber);
+    if (boardMode === 'recommendations') {
+      navigateToStudioRoute(studioQueueRoute(nextSetNumber));
+    } else if (boardMode === 'library') {
+      navigateToStudioRoute(studioLibraryRoute(nextSetNumber));
+    } else {
+      const nextRun = runs.find((run) => run.setNumber === nextSetNumber) ?? null;
+      setCurrentRun(nextRun);
+      if (nextRun) {
+        setTextModelId(nextRun.textModel.id);
+      }
+      navigateToStudioRoute(nextRun ? studioRunsRoute(nextRun.id) : studioRunsRoute());
+    }
+  }
+
+  function navigateToRun(runId: string, audit = false) {
+    navigateToStudioRoute(studioRunsRoute(runId, audit));
+  }
+
+  function toggleAuditRoute() {
+    if (!currentRun) return;
+    navigateToRun(currentRun.id, !auditOpen);
+  }
+
   async function generate() {
     const sessionId = makeSessionId();
     const modelLabel = currentTextModel?.label ?? (textModelId === 'gemini' ? 'Gemini' : textModelId);
@@ -1301,6 +1476,7 @@ function StudioApp() {
       setBoardMode('runs');
       setGenerationSession(null);
       await loadInitial();
+      navigateToRun(payload.run.id);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
       setError(message);
@@ -1352,6 +1528,7 @@ function StudioApp() {
         setCurrentRun(latest.run);
         await loadInitial();
         await refreshRun(latest.run.id).catch(() => undefined);
+        navigateToRun(latest.run.id);
       }
       if (latest.audioErrors.length > 0) {
         setError(`Pipeline finished, but ${latest.audioErrors.length} audio file${latest.audioErrors.length === 1 ? '' : 's'} failed to generate.`);
@@ -1421,6 +1598,7 @@ function StudioApp() {
       setBoardMode('runs');
       setGenerationSession(null);
       await loadInitial();
+      navigateToRun(payload.run.id);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
       setError(message);
@@ -1442,6 +1620,7 @@ function StudioApp() {
     if (!runId) return;
     const payload = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(runId)}`);
     setCurrentRun(payload.run);
+    applyRunGeneratorDefaults(payload.run);
     setRuns((existing) => [payload.run, ...existing.filter((run) => run.id !== payload.run.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
   }
 
@@ -1459,11 +1638,13 @@ function StudioApp() {
       });
       setRuns(payload.runs);
       if (currentRun?.id === payload.deletedRunId) {
-        setCurrentRun(payload.runs[0] ?? null);
+        const nextRun = payload.runs[0] ?? null;
+        setCurrentRun(nextRun);
         setWorkflowJob(null);
         setSelectedWorkflowNodeId(undefined);
         setAuditOpen(false);
         setEdit(null);
+        navigateToStudioRoute(nextRun ? studioRunsRoute(nextRun.id) : studioRunsRoute());
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -1619,15 +1800,6 @@ function StudioApp() {
     } finally {
       setBusy(null);
     }
-  }
-
-  async function openRun(runId: string) {
-    setGenerationSession(null);
-    setAuditOpen(false);
-    setWorkflowJob(null);
-    setSelectedWorkflowNodeId(undefined);
-    setBoardMode('runs');
-    await refreshRun(runId);
   }
 
   function renderConversationCard(
@@ -1902,10 +2074,10 @@ function StudioApp() {
                     Edit
                   </button>
                   {isRecommendationCard && sourceRunId ? (
-                    <button className="secondaryButton" onClick={() => openRun(sourceRunId)}>
+                    <a className="secondaryButton" href={studioRunsRoute(sourceRunId)}>
                       <ListMusic size={17} />
                       Open Run
-                    </button>
+                    </a>
                   ) : null}
                 </>
               )}
@@ -1934,7 +2106,7 @@ function StudioApp() {
         <section className="generatorPanel">
           <label>
             <span>Set</span>
-            <select value={setNumber} onChange={(event) => setSetNumber(Number(event.target.value))}>
+            <select value={setNumber} onChange={(event) => handleSetNumberChange(Number(event.target.value))}>
               {sets.map((set) => (
                 <option key={set.set} value={set.set}>
                   Set {set.set}
@@ -1951,8 +2123,8 @@ function StudioApp() {
           <label>
             <span>Text model</span>
             <select value={textModelId} onChange={(event) => setTextModelId(event.target.value)}>
-              {textModels.length === 0 ? <option value="gemini">Gemini</option> : null}
-              {textModels.map((model) => (
+              {textModelOptions.length === 0 ? <option value="gemini">Gemini</option> : null}
+              {textModelOptions.map((model) => (
                 <option key={model.id} value={model.id}>
                   {model.label}
                 </option>
@@ -1982,18 +2154,18 @@ function StudioApp() {
         </section>
 
         <div className="boardTabs" aria-label="Boards">
-          <button className={boardMode === 'runs' ? 'active' : ''} onClick={() => setBoardMode('runs')}>
+          <a className={boardMode === 'runs' ? 'active' : ''} href={studioRunsRoute(currentRun?.setNumber === setNumber ? currentRun.id : filteredRuns[0]?.id)}>
             <ListMusic size={16} />
             Runs
-          </button>
-          <button className={boardMode === 'recommendations' ? 'active' : ''} onClick={() => setBoardMode('recommendations')}>
+          </a>
+          <a className={boardMode === 'recommendations' ? 'active' : ''} href={studioQueueRoute(setNumber)}>
             <Target size={16} />
             Queue
-          </button>
-          <button className={boardMode === 'library' ? 'active' : ''} onClick={() => setBoardMode('library')}>
+          </a>
+          <a className={boardMode === 'library' ? 'active' : ''} href={studioLibraryRoute(setNumber)}>
             <BookOpen size={16} />
             Library
-          </button>
+          </a>
         </div>
 
         <section className="runList" aria-label="Generated runs">
@@ -2003,26 +2175,19 @@ function StudioApp() {
               <RefreshCw size={17} />
             </button>
           </div>
-          {runs.length === 0 ? <p className="emptyText">No generated runs yet.</p> : null}
-          {runs.map((run) => (
-            <button
+          {filteredRuns.length === 0 ? <p className="emptyText">No generated runs for Set {setNumber}.</p> : null}
+          {filteredRuns.map((run) => (
+            <a
               key={run.id}
               className={`runButton ${currentRun?.id === run.id ? 'active' : ''}`}
-              onClick={() => {
-                setGenerationSession(null);
-                setAuditOpen(false);
-                setWorkflowJob(null);
-                setSelectedWorkflowNodeId(undefined);
-                setBoardMode('runs');
-                refreshRun(run.id);
-              }}
+              href={studioRunsRoute(run.id)}
             >
               <span className="runButtonHeader">
                 <span>{formatRunHistoryTitle(run.createdAt)}</span>
                 <time dateTime={run.createdAt}>{shortModelLabel(run.textModel)}</time>
               </span>
               <small>{runHistorySummary(run)}</small>
-            </button>
+            </a>
           ))}
         </section>
 
@@ -2033,26 +2198,19 @@ function StudioApp() {
               <RefreshCw size={17} />
             </button>
           </div>
-          {curatedLibrarySets.length === 0 ? <p className="emptyText">No curated conversations yet.</p> : null}
-          {curatedLibrarySets.map((set) => (
-            <button
+          {currentCuratedLibrarySets.length === 0 ? <p className="emptyText">No curated conversations for Set {setNumber}.</p> : null}
+          {currentCuratedLibrarySets.map((set) => (
+            <a
               key={set.setNumber}
               className={`runButton ${boardMode === 'library' && setNumber === set.setNumber ? 'active' : ''}`}
-              onClick={() => {
-                setGenerationSession(null);
-                setAuditOpen(false);
-                setWorkflowJob(null);
-                setSelectedWorkflowNodeId(undefined);
-                setBoardMode('library');
-                setSetNumber(set.setNumber);
-              }}
+              href={studioLibraryRoute(set.setNumber)}
             >
               <span className="runButtonHeader">
                 <span>{formatRunHistoryTitle(set.updatedAt)}</span>
                 <time dateTime={set.updatedAt}>Set {set.setNumber}</time>
               </span>
               <small>{libraryHistorySummary(set)}</small>
-            </button>
+            </a>
           ))}
         </section>
       </aside>
@@ -2102,8 +2260,8 @@ function StudioApp() {
             </div>
           ) : boardMode === 'recommendations' ? (
             <div className="runStats">
-              <span>{recommendations?.libraryConversationCount ?? currentLibrarySet?.conversations.length ?? 0} curated</span>
-              <span>{recommendations?.candidateCount ?? 0} candidates</span>
+              <span>{currentRecommendations?.libraryConversationCount ?? currentLibrarySet?.conversations.length ?? 0} curated</span>
+              <span>{currentRecommendations?.candidateCount ?? 0} candidates</span>
               <button className="auditToggle" onClick={() => loadRecommendations()} disabled={recommendationsLoading}>
                 {recommendationsLoading ? <RefreshCw className="spin" size={15} /> : <RefreshCw size={15} />}
                 Refresh
@@ -2123,7 +2281,7 @@ function StudioApp() {
                 Delete
               </button>
               {currentExchange || savedWorkflowJob ? (
-                <button className="auditToggle" onClick={() => setAuditOpen((open) => !open)}>
+                <button className="auditToggle" onClick={toggleAuditRoute}>
                   <Eye size={15} />
                   {auditOpen ? 'Hide audit' : savedWorkflowJob ? 'LLM audit' : currentExchanges.length > 1 ? 'LLM audits' : 'LLM audit'}
                 </button>
@@ -2184,18 +2342,18 @@ function StudioApp() {
         ) : null}
 
         {showRecommendationsContent ? (
-          recommendationsLoading && !recommendations ? (
+          recommendationsLoading && !currentRecommendations ? (
             <div className="blankState">
               <RefreshCw className="spin" size={42} />
               <h3>Loading recommendations</h3>
             </div>
-          ) : recommendations && recommendations.recommendations.length > 0 ? (
+          ) : currentRecommendations && currentRecommendations.recommendations.length > 0 ? (
             <>
               <section className="recommendationSummary" aria-label="Recommendation summary">
                 <div>
                   <span>Least Covered</span>
                   <div className="miniChips coverage">
-                    {recommendations.leastCoveredWords.slice(0, 24).map((word) => (
+                    {currentRecommendations.leastCoveredWords.slice(0, 24).map((word) => (
                       <span className={coverageCountClass(word.libraryCount)} key={word.japanese}>
                         {word.japanese}
                         <b>{word.libraryCount}</b>
@@ -2205,12 +2363,12 @@ function StudioApp() {
                 </div>
                 <div>
                   <span>Queue</span>
-                  <strong>{recommendations.recommendations.length}</strong>
-                  <p>{recommendations.targetWordCount} Set {setNumber} words tracked</p>
+                  <strong>{currentRecommendations.recommendations.length}</strong>
+                  <p>{currentRecommendations.targetWordCount} Set {setNumber} words tracked</p>
                 </div>
               </section>
               <div className="conversationGrid">
-                {recommendations.recommendations.map((recommendation) => renderConversationCard(recommendation.conversation, 'recommendation', recommendation))}
+                {currentRecommendations.recommendations.map((recommendation) => renderConversationCard(recommendation.conversation, 'recommendation', recommendation))}
               </div>
             </>
           ) : (
