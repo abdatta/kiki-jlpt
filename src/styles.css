@@ -843,6 +843,14 @@ textarea:focus {
   color: var(--studio-danger);
 }
 
+.workflowNodeAbsent {
+  cursor: default;
+  border-style: dashed;
+  background: #f4f2ed;
+  color: var(--studio-text-muted);
+  box-shadow: none;
+}
+
 .workflowNodeIcon {
   width: 34px;
   height: 34px;
@@ -1580,6 +1588,118 @@ audio {
   min-width: 0;
 }
 
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(31, 42, 46, 0.42);
+}
+
+.generateModal {
+  width: min(620px, 100%);
+  max-height: min(760px, calc(100vh - 36px));
+  overflow: auto;
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--studio-border);
+  border-radius: 8px;
+  background: var(--studio-surface-raised);
+  padding: 18px;
+  box-shadow: 0 24px 70px rgba(31, 42, 46, 0.22);
+}
+
+.modalHeader,
+.modalActions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 0;
+}
+
+.modalFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.modalWideField {
+  grid-column: 1 / -1;
+}
+
+.generateModes {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.generateModes legend {
+  margin-bottom: 7px;
+  color: var(--studio-text-subtle);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.generateModeOption {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  border: 1px solid var(--studio-border-soft);
+  border-radius: 8px;
+  background: var(--studio-surface);
+  padding: 12px;
+  cursor: pointer;
+}
+
+.generateModeOption.active {
+  border-color: var(--studio-accent-border);
+  background: var(--studio-accent-wash);
+}
+
+.generateModeOption input {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--studio-accent);
+}
+
+.generateModeOption span,
+.generateModeOption strong,
+.generateModeOption small {
+  display: block;
+}
+
+.generateModeOption span {
+  color: var(--studio-text);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.generateModeOption small {
+  margin-top: 3px;
+  color: var(--studio-text-muted);
+  line-height: 1.35;
+}
+
+.modalActions {
+  justify-content: flex-end;
+}
+
 .editForm {
   display: grid;
   gap: 12px;
@@ -1702,6 +1822,19 @@ audio {
 
   .auditGrid {
     grid-template-columns: 1fr;
+  }
+
+  .modalFormGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .modalHeader,
+  .modalActions {
+    align-items: stretch;
+  }
+
+  .modalActions {
+    flex-direction: column-reverse;
   }
 }
 

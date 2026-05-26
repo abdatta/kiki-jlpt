@@ -44,6 +44,7 @@ import { ConsumerApp } from './consumer/ConsumerApp.tsx';
 
 type ConversationAction = 'audio' | 'delete-audio';
 type BoardMode = 'runs' | 'library' | 'recommendations';
+type GenerateRunMode = 'workflow-audio' | 'workflow-text' | 'text-only';
 type StudioRoute =
   | { boardMode: 'runs'; runId?: string; auditOpen: boolean }
   | { boardMode: 'recommendations'; setNumber: number }
@@ -85,6 +86,37 @@ interface GenerationSession {
   exchange?: LlmExchange;
   error?: string;
 }
+
+interface GenerateModalState {
+  setNumber: number;
+  conversationCount: string;
+  textModelId: string;
+  runMode: GenerateRunMode;
+}
+
+interface GenerateRunConfig {
+  setNumber: number;
+  conversationCount: number;
+  textModelId: string;
+}
+
+const GENERATE_RUN_MODES: Array<{ id: GenerateRunMode; label: string; description: string }> = [
+  {
+    id: 'workflow-audio',
+    label: 'Full pipeline + 2 audio',
+    description: 'Generate, balance, then synthesize audio for the first two conversations.'
+  },
+  {
+    id: 'workflow-text',
+    label: 'Full pipeline, text only',
+    description: 'Generate and balance the run while skipping audio synthesis.'
+  },
+  {
+    id: 'text-only',
+    label: 'Draft text pass',
+    description: 'Generate only the initial conversation batch without balancing or audio.'
+  }
+];
 
 function parsePositiveInt(value: string | undefined): number | undefined {
   if (!value) return undefined;
@@ -191,8 +223,9 @@ function makeSessionId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `generation-${Date.now()}`;
 }
 
-function workflowTotalCount(conversationCount: number): number {
-  return conversationCount + Math.ceil(conversationCount / 2);
+function workflowAudioSummary(audioCount: number): string {
+  if (audioCount === 0) return 'Audio agent skipped';
+  return `${audioCount} audio node${audioCount === 1 ? '' : 's'}`;
 }
 
 function makeClientWorkflowJob(setNumber: number, conversationCount: number, audioCount: number): WorkflowJob {
@@ -318,6 +351,15 @@ function workflowJobForRun(run: PracticeRun | null): WorkflowJob | null {
     run,
     createdAt: run.createdAt,
     updatedAt: run.updatedAt
+  };
+}
+
+function initialGenerateModalState(setNumber: number): GenerateModalState {
+  return {
+    setNumber,
+    conversationCount: '',
+    textModelId: '',
+    runMode: 'workflow-text'
   };
 }
 
@@ -904,7 +946,7 @@ function WorkflowAuditFlow({
         <div>
           <p className="eyebrow">Live LLM pipeline</p>
           <h3>Generator to balancer to audio</h3>
-          <p>{job.primaryConversationCount} primary + {job.balanceConversationCount} balanced - {job.audioRequestedCount} audio calls</p>
+          <p>{job.primaryConversationCount} primary + {job.balanceConversationCount} balanced - {workflowAudioSummary(job.audioRequestedCount)}</p>
         </div>
         <span className={`workflowJobStatus ${job.status}`}>
           {job.status === 'running' ? <LoaderCircle className="spin" size={15} /> : job.status === 'failed' ? <CircleAlert size={15} /> : <Sparkles size={15} />}
@@ -918,9 +960,21 @@ function WorkflowAuditFlow({
         {balancer ? <WorkflowNodeButton node={balancer} selected={selectedNode?.id === balancer.id} onSelect={() => onSelectNode(balancer.id)} /> : null}
         <span className="workflowArrow branch" aria-hidden="true">&rarr;</span>
         <div className="workflowAudioBranch">
-          {audioNodes.map((node) => (
-            <WorkflowNodeButton key={node.id} node={node} selected={selectedNode?.id === node.id} onSelect={() => onSelectNode(node.id)} />
-          ))}
+          {audioNodes.length > 0 ? (
+            audioNodes.map((node) => (
+              <WorkflowNodeButton key={node.id} node={node} selected={selectedNode?.id === node.id} onSelect={() => onSelectNode(node.id)} />
+            ))
+          ) : (
+            <div className="workflowNode workflowNodeAbsent" aria-label="Audio agent skipped">
+              <span className="workflowNodeIcon">
+                <Headphones size={18} />
+              </span>
+              <span>
+                <strong>Audio Agent Skipped</strong>
+                <small>Not included in this run</small>
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1109,6 +1163,123 @@ function LoadingPanel({ session }: { session: GenerationSession }) {
   );
 }
 
+function GenerateModal({
+  state,
+  sets,
+  textModels,
+  busy,
+  onChange,
+  onClose,
+  onSubmit
+}: {
+  state: GenerateModalState;
+  sets: SetSummary[];
+  textModels: TextModelInfo[];
+  busy: BusyAction;
+  onChange: (state: GenerateModalState) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  const selectedSet = sets.find((item) => item.set === state.setNumber);
+  const conversationCount = Number(state.conversationCount);
+  const canSubmit = busy === null
+    && Number.isInteger(conversationCount)
+    && conversationCount >= 4
+    && conversationCount <= 30
+    && state.textModelId.length > 0;
+
+  return (
+    <div className="modalOverlay" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget && busy === null) {
+        onClose();
+      }
+    }}>
+      <section className="generateModal" role="dialog" aria-modal="true" aria-labelledby="generate-modal-title">
+        <div className="modalHeader">
+          <div>
+            <p className="eyebrow">Generation settings</p>
+            <h2 id="generate-modal-title">Start a run</h2>
+          </div>
+          <button className="iconButton" onClick={onClose} disabled={busy !== null} title="Close" type="button">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="modalFormGrid">
+          <label>
+            <span>Set</span>
+            <select value={state.setNumber} onChange={(event) => onChange({ ...state, setNumber: Number(event.target.value) })}>
+              {sets.map((set) => (
+                <option key={set.set} value={set.set}>
+                  Set {set.set}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Conversations</span>
+            <input
+              min={4}
+              max={30}
+              placeholder="Select 4-30"
+              type="number"
+              value={state.conversationCount}
+              onChange={(event) => onChange({ ...state, conversationCount: event.target.value })}
+            />
+          </label>
+
+          <label className="modalWideField">
+            <span>Text model</span>
+            <select value={state.textModelId} onChange={(event) => onChange({ ...state, textModelId: event.target.value })}>
+              <option value="" disabled>Select a model</option>
+              {textModels.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="setMeta">
+          <strong>{selectedSet?.theme ?? 'Vocabulary set'}</strong>
+          <span>{selectedSet ? `${selectedSet.cumulativeCount} allowed words through Set ${selectedSet.set}` : 'Loading vocab'}</span>
+        </div>
+
+        <fieldset className="generateModes">
+          <legend>Run type</legend>
+          {GENERATE_RUN_MODES.map((mode) => (
+            <label className={state.runMode === mode.id ? 'generateModeOption active' : 'generateModeOption'} key={mode.id}>
+              <input
+                checked={state.runMode === mode.id}
+                name="generate-run-mode"
+                onChange={() => onChange({ ...state, runMode: mode.id })}
+                type="radio"
+                value={mode.id}
+              />
+              <span>
+                <strong>{mode.label}</strong>
+                <small>{mode.description}</small>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        <div className="modalActions">
+          <button className="secondaryButton" onClick={onClose} disabled={busy !== null} type="button">
+            Cancel
+          </button>
+          <button className="primaryButton" onClick={onSubmit} disabled={!canSubmit} type="button">
+            {busy === 'generate' || busy === 'workflow' ? <RefreshCw className="spin" size={18} /> : <Sparkles size={18} />}
+            Generate
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function AnalyticsPanel({ analytics, setNumber, label }: { analytics: PracticeRun['analytics']; setNumber: number; label: string }) {
   return (
     <section className="analyticsPanel" aria-label={label}>
@@ -1165,6 +1336,7 @@ function StudioApp() {
   const [error, setError] = useState<string | null>(null);
   const [edit, setEdit] = useState<EditState | null>(null);
   const [generationSession, setGenerationSession] = useState<GenerationSession | null>(null);
+  const [generateModal, setGenerateModal] = useState<GenerateModalState | null>(null);
   const [workflowJob, setWorkflowJob] = useState<WorkflowJob | null>(null);
   const [selectedWorkflowNodeId, setSelectedWorkflowNodeId] = useState<string | undefined>();
   const [auditOpen, setAuditOpen] = useState(studioRoute.boardMode === 'runs' && studioRoute.auditOpen);
@@ -1439,10 +1611,42 @@ function StudioApp() {
     navigateToRun(currentRun.id, !auditOpen);
   }
 
-  async function generate() {
+  function openGenerateModal() {
+    setError(null);
+    setGenerateModal(initialGenerateModalState(setNumber));
+  }
+
+  async function submitGenerateModal() {
+    if (!generateModal) return;
+    const nextConversationCount = Number(generateModal.conversationCount);
+    if (!Number.isInteger(nextConversationCount) || nextConversationCount < 4 || nextConversationCount > 30 || !generateModal.textModelId) {
+      setError('Choose a set, conversation count, model, and run type before generating.');
+      return;
+    }
+
+    const config: GenerateRunConfig = {
+      setNumber: generateModal.setNumber,
+      conversationCount: nextConversationCount,
+      textModelId: generateModal.textModelId
+    };
+    setSetNumber(config.setNumber);
+    setConversationCount(config.conversationCount);
+    setTextModelId(config.textModelId);
+    setGenerateModal(null);
+
+    if (generateModal.runMode === 'text-only') {
+      await generate(config);
+      return;
+    }
+
+    await generateWorkflow(config, generateModal.runMode === 'workflow-audio' ? 2 : 0);
+  }
+
+  async function generate(config: GenerateRunConfig) {
     const sessionId = makeSessionId();
-    const modelLabel = currentTextModel?.label ?? (textModelId === 'gemini' ? 'Gemini' : textModelId);
-    const requestBody = { setNumber, conversationCount, textModelId };
+    const requestModel = textModelOptions.find((model) => model.id === config.textModelId);
+    const modelLabel = requestModel?.label ?? config.textModelId;
+    const requestBody = config;
     setBusy('generate');
     setError(null);
     setEdit(null);
@@ -1454,9 +1658,9 @@ function StudioApp() {
     setGenerationSession({
       id: sessionId,
       title: 'Generating a new listening set',
-      detail: `Set ${setNumber} - ${conversationCount} conversations - ${modelLabel}`,
-      setNumber,
-      conversationCount,
+      detail: `Set ${config.setNumber} - ${config.conversationCount} conversations - ${modelLabel}`,
+      setNumber: config.setNumber,
+      conversationCount: config.conversationCount,
       textModelLabel: modelLabel,
       startedAt: new Date().toISOString(),
       status: 'running'
@@ -1494,8 +1698,8 @@ function StudioApp() {
     }
   }
 
-  async function generateWorkflow() {
-    const requestBody = { setNumber, conversationCount, textModelId, audioCount: 2 };
+  async function generateWorkflow(config: GenerateRunConfig, audioCount: number) {
+    const requestBody = { ...config, audioCount };
     setBusy('workflow');
     setError(null);
     setEdit(null);
@@ -1505,7 +1709,7 @@ function StudioApp() {
     setBoardMode('runs');
     setCurrentRun(null);
     setGenerationSession(null);
-    const pendingJob = makeClientWorkflowJob(setNumber, conversationCount, requestBody.audioCount);
+    const pendingJob = makeClientWorkflowJob(config.setNumber, config.conversationCount, requestBody.audioCount);
     setWorkflowJob(pendingJob);
     setSelectedWorkflowNodeId(undefined);
     try {
@@ -2090,6 +2294,17 @@ function StudioApp() {
 
   return (
     <main className="appShell">
+      {generateModal ? (
+        <GenerateModal
+          state={generateModal}
+          sets={sets}
+          textModels={textModels}
+          busy={busy}
+          onChange={setGenerateModal}
+          onClose={() => setGenerateModal(null)}
+          onSubmit={submitGenerateModal}
+        />
+      ) : null}
       <aside className="sideBar">
         <div className="brand">
           <BrandLogo className="brandLogo" title="Kiki JLPT" />
@@ -2115,41 +2330,14 @@ function StudioApp() {
             </select>
           </label>
 
-          <label>
-            <span>Conversations</span>
-            <input min={4} max={30} type="number" value={conversationCount} onChange={(event) => setConversationCount(Number(event.target.value))} />
-          </label>
-
-          <label>
-            <span>Text model</span>
-            <select value={textModelId} onChange={(event) => setTextModelId(event.target.value)}>
-              {textModelOptions.length === 0 ? <option value="gemini">Gemini</option> : null}
-              {textModelOptions.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <div className="setMeta">
             <strong>{currentSet?.theme ?? 'Vocabulary set'}</strong>
             <span>{currentSet ? `${currentSet.cumulativeCount} allowed words through Set ${currentSet.set}` : 'Loading vocab'}</span>
           </div>
 
-          <button className="primaryButton" onClick={generate} disabled={busy !== null}>
-            {busy === 'generate' ? <RefreshCw className="spin" size={18} /> : <Sparkles size={18} />}
+          <button className="primaryButton" onClick={openGenerateModal} disabled={busy !== null}>
+            {busy === 'generate' || busy === 'workflow' ? <RefreshCw className="spin" size={18} /> : <Sparkles size={18} />}
             Generate
-          </button>
-
-          <button
-            className="secondaryButton"
-            onClick={generateWorkflow}
-            disabled={busy !== null}
-            title={`Create ${workflowTotalCount(conversationCount)} total conversations and synthesize audio for the first 2.`}
-          >
-            {busy === 'workflow' ? <RefreshCw className="spin" size={18} /> : <Headphones size={18} />}
-            End-to-end
           </button>
         </section>
 
@@ -2236,7 +2424,7 @@ function StudioApp() {
           {workflowJob ? (
             <div className="runStats">
               <span>{workflowJob.requestedTotalConversationCount} requested</span>
-              <span>{workflowJob.audioRequestedCount} audio nodes</span>
+              <span>{workflowAudioSummary(workflowJob.audioRequestedCount)}</span>
               <span>{workflowJob.status}</span>
             </div>
           ) : generationSession ? (
@@ -2396,7 +2584,7 @@ function StudioApp() {
           <div className="blankState">
             <Disc3 size={42} />
             <h3>No batch selected</h3>
-            <p>Choose a set and conversation count, then generate a review queue.</p>
+            <p>Choose a set, then open Generate to configure the next run.</p>
           </div>
         ) : showRunContent && currentRun ? (
           <div className="conversationGrid">
