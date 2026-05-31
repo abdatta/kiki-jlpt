@@ -9,3 +9,5 @@ export const RUNS_DIR = path.join(OUTPUTS_DIR, 'runs');
 export const CURATED_DIR = path.join(ROOT_DIR, 'curated');
 export const CURATED_SETS_DIR = path.join(CURATED_DIR, 'sets');
 export const CURATED_AUDIO_DIR = path.join(CURATED_DIR, 'audio');
+export const PUBLIC_DIR = path.join(ROOT_DIR, 'public');
+export const PRACTICE_LIBRARY_DIR = path.join(PUBLIC_DIR, 'library');

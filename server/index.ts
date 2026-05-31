@@ -17,6 +17,7 @@ import { auditConversationsWithVocabulary } from './vocabAudit.ts';
 import { addConversationToLibrary, listCuratedSets, readCuratedSet, reanalyzeCuratedSet, removeConversationFromLibrary } from './library.ts';
 import { recommendLibraryConversations } from './recommendations.ts';
 import { buildGeneratedRunBalancePlan, buildLibraryBalancePlan } from './libraryBalance.ts';
+import { getPracticeLibraryPublishStatus, publishPracticeLibrary } from './practiceLibrary.ts';
 
 const app = express();
 const port = Number.parseInt(process.env.API_PORT || '8787', 10);
@@ -832,6 +833,23 @@ app.get('/api/library/sets', asyncHandler(async (_req, res) => {
       conversationCount: set.conversations.length,
       updatedAt: set.updatedAt
     }))
+  });
+}));
+
+app.get('/api/library/publish/status', asyncHandler(async (_req, res) => {
+  res.json({ status: await getPracticeLibraryPublishStatus() });
+}));
+
+app.post('/api/library/publish', asyncHandler(async (_req, res) => {
+  const result = await publishPracticeLibrary();
+  res.json({
+    status: {
+      stale: result.stale,
+      curatedGeneratedAt: result.curatedGeneratedAt,
+      publishedGeneratedAt: result.publishedGeneratedAt,
+      curatedConversationCount: result.curatedConversationCount,
+      publishedConversationCount: result.publishedConversationCount
+    }
   });
 }));
 

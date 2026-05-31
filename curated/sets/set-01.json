@@ -3226,10 +3226,1386 @@
       "curatedAudioPath": "curated/audio/set-01/set-01-20260505T191031Z-2qqr8c-convo-02.wav",
       "curatedId": "set-01-20260505T191031Z-2qqr8c-convo-02",
       "curatedAt": "2026-05-05T19:21:00.204Z"
+    },
+    {
+      "id": "set-01-20260528T044005Z-o02dwx-convo-01",
+      "number": 1,
+      "title": "A New Meeting",
+      "scene": "Hana and Ken meet for the first time at school.",
+      "sampleContext": "The speakers are greeting each other politely in a hallway.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "こんにちは。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "こんにちは。初めまして。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "私は花です。よろしくお願いします。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "私は健です。こちらこそよろしく。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "健さんは学生ですか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、学生です。先生はあちらにいます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "ああ、そうですか。ありがとうございます。"
+        }
+      ],
+      "listeningQuestions": [
+        "What is the woman's name?",
+        "What is the man's name?",
+        "What is the man's occupation?",
+        "Where is the teacher?"
+      ],
+      "answerKey": [
+        "Her name is Hana.",
+        "His name is Ken.",
+        "He is a student.",
+        "The teacher is over there."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Hello."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Hello. Nice to meet you."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I am Hana. Please treat me well."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I am Ken. Nice to meet you too."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Are you a student, Ken?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I am a student. The teacher is over there."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, I see. Thank you very much."
+        }
+      ],
+      "vocabularyUsed": [
+        "ああ",
+        "あちら",
+        "ありがとうございます",
+        "お願いします",
+        "こんにちは",
+        "する",
+        "はい",
+        "よろしく",
+        "学生",
+        "居る",
+        "三",
+        "四",
+        "私",
+        "初めまして",
+        "先生",
+        "二"
+      ],
+      "outOfVocabularyAudit": [
+        "こちら",
+        "そう",
+        "花",
+        "健"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-31T02:35:27.030Z",
+      "updatedAt": "2026-05-31T02:35:27.030Z",
+      "audioFileName": "set-01-20260528T044005Z-o02dwx-convo-01.wav",
+      "audioUrl": "/curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-01.wav",
+      "sourceRunId": "set-01-20260528T044005Z-o02dwx",
+      "sourceConversationId": "convo-01",
+      "setNumber": 1,
+      "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-01.wav",
+      "curatedId": "set-01-20260528T044005Z-o02dwx-convo-01",
+      "curatedAt": "2026-05-31T02:35:27.030Z"
+    },
+    {
+      "id": "set-01-20260528T044005Z-o02dwx-convo-02",
+      "number": 2,
+      "title": "Ordering Lunch",
+      "scene": "Akiko and Hiroshi are deciding what to eat and drink.",
+      "sampleContext": "They are looking at a menu together.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あなたは何を飲みますか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "私はお茶を飲みます。お肉は好きですか？"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、好きです。でも、魚は嫌いです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "この魚は悪いですか？"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、新しくて美味しいですよ。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "excited",
+            "slow"
+          ],
+          "japanese": "いいですね。どうも。これを食べましょう。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、食べましょう。"
+        }
+      ],
+      "listeningQuestions": [
+        "What will the man drink?",
+        "Does the woman like meat?",
+        "What food does the woman dislike?",
+        "How is the fish described?"
+      ],
+      "answerKey": [
+        "He will drink tea.",
+        "Yes, she likes meat.",
+        "She dislikes fish.",
+        "It is new (fresh) and delicious."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "What will you drink?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I will drink tea. Do you like meat?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, I like it. But I dislike fish."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is this fish bad?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No, it is new and delicious."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That's good. Thanks. Let's eat this."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, let's eat."
+        }
+      ],
+      "vocabularyUsed": [
+        "あなた",
+        "いい",
+        "いいえ",
+        "この",
+        "これ",
+        "どうも",
+        "はい",
+        "悪い",
+        "飲む",
+        "何",
+        "何～",
+        "嫌い",
+        "好き",
+        "私",
+        "食べる",
+        "新しい",
+        "美味しい"
+      ],
+      "outOfVocabularyAudit": [
+        "お茶",
+        "でも",
+        "魚",
+        "肉"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-31T02:35:28.987Z",
+      "updatedAt": "2026-05-31T02:35:28.987Z",
+      "audioFileName": "set-01-20260528T044005Z-o02dwx-convo-02.wav",
+      "audioUrl": "/curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-02.wav",
+      "sourceRunId": "set-01-20260528T044005Z-o02dwx",
+      "sourceConversationId": "convo-02",
+      "setNumber": 1,
+      "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-02.wav",
+      "curatedId": "set-01-20260528T044005Z-o02dwx-convo-02",
+      "curatedAt": "2026-05-31T02:35:28.987Z"
+    },
+    {
+      "id": "set-01-20260528T044005Z-o02dwx-convo-03",
+      "number": 3,
+      "title": "Family Photo",
+      "scene": "Yuki and Takashi are looking at a photo of Takashi's family.",
+      "sampleContext": "They are pointing at different people in the photo.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あの人はどなたですか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "あの人は父です。母と話しています。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "お姉さんはいますか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、姉が一人と兄が一人います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "弟はいますか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい、弟が二人います。妹はいません。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "家族が多いですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、六人です。"
+        }
+      ],
+      "listeningQuestions": [
+        "Who is the father talking to?",
+        "How many older sisters does the man have?",
+        "How many younger brothers does the man have?",
+        "Does the man have a younger sister?",
+        "How many people are in the family total?"
+      ],
+      "answerKey": [
+        "He is talking to the mother.",
+        "He has one older sister.",
+        "He has two younger brothers.",
+        "No, he doesn't have a younger sister.",
+        "There are six people."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Who is that person?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That person is my father. He is talking with my mother."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you have an older sister?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I have one older sister and one older brother."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you have a younger brother?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I have two younger brothers. I don't have a younger sister."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "You have a large family, don't you?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, there are six of us."
+        }
+      ],
+      "vocabularyUsed": [
+        "あの",
+        "どなた",
+        "はい",
+        "一",
+        "一人",
+        "家族",
+        "居る",
+        "兄",
+        "姉",
+        "人",
+        "弟",
+        "二",
+        "二人",
+        "父",
+        "母",
+        "妹",
+        "六",
+        "話す"
+      ],
+      "outOfVocabularyAudit": [
+        "姉さん",
+        "多い"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-31T02:35:31.357Z",
+      "updatedAt": "2026-05-31T02:35:31.357Z",
+      "audioFileName": "set-01-20260528T044005Z-o02dwx-convo-03.wav",
+      "audioUrl": "/curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-03.wav",
+      "sourceRunId": "set-01-20260528T044005Z-o02dwx",
+      "sourceConversationId": "convo-03",
+      "setNumber": 1,
+      "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-03.wav",
+      "curatedId": "set-01-20260528T044005Z-o02dwx-convo-03",
+      "curatedAt": "2026-05-31T02:35:31.357Z"
+    },
+    {
+      "id": "set-01-20260528T044005Z-o02dwx-convo-04",
+      "number": 4,
+      "title": "Bags and Colors",
+      "scene": "Sakura and Kenta are identifying their bags.",
+      "sampleContext": "They are picking up their belongings to leave.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あの大きい鞄は誰のですか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "あれは私の鞄です。青いですよ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "いいですね。鞄が二つあります。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "これはあなたの赤い鞄ですか？"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、私のです。小さいですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "でも、新しいですよ。見てください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。どれが健太さんのですか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "この古い青い鞄が私のです。"
+        }
+      ],
+      "listeningQuestions": [
+        "What color is the large bag?",
+        "Whose bag is the red one?",
+        "Is the red bag big or small?",
+        "Is the red bag new or old?",
+        "Which bag belongs to the man?"
+      ],
+      "answerKey": [
+        "It is blue.",
+        "It is the woman's bag.",
+        "It is small.",
+        "It is new.",
+        "The old blue bag is his."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Whose is that big bag?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That is my bag. It's blue."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "That's nice. There are two bags."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is this your red bag?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, it's mine. It's small, isn't it?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "But it's new. Look."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Thank you. Which one is yours, Kenta?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "This old blue bag is mine."
+        }
+      ],
+      "vocabularyUsed": [
+        "あなた",
+        "あの",
+        "ありがとうございます",
+        "あれ",
+        "いい",
+        "この",
+        "これ",
+        "どれ",
+        "はい",
+        "見る",
+        "古い",
+        "在る",
+        "三",
+        "私",
+        "小さい",
+        "新しい",
+        "青い",
+        "赤い",
+        "大きい",
+        "有る"
+      ],
+      "outOfVocabularyAudit": [
+        "くださる",
+        "でも",
+        "鞄",
+        "誰",
+        "二つ"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-31T02:35:32.573Z",
+      "updatedAt": "2026-05-31T02:35:32.573Z",
+      "audioFileName": "set-01-20260528T044005Z-o02dwx-convo-04.wav",
+      "audioUrl": "/curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-04.wav",
+      "sourceRunId": "set-01-20260528T044005Z-o02dwx",
+      "sourceConversationId": "convo-04",
+      "setNumber": 1,
+      "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-04.wav",
+      "curatedId": "set-01-20260528T044005Z-o02dwx-convo-04",
+      "curatedAt": "2026-05-31T02:35:32.573Z"
+    },
+    {
+      "id": "set-01-20260528T044005Z-o02dwx-convo-05",
+      "number": 5,
+      "title": "School Numbers",
+      "scene": "Mio and Daisuke are talking about their school.",
+      "sampleContext": "They are discussing how many people are at the school.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "この学校に学生は何人いますか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "千人います。男の子は六百四十人です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "女の子は何人ですか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "三百六十人です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "先生は十人ですか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、八十人います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "大輔さんの弟は何人いますか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "弟はゼロ人です。妹が一人います。"
+        }
+      ],
+      "listeningQuestions": [
+        "How many students are at the school in total?",
+        "How many boys are at the school?",
+        "How many teachers are there?",
+        "How many younger brothers does Daisuke have?",
+        "How many younger sisters does Daisuke have?"
+      ],
+      "answerKey": [
+        "There are one thousand students.",
+        "There are 640 boys.",
+        "There are 80 teachers.",
+        "He has zero younger brothers.",
+        "He has one younger sister."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "How many students are at this school?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "There are one thousand. There are 640 boys."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "How many girls are there?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "There are 360."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Are there ten teachers?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, there are 80."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "How many younger brothers do you have, Daisuke?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I have zero younger brothers. I have one younger sister."
+        }
+      ],
+      "vocabularyUsed": [
+        "いいえ",
+        "この",
+        "ゼロ",
+        "一",
+        "一人",
+        "何",
+        "何～",
+        "学生",
+        "居る",
+        "三",
+        "四",
+        "十",
+        "女の子",
+        "人",
+        "先生",
+        "千",
+        "男の子",
+        "弟",
+        "二",
+        "八",
+        "百",
+        "妹",
+        "六"
+      ],
+      "outOfVocabularyAudit": [
+        "学校"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-31T02:35:35.433Z",
+      "updatedAt": "2026-05-31T02:35:35.433Z",
+      "audioFileName": "set-01-20260528T044005Z-o02dwx-convo-05.wav",
+      "audioUrl": "/curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-05.wav",
+      "sourceRunId": "set-01-20260528T044005Z-o02dwx",
+      "sourceConversationId": "convo-05",
+      "setNumber": 1,
+      "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-05.wav",
+      "curatedId": "set-01-20260528T044005Z-o02dwx-convo-05",
+      "curatedAt": "2026-05-31T02:35:35.433Z"
+    },
+    {
+      "id": "set-01-20260528T044005Z-o02dwx-convo-06",
+      "number": 6,
+      "title": "Daily Routine",
+      "scene": "Emi and Shigeru are talking about their schedules.",
+      "sampleContext": "They are getting ready to leave for the day.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "茂さん、どこへ行きますか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "家へ帰ります。今、六時ですから。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "私は九時に寝ます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "excited",
+            "slow"
+          ],
+          "japanese": "早いですね！何時に起きますか？"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "明日、七時に起きます。そして学校に来ます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "私も七時に来ます。さようなら。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "さようなら。"
+        }
+      ],
+      "listeningQuestions": [
+        "Where is Shigeru going?",
+        "What time is it in the conversation?",
+        "What time does Emi go to sleep?",
+        "What time will Emi wake up tomorrow?",
+        "When will Shigeru come to school tomorrow?"
+      ],
+      "answerKey": [
+        "He is going home.",
+        "It is 6 o'clock.",
+        "She goes to sleep at 9 o'clock.",
+        "She will wake up at 7 o'clock.",
+        "He will come at 7 o'clock."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Shigeru, where are you going?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I'm going home. Because it is 6 o'clock now."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I go to sleep at 9 o'clock."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That's early! What time do you wake up?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Tomorrow, I will wake up at 7 o'clock. And then I will come to school."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I will come at 7 o'clock too. Goodbye."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Goodbye."
+        }
+      ],
+      "vocabularyUsed": [
+        "いえ",
+        "さようなら",
+        "どこ",
+        "何",
+        "何～",
+        "帰る",
+        "起きる",
+        "九",
+        "行く",
+        "三",
+        "私",
+        "七",
+        "寝る",
+        "二",
+        "来る",
+        "六"
+      ],
+      "outOfVocabularyAudit": [
+        "そして",
+        "学校",
+        "今",
+        "早い",
+        "明日"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-31T02:35:37.029Z",
+      "updatedAt": "2026-05-31T02:35:37.029Z",
+      "audioFileName": "set-01-20260528T044005Z-o02dwx-convo-06.wav",
+      "audioUrl": "/curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-06.wav",
+      "sourceRunId": "set-01-20260528T044005Z-o02dwx",
+      "sourceConversationId": "convo-06",
+      "setNumber": 1,
+      "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-06.wav",
+      "curatedId": "set-01-20260528T044005Z-o02dwx-convo-06",
+      "curatedAt": "2026-05-31T02:35:37.029Z"
+    },
+    {
+      "id": "set-01-20260528T044005Z-o02dwx-convo-07",
+      "number": 7,
+      "title": "In the Classroom",
+      "scene": "Rina and Kazuo are in a classroom looking at books.",
+      "sampleContext": "It is evening and they are finishing their work.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "こんばんは。すみません、ここはどこですか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "そこは教室ですよ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "apologetic",
+            "slow"
+          ],
+          "japanese": "ああ、ごめんなさい。どの本を見ますか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "この赤い本を見ます。開いてください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "はい。これはとても古いですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "でも、いい本ですよ。あそこにあります。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。"
+        }
+      ],
+      "listeningQuestions": [
+        "What time of day is it?",
+        "Where are the speakers?",
+        "Which book is the man looking at?",
+        "How does the woman describe the book?",
+        "Is the book good or bad according to the man?"
+      ],
+      "answerKey": [
+        "It is evening.",
+        "They are in a classroom.",
+        "He is looking at the red book.",
+        "She says it is very old.",
+        "He says it is a good book."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Good evening. Excuse me, where is this place?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That place is a classroom."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, I'm sorry. Which book will you look at?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I will look at this red book. Please open it."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. This is very old, isn't it?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "But it's a good book. It is over there."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Thank you very much."
+        }
+      ],
+      "vocabularyUsed": [
+        "ああ",
+        "あそこ",
+        "ありがとうございます",
+        "いい",
+        "ここ",
+        "この",
+        "ごめんなさい",
+        "これ",
+        "こんばんは",
+        "すみません",
+        "そこ",
+        "どこ",
+        "どの",
+        "はい",
+        "開く",
+        "見る",
+        "古い",
+        "在る",
+        "赤い",
+        "二",
+        "有る"
+      ],
+      "outOfVocabularyAudit": [
+        "くださる",
+        "でも",
+        "とても",
+        "教室",
+        "本"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-31T02:35:39.738Z",
+      "updatedAt": "2026-05-31T02:35:39.738Z",
+      "audioFileName": "set-01-20260528T044005Z-o02dwx-convo-07.wav",
+      "audioUrl": "/curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-07.wav",
+      "sourceRunId": "set-01-20260528T044005Z-o02dwx",
+      "sourceConversationId": "convo-07",
+      "setNumber": 1,
+      "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-07.wav",
+      "curatedId": "set-01-20260528T044005Z-o02dwx-convo-07",
+      "curatedAt": "2026-05-31T02:35:39.738Z"
+    },
+    {
+      "id": "set-01-20260528T044005Z-o02dwx-convo-08",
+      "number": 8,
+      "title": "Asking the Teacher",
+      "scene": "Mayu is asking Tanaka-sensei a question.",
+      "sampleContext": "Mayu is pointing at a word in her textbook.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "先生、おはようございます。失礼します。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "おはようございます。どうぞ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "これを聞いてもいいですか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、何ですか？これを見てください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "この言葉は何と言いますか？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "それは「ありがとう」と言います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。お願いします。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい。いいですよ。"
+        }
+      ],
+      "listeningQuestions": [
+        "What time of day is it?",
+        "Who is Speaker 2?",
+        "What does the woman want to do?",
+        "What word is the woman asking about?",
+        "Is the teacher willing to help?"
+      ],
+      "answerKey": [
+        "It is morning.",
+        "Speaker 2 is the teacher (Tanaka-sensei).",
+        "She wants to ask a question/hear something.",
+        "The word is 'Arigatou'.",
+        "Yes, he says 'it is okay' (ii desu yo)."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Teacher, good morning. Excuse me."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Good morning. Please, come in."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "May I ask about this?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, what is it? Please look at this."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "How do you say this word?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That is said as 'Arigatou'."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Thank you very much. Please (help me)."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. That's fine."
+        }
+      ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "いい",
+        "おはようございます",
+        "お願いします",
+        "この",
+        "これ",
+        "する",
+        "それ",
+        "どうぞ",
+        "はい",
+        "何",
+        "何～",
+        "見る",
+        "言う",
+        "四",
+        "失礼します",
+        "先生",
+        "聞く"
+      ],
+      "outOfVocabularyAudit": [
+        "くださる",
+        "言葉"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-31T02:35:42.425Z",
+      "updatedAt": "2026-05-31T02:35:42.425Z",
+      "audioFileName": "set-01-20260528T044005Z-o02dwx-convo-08.wav",
+      "audioUrl": "/curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-08.wav",
+      "sourceRunId": "set-01-20260528T044005Z-o02dwx",
+      "sourceConversationId": "convo-08",
+      "setNumber": 1,
+      "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-08.wav",
+      "curatedId": "set-01-20260528T044005Z-o02dwx-convo-08",
+      "curatedAt": "2026-05-31T02:35:42.425Z"
+    },
+    {
+      "id": "set-01-20260528T044005Z-o02dwx-convo-09",
+      "number": 9,
+      "title": "Family Size",
+      "scene": "A woman and a man are talking about their families in the morning.",
+      "sampleContext": "The speakers are greeting each other and discussing how many people are in their families.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "おはようございます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "calm",
+            "slow"
+          ],
+          "japanese": "おはよう。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "たなかさんの家族は、何人ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "五人です。お父さんと、お母さんと、子供が三人います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "ああ、いいですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あなたの家族は、何人ですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "私の家族は、二人です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "そうですか。"
+        }
+      ],
+      "listeningQuestions": [
+        "How many people are in Tanaka's family in total?",
+        "Who are the adult family members Tanaka mentioned?",
+        "How many children does Tanaka have?",
+        "How many people are in the woman's family?"
+      ],
+      "answerKey": [
+        "Five people.",
+        "His father and mother.",
+        "Three children.",
+        "Two people."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Good morning."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Good morning."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "How many people are in your family, Tanaka-san?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "There are five people. My father, my mother, and three children."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, that is nice."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "How many people are in your family?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "My family has two people."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I see."
+        }
+      ],
+      "vocabularyUsed": [
+        "ああ",
+        "あなた",
+        "いい",
+        "おはようございます",
+        "お父さん",
+        "お母さん",
+        "何",
+        "何～",
+        "家族",
+        "居る",
+        "五",
+        "三",
+        "子供",
+        "私",
+        "人",
+        "二",
+        "二人"
+      ],
+      "outOfVocabularyAudit": [
+        "そう"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-05-31T02:55:03.909Z",
+      "updatedAt": "2026-05-31T02:55:03.909Z",
+      "audioFileName": "set-01-20260528T044005Z-o02dwx-convo-09.wav",
+      "audioUrl": "/curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-09.wav",
+      "sourceRunId": "set-01-20260528T044005Z-o02dwx",
+      "sourceConversationId": "convo-09",
+      "setNumber": 1,
+      "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-09.wav",
+      "curatedId": "set-01-20260528T044005Z-o02dwx-convo-09",
+      "curatedAt": "2026-05-31T02:55:03.909Z"
     }
   ],
   "createdAt": "2026-05-02T21:23:58.666Z",
-  "updatedAt": "2026-05-05T19:22:24.999Z",
+  "updatedAt": "2026-05-31T02:55:03.909Z",
   "analytics": {
     "currentSetTotal": 100,
     "currentSetUsedCount": 100,
@@ -3238,8 +4614,9 @@
     "allowedVocabTotal": 100,
     "allowedVocabUsedCount": 100,
     "allowedVocabUsedPercentage": 100,
-    "outOfAllowedCount": 17,
+    "outOfAllowedCount": 34,
     "outOfAllowedWords": [
+      "お茶",
       "くださる",
       "こちら",
       "さくら",
@@ -3247,16 +4624,32 @@
       "そして",
       "では",
       "でも",
+      "とても",
       "まだ",
       "もう",
       "もう一度",
       "よい",
       "一緒",
       "遠い",
+      "花",
+      "学校",
       "楽しい",
+      "鞄",
+      "魚",
+      "教室",
+      "健",
+      "言葉",
       "今",
+      "姉さん",
       "思う",
-      "分かる"
+      "早い",
+      "多い",
+      "誰",
+      "二つ",
+      "肉",
+      "分かる",
+      "本",
+      "明日"
     ]
   }
 }

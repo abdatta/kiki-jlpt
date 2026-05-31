@@ -292,6 +292,7 @@ textarea:focus {
 
 .boardTabs a,
 .boardTabs button {
+  position: relative;
   min-height: 40px;
   border: 1px solid var(--studio-border);
   border-radius: 8px;
@@ -310,6 +311,30 @@ textarea:focus {
   background: var(--studio-accent-soft);
   border-color: var(--studio-accent-border);
   color: var(--studio-accent-strong);
+}
+
+.boardTabs a.stale {
+  border-color: var(--studio-danger-border);
+  color: var(--studio-danger);
+}
+
+.boardTabs a.stale.active {
+  background: var(--studio-danger-soft);
+  border-color: var(--studio-danger-border);
+  color: var(--studio-danger);
+}
+
+.tabDot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--studio-bg);
+  border-radius: 999px;
+  background: var(--studio-danger);
+  box-shadow: 0 1px 3px rgba(31, 42, 46, 0.18);
+  pointer-events: none;
 }
 
 .iconButton {
@@ -392,6 +417,7 @@ textarea:focus {
 }
 
 .runStats span,
+.publishBadge,
 .statusPill,
 .vocabChips span,
 .miniChips span {
@@ -401,6 +427,36 @@ textarea:focus {
   padding: 7px 10px;
   font-size: 13px;
   font-weight: 750;
+}
+
+.publishBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 34px;
+  font-weight: 850;
+}
+
+.publishBadge:disabled {
+  cursor: default;
+}
+
+.publishBadge.stale {
+  border-color: var(--studio-danger-border);
+  background: var(--studio-danger-soft);
+  color: var(--studio-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--studio-danger-border) 22%, transparent);
+}
+
+.publishBadge.stale:not(:disabled):hover {
+  background: var(--studio-danger-softer);
+  border-color: var(--studio-danger);
+}
+
+.publishBadge.fresh {
+  border-color: var(--studio-info-border);
+  background: var(--studio-info-soft);
+  color: var(--studio-info);
 }
 
 .auditToggle {
@@ -445,7 +501,22 @@ textarea:focus {
   padding: 12px 14px;
   display: flex;
   gap: 9px;
-  align-items: center;
+  align-items: flex-start;
+  max-width: 100%;
+  max-height: 10rem;
+  overflow: auto;
+}
+
+.errorBanner svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.errorBanner span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.45;
 }
 
 .blankState {
@@ -1746,6 +1817,11 @@ textarea:focus {
   margin: 0;
   border-radius: 8px;
   padding: 10px 12px;
+  max-width: 100%;
+  max-height: 8rem;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 audio {

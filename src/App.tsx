@@ -59,6 +59,7 @@ type BusyAction =
   | `save:${string}`
   | `library-add:${string}`
   | `library-remove:${string}`
+  | 'publish-library'
   | `delete-run:${string}`
   | `reanalyze-run:${string}`
   | `reanalyze-library:${number}`
@@ -100,6 +101,14 @@ interface GenerateRunConfig {
   setNumber: number;
   conversationCount: number;
   textModelId: string;
+}
+
+interface PracticeLibraryPublishStatus {
+  stale: boolean;
+  curatedGeneratedAt: string;
+  publishedGeneratedAt: string;
+  curatedConversationCount: number;
+  publishedConversationCount: number;
 }
 
 const GENERATE_RUN_MODES: Array<{ id: GenerateRunMode; label: string; description: string }> = [
@@ -1677,6 +1686,7 @@ function StudioApp() {
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
   const [libraryBalance, setLibraryBalance] = useState<LibraryBalancePlan | null>(null);
   const [libraryBalanceLoading, setLibraryBalanceLoading] = useState(false);
+  const [practicePublishStatus, setPracticePublishStatus] = useState<PracticeLibraryPublishStatus | null>(null);
   const [currentRun, setCurrentRun] = useState<PracticeRun | null>(null);
   const [boardMode, setBoardMode] = useState<BoardMode>(studioRoute.boardMode);
   const [textModels, setTextModels] = useState<TextModelInfo[]>([]);
@@ -1779,8 +1789,16 @@ function StudioApp() {
     }
   }
 
+  async function loadPracticePublishStatus() {
+    const payload = await api<{ status: PracticeLibraryPublishStatus }>('/api/library/publish/status');
+    setPracticePublishStatus(payload.status);
+  }
+
   useEffect(() => {
-    loadInitial().catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
+    Promise.all([
+      loadInitial(),
+      loadPracticePublishStatus()
+    ]).catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
   }, []);
 
   useEffect(() => {
@@ -2363,6 +2381,7 @@ function StudioApp() {
       if (boardMode === 'library') {
         await loadLibraryBalance();
       }
+      await loadPracticePublishStatus();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       await refreshRun(sourceRunId).catch(() => undefined);
@@ -2394,6 +2413,20 @@ function StudioApp() {
       if (boardMode === 'library') {
         await loadLibraryBalance(conversation.setNumber);
       }
+      await loadPracticePublishStatus();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function publishPracticeLibrary() {
+    setBusy('publish-library');
+    setError(null);
+    try {
+      const payload = await api<{ status: PracticeLibraryPublishStatus }>('/api/library/publish', { method: 'POST' });
+      setPracticePublishStatus(payload.status);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
@@ -2767,9 +2800,14 @@ function StudioApp() {
             <Target size={16} />
             Queue
           </a>
-          <a className={boardMode === 'library' ? 'active' : ''} href={studioLibraryRoute(setNumber)}>
+          <a
+            className={`${boardMode === 'library' ? 'active' : ''} ${practicePublishStatus?.stale ? 'stale' : ''}`}
+            href={studioLibraryRoute(setNumber)}
+            title={practicePublishStatus?.stale ? 'Library has unpublished updates.' : 'Library'}
+          >
             <BookOpen size={16} />
             Library
+            {practicePublishStatus?.stale ? <span className="tabDot" aria-label="Unpublished updates" /> : null}
           </a>
         </div>
 
@@ -2784,7 +2822,7 @@ function StudioApp() {
           {filteredRuns.map((run) => (
             <a
               key={run.id}
-              className={`runButton ${currentRun?.id === run.id ? 'active' : ''}`}
+              className={`runButton ${boardMode === 'runs' && currentRun?.id === run.id ? 'active' : ''}`}
               href={studioRunsRoute(run.id)}
             >
               <span className="runButtonHeader">
@@ -2852,6 +2890,27 @@ function StudioApp() {
             <div className="runStats">
               <span>{currentLibrarySet?.conversations.length ?? 0} curated</span>
               <span>{currentLibraryBalance ? `${currentLibraryBalance.suggestedConversationCount} suggested` : `Set ${setNumber}`}</span>
+              <button
+                className={`publishBadge ${practicePublishStatus?.stale ? 'stale' : 'fresh'}`}
+                onClick={publishPracticeLibrary}
+                disabled={busy === 'publish-library' || !practicePublishStatus?.stale}
+                title={practicePublishStatus?.stale ? 'Publish the latest Library updates.' : 'The latest Library updates are published.'}
+              >
+                {busy === 'publish-library' ? (
+                  <RefreshCw className="spin" size={15} />
+                ) : practicePublishStatus?.stale ? (
+                  <CircleAlert size={15} />
+                ) : (
+                  <Check size={15} />
+                )}
+                {busy === 'publish-library'
+                  ? 'Publishing'
+                  : practicePublishStatus?.stale
+                    ? 'Publish Updates'
+                    : practicePublishStatus
+                      ? 'Published'
+                      : 'Checking'}
+              </button>
               <button className="auditToggle" onClick={generateLibraryComplement} disabled={busy === 'generate-complement' || libraryBalanceLoading}>
                 {busy === 'generate-complement' || libraryBalanceLoading ? <RefreshCw className="spin" size={15} /> : <Sparkles size={15} />}
                 Balance
