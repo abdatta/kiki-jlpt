@@ -188,11 +188,14 @@ export interface LibraryComplementGenerateRequest {
   textModelId?: string;
 }
 
+export type WorkflowAudioMode = 'fixed' | 'max';
+
 export interface WorkflowGenerateRequest extends GenerateRequest {
   audioCount?: number;
+  audioMode?: WorkflowAudioMode;
 }
 
-export type WorkflowNodeStatus = 'pending' | 'processing' | 'done' | 'error';
+export type WorkflowNodeStatus = 'pending' | 'processing' | 'done' | 'error' | 'skipped';
 export type WorkflowJobStatus = 'running' | 'complete' | 'failed';
 export type WorkflowNodeKind = 'generator' | 'balancer' | 'audio';
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bot,
   BookOpen,
+  Check,
   CircleAlert,
   Disc3,
   Eye,
@@ -44,7 +45,7 @@ import { ConsumerApp } from './consumer/ConsumerApp.tsx';
 
 type ConversationAction = 'audio' | 'delete-audio';
 type BoardMode = 'runs' | 'library' | 'recommendations';
-type GenerateRunMode = 'workflow-audio' | 'workflow-text' | 'text-only';
+type GenerateRunMode = 'workflow-max-audio' | 'workflow-audio' | 'workflow-text' | 'text-only';
 type StudioRoute =
   | { boardMode: 'runs'; runId?: string; auditOpen: boolean }
   | { boardMode: 'recommendations'; setNumber: number }
@@ -53,6 +54,7 @@ type BusyAction =
   | 'generate'
   | 'generate-complement'
   | 'workflow'
+  | `audio-all:${string}`
   | `${ConversationAction}:${string}`
   | `save:${string}`
   | `library-add:${string}`
@@ -101,6 +103,11 @@ interface GenerateRunConfig {
 }
 
 const GENERATE_RUN_MODES: Array<{ id: GenerateRunMode; label: string; description: string }> = [
+  {
+    id: 'workflow-max-audio',
+    label: 'Full pipeline + max audio',
+    description: 'Generate, balance, then try to synthesize audio for the entire batch or until a usage limit.'
+  },
   {
     id: 'workflow-audio',
     label: 'Full pipeline + 2 audio',
@@ -205,6 +212,10 @@ async function api<T>(url: string, options?: RequestInit): Promise<T> {
   return payload as T;
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function transcriptForEdit(conversation: PracticeConversation): string {
   return conversation.text.map((line) => `${line.speaker}: [${line.tags.join(', ')}] ${line.japanese}`).join('\n');
 }
@@ -224,20 +235,38 @@ function makeSessionId(): string {
 }
 
 function workflowAudioSummary(audioCount: number): string {
-  if (audioCount === 0) return 'Audio agent skipped';
-  return `${audioCount} audio node${audioCount === 1 ? '' : 's'}`;
+  if (audioCount === 0) return 'Audio skipped';
+  return `${audioCount} audio conversation${audioCount === 1 ? '' : 's'}`;
+}
+
+function splitWorkflowConversationTarget(totalConversationCount: number): { primaryConversationCount: number; balanceConversationCount: number } {
+  const primaryConversationCount = Math.ceil(totalConversationCount * 2 / 3);
+  return {
+    primaryConversationCount,
+    balanceConversationCount: totalConversationCount - primaryConversationCount
+  };
+}
+
+function workflowPlanChips(job: WorkflowJob): string[] {
+  return [
+    `${job.requestedTotalConversationCount} requested`,
+    `${job.primaryConversationCount} initial set`,
+    `${job.balanceConversationCount} balancing`,
+    job.audioRequestedCount === 0 ? 'Audio skipped' : `${job.audioRequestedCount} audio`,
+    job.status
+  ];
 }
 
 function makeClientWorkflowJob(setNumber: number, conversationCount: number, audioCount: number): WorkflowJob {
   const timestamp = new Date().toISOString();
-  const balanceConversationCount = Math.ceil(conversationCount / 2);
+  const { primaryConversationCount, balanceConversationCount } = splitWorkflowConversationTarget(conversationCount);
   return {
     id: makeSessionId(),
     status: 'running',
     setNumber,
-    primaryConversationCount: conversationCount,
+    primaryConversationCount,
     balanceConversationCount,
-    requestedTotalConversationCount: conversationCount + balanceConversationCount,
+    requestedTotalConversationCount: conversationCount,
     audioRequestedCount: audioCount,
     audioGeneratedCount: 0,
     audioErrors: [],
@@ -245,19 +274,19 @@ function makeClientWorkflowJob(setNumber: number, conversationCount: number, aud
       {
         id: 'generator',
         kind: 'generator',
-        title: 'Generator Agent',
+        title: 'Generating Initial Set',
         status: 'pending'
       },
       {
         id: 'balancer',
         kind: 'balancer',
-        title: 'Balancer Agent',
+        title: 'Balancing Set',
         status: 'pending'
       },
       ...Array.from({ length: audioCount }, (_, index) => ({
         id: `audio-${index + 1}`,
         kind: 'audio' as const,
-        title: `Audio Agent: Conversation ${index + 1}`,
+        title: `Conversation ${index + 1}`,
         status: 'pending' as const
       }))
     ],
@@ -266,20 +295,106 @@ function makeClientWorkflowJob(setNumber: number, conversationCount: number, aud
   };
 }
 
+function reconcileWorkflowAuditNodes(run: PracticeRun, nodes: WorkflowAuditNode[]): WorkflowAuditNode[] {
+  return nodes.map((node) => {
+    if (node.kind !== 'audio') return node;
+
+    const nodeIndex = Number(node.id.replace(/^audio-/, '')) - 1;
+    const input = objectValue(node.input);
+    const conversationId = typeof input?.conversationId === 'string' ? input.conversationId : undefined;
+    const conversation = run.conversations.find((item) => item.id === conversationId) ?? run.conversations[nodeIndex];
+    if (!conversation) return node;
+
+    const baseNode: WorkflowAuditNode = {
+      ...node,
+      title: `Conversation ${nodeIndex + 1}`,
+      input: {
+        ...(input ?? {}),
+        conversationId: conversation.id,
+        conversationTitle: conversation.title
+      }
+    };
+    const conversationAudioOutput = conversation.audioFileName && conversation.audioUrl
+      ? {
+        fileName: conversation.audioFileName,
+        audioUrl: conversation.audioUrl
+      }
+      : undefined;
+
+    if (conversationAudioOutput || node.status === 'done' || workflowAudioUrl(node)) {
+      return {
+        ...baseNode,
+        status: 'done',
+        output: node.output ?? conversationAudioOutput,
+        error: undefined
+      };
+    }
+    if (node.status === 'processing') {
+      return { ...baseNode, status: 'processing', error: undefined };
+    }
+    if (node.status === 'error') {
+      return {
+        ...baseNode,
+        status: 'error',
+        output: undefined,
+        error: node.error ?? conversation.error ?? 'Audio generation failed.'
+      };
+    }
+    if (node.status === 'skipped') {
+      return {
+        ...baseNode,
+        status: 'skipped',
+        output: undefined,
+        error: node.error
+      };
+    }
+    if (conversation.status === 'audio_failed' || conversation.error) {
+      return {
+        ...baseNode,
+        status: 'error',
+        output: undefined,
+        error: conversation.error ?? node.error ?? 'Audio generation failed.'
+      };
+    }
+
+    return {
+      ...baseNode,
+      status: 'pending',
+      output: undefined,
+      error: undefined
+    };
+  });
+}
+
 function workflowJobForRun(run: PracticeRun | null): WorkflowJob | null {
   if (!run) return null;
   if (run.workflowAudit) {
+    const nodes = reconcileWorkflowAuditNodes(run, run.workflowAudit.nodes);
+    const audioNodes = nodes.filter((node) => node.kind === 'audio');
+    const audioErrors = audioNodes.filter((node) => node.status === 'error').map((node) => ({
+      conversationId: String(objectValue(node.input)?.conversationId ?? node.id),
+      error: node.error ?? 'Audio generation failed.'
+    }));
+    const hasActiveAudioConversation = run.conversations.some((conversation) => conversation.status === 'audio_generating');
+    const hasProcessingAudio = audioNodes.some((node) => node.status === 'processing');
+    const hasQueuedAudio = audioNodes.some((node) => node.status === 'pending');
+    const hasIncompleteAudio = audioNodes.some((node) => node.status !== 'done');
+    const status = hasProcessingAudio || (run.workflowAudit.status === 'running' && hasActiveAudioConversation && hasQueuedAudio)
+      ? 'running'
+      : audioErrors.length || hasIncompleteAudio
+        ? 'failed'
+        : run.workflowAudit.status;
     return {
       id: run.workflowAudit.jobId,
-      status: run.workflowAudit.status,
+      status,
       setNumber: run.setNumber,
       primaryConversationCount: run.workflowAudit.primaryConversationCount,
       balanceConversationCount: run.workflowAudit.balanceConversationCount,
       requestedTotalConversationCount: run.workflowAudit.requestedTotalConversationCount,
       audioRequestedCount: run.workflowAudit.audioRequestedCount,
-      audioGeneratedCount: run.workflowAudit.audioGeneratedCount,
-      audioErrors: run.workflowAudit.audioErrors,
-      nodes: run.workflowAudit.nodes,
+      audioGeneratedCount: audioNodes.filter((node) => node.status === 'done').length,
+      audioErrors,
+      nodes,
       run,
       createdAt: run.workflowAudit.createdAt,
       updatedAt: run.workflowAudit.updatedAt
@@ -296,7 +411,7 @@ function workflowJobForRun(run: PracticeRun | null): WorkflowJob | null {
     {
       id: 'generator',
       kind: 'generator',
-      title: 'Generator Agent',
+      title: 'Generating Initial Set',
       status: exchanges[0].status === 'complete' ? 'done' : exchanges[0].status === 'failed' ? 'error' : 'pending',
       startedAt: exchanges[0].requestedAt,
       completedAt: exchanges[0].receivedAt,
@@ -307,7 +422,7 @@ function workflowJobForRun(run: PracticeRun | null): WorkflowJob | null {
     {
       id: 'balancer',
       kind: 'balancer',
-      title: 'Balancer Agent',
+      title: 'Balancing Set',
       status: exchanges[1].status === 'complete' ? 'done' : exchanges[1].status === 'failed' ? 'error' : 'pending',
       startedAt: exchanges[1].requestedAt,
       completedAt: exchanges[1].receivedAt,
@@ -318,7 +433,7 @@ function workflowJobForRun(run: PracticeRun | null): WorkflowJob | null {
     ...audioConversations.map((conversation, index) => ({
       id: `audio-${index + 1}`,
       kind: 'audio' as const,
-      title: `Audio Agent: Conversation ${index + 1}`,
+      title: `Conversation ${index + 1}`,
       status: conversation.audioFileName ? 'done' as const : 'error' as const,
       startedAt: conversation.updatedAt,
       completedAt: conversation.updatedAt,
@@ -508,6 +623,33 @@ function findStringPropertyDeep(value: unknown, propertyNames: string[], seen = 
   return undefined;
 }
 
+function findNumberPropertyDeep(value: unknown, propertyNames: string[], seen = new WeakSet<object>()): number | undefined {
+  const item = parseAuditJsonString(value);
+  if (!item || typeof item !== 'object') return undefined;
+  if (seen.has(item)) return undefined;
+  seen.add(item);
+
+  if (Array.isArray(item)) {
+    for (const entry of item) {
+      const found = findNumberPropertyDeep(entry, propertyNames, seen);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  }
+
+  const record = item as Record<string, unknown>;
+  for (const propertyName of propertyNames) {
+    const entry = record[propertyName];
+    if (typeof entry === 'number' && Number.isFinite(entry)) return entry;
+  }
+
+  for (const entry of Object.values(record)) {
+    const found = findNumberPropertyDeep(entry, propertyNames, seen);
+    if (found !== undefined) return found;
+  }
+  return undefined;
+}
+
 function omitStringPropertiesDeep(value: unknown, propertyNames: string[], seen = new WeakSet<object>()): unknown {
   const item = parseAuditJsonString(value);
   if (!item || typeof item !== 'object') return item;
@@ -553,9 +695,57 @@ function splitResponseFromAuditValue(value: unknown): { response?: string; value
 }
 
 function workflowNodeTitle(node: WorkflowAuditNode): string {
-  if (node.kind === 'generator') return 'Generator Agent';
-  if (node.kind === 'balancer') return 'Balancer Agent';
-  return node.title.replace('Audio LLM:', 'Audio Agent:');
+  if (node.kind === 'generator') {
+    if (node.status === 'done') return 'Generated Initial Set';
+    if (node.status === 'error') return 'Initial Set Failed';
+    if (node.status === 'pending') return 'Initial Set Pending';
+    return 'Generating Initial Set';
+  }
+  if (node.kind === 'balancer') {
+    if (node.status === 'done') return 'Balanced Set';
+    if (node.status === 'error') return 'Balancing Failed';
+    if (node.status === 'pending') return 'Balancing Pending';
+    return 'Balancing Set';
+  }
+  return node.title
+    .replace('Audio LLM:', 'Conversation')
+    .replace('Audio Agent: Conversation', 'Conversation');
+}
+
+function pluralize(count: number, singular: string): string {
+  return `${count} ${singular}${count === 1 ? '' : 's'}`;
+}
+
+function workflowNodeDetail(node: WorkflowAuditNode): string {
+  if (node.kind === 'generator' || node.kind === 'balancer') {
+    const conversations = workflowNodeConversations(node);
+    const requestedConversationCount = findNumberPropertyDeep(node.input, ['requestedConversationCount']);
+    if (node.status === 'done') {
+      const count = conversations.length || findNumberPropertyDeep(node.output, ['conversationCount']) || 0;
+      return `${node.kind === 'balancer' ? '+' : ''}${pluralize(count, 'conversation')}`;
+    }
+    if (node.status === 'processing') {
+      return requestedConversationCount ? `Creating ${pluralize(requestedConversationCount, 'conversation')}` : 'Creating conversations';
+    }
+    if (node.status === 'error') return node.error ? 'Needs attention' : 'Generation failed';
+    if (node.status === 'skipped') return 'Skipped';
+    return 'Waiting to start';
+  }
+
+  const durationSeconds = findNumberPropertyDeep(node.output, ['durationSeconds', 'audioDurationSeconds']);
+  if (node.status === 'done') return durationSeconds ? `${Math.round(durationSeconds)} seconds` : 'Audio ready';
+  if (node.status === 'processing') return 'Generating audio';
+  if (node.status === 'error') return 'Audio failed';
+  if (node.status === 'skipped') return 'Skipped after failure';
+  return 'Queued';
+}
+
+function WorkflowStatusIcon({ node, size = 18 }: { node: WorkflowAuditNode; size?: number }) {
+  if (node.status === 'processing') return <RefreshCw className="spin" size={size} />;
+  if (node.status === 'done') return <Check size={size} />;
+  if (node.status === 'error') return <CircleAlert size={size} />;
+  if (node.status === 'skipped') return <X size={size} />;
+  return node.kind === 'audio' ? <Pause size={size} /> : <Sparkles size={size} />;
 }
 
 function objectValue(value: unknown): Record<string, unknown> | undefined {
@@ -668,6 +858,60 @@ function workflowDistributionStats(
 
 function workflowAudioUrl(node?: WorkflowAuditNode): string | undefined {
   return findStringPropertyDeep(node?.output, ['audioUrl']);
+}
+
+function workflowAudioNeedsResume(nodes: WorkflowAuditNode[]): boolean {
+  return nodes.some((node) => node.kind === 'audio' && node.status !== 'done');
+}
+
+function optimisticAudioRun(run: PracticeRun, mode: 'replace' | 'resume'): PracticeRun {
+  const targetIds = new Set((mode === 'resume'
+    ? run.conversations.filter((conversation) => conversation.status !== 'audio_ready' || !conversation.audioFileName)
+    : run.conversations).map((conversation) => conversation.id));
+  const audioTargets = run.conversations.filter((conversation) => targetIds.has(conversation.id));
+  const activeTargetIds = new Set(audioTargets.slice(0, 3).map((conversation) => conversation.id));
+  const nodes = run.workflowAudit?.nodes ?? workflowJobForRun(run)?.nodes ?? [];
+  const audioNodes: WorkflowAuditNode[] = run.conversations.map((conversation, index) => {
+    const existingNode = nodes.find((node) => node.id === `audio-${index + 1}`);
+    return {
+      id: `audio-${index + 1}`,
+      kind: 'audio',
+      title: `Conversation ${index + 1}`,
+      status: !targetIds.has(conversation.id) ? 'done' : activeTargetIds.has(conversation.id) ? 'processing' : 'pending',
+      input: {
+        conversationId: conversation.id,
+        conversationTitle: conversation.title
+      },
+      output: targetIds.has(conversation.id) ? undefined : existingNode?.output
+    };
+  });
+
+  return {
+    ...run,
+    status: 'generated',
+    conversations: run.conversations.map((conversation) => targetIds.has(conversation.id)
+      ? {
+        ...conversation,
+        status: 'audio_generating',
+        audioFileName: undefined,
+        audioUrl: undefined,
+        error: undefined
+      }
+      : conversation),
+    workflowAudit: run.workflowAudit ? {
+      ...run.workflowAudit,
+      status: 'running',
+      audioRequestedCount: run.conversations.length,
+      audioGeneratedCount: run.conversations.length - targetIds.size,
+      audioErrors: [],
+      nodes: [
+        ...run.workflowAudit.nodes.filter((node) => node.kind !== 'audio'),
+        ...audioNodes
+      ],
+      updatedAt: new Date().toISOString()
+    } : undefined,
+    updatedAt: new Date().toISOString()
+  };
 }
 
 function deltaText(before: number, after: number, suffix = ''): string {
@@ -886,7 +1130,12 @@ function WorkflowTabs<T extends string>({
 }
 
 function workflowStatusText(status: WorkflowJob['status'] | WorkflowAuditNode['status']): string {
-  return status === 'done' ? 'done' : status;
+  if (status === 'done') return 'Done';
+  if (status === 'processing') return 'Generating';
+  if (status === 'pending') return 'Pending';
+  if (status === 'error') return 'Failed';
+  if (status === 'skipped') return 'Skipped';
+  return status;
 }
 
 function WorkflowNodeButton({
@@ -901,24 +1150,132 @@ function WorkflowNodeButton({
   return (
     <button className={`workflowNode ${node.status} ${selected ? 'selected' : ''}`} onClick={onSelect} type="button">
       <span className="workflowNodeIcon">
-        {node.status === 'processing' ? <LoaderCircle className="spin" size={18} /> : node.status === 'error' ? <CircleAlert size={18} /> : node.kind === 'audio' ? <Headphones size={18} /> : <Bot size={18} />}
+        <WorkflowStatusIcon node={node} />
       </span>
       <span>
         <strong>{workflowNodeTitle(node)}</strong>
-        <small>{workflowStatusText(node.status)}</small>
+        <small>{workflowNodeDetail(node)}</small>
       </span>
     </button>
+  );
+}
+
+function WorkflowAudioStage({
+  nodes,
+  jobStatus,
+  selectedNodeId,
+  onSelectNode,
+  onRegenerateAudio,
+  regenerateDisabled
+}: {
+  nodes: WorkflowAuditNode[];
+  jobStatus: WorkflowJob['status'];
+  selectedNodeId?: string;
+  onSelectNode: (nodeId: string) => void;
+  onRegenerateAudio?: () => void;
+  regenerateDisabled?: boolean;
+}) {
+  const activeCount = nodes.filter((node) => node.status === 'processing').length;
+  const doneCount = nodes.filter((node) => node.status === 'done').length;
+  const failedCount = nodes.filter((node) => node.status === 'error').length;
+  const skippedCount = nodes.filter((node) => node.status === 'skipped').length;
+  const pendingCount = nodes.filter((node) => node.status === 'pending').length;
+  const regenerateLabel = doneCount === nodes.length ? 'Regenerate all' : 'Generate missing';
+  const audioListRef = useRef<HTMLDivElement | null>(null);
+  const activeNodeIds = nodes.filter((node) => node.status === 'processing').map((node) => node.id).join('|');
+  const audioStageTitle = activeCount > 0
+    ? 'Generating Audio'
+    : failedCount > 0
+      ? 'Audio Generation Failed'
+      : nodes.length > 0 && doneCount === nodes.length
+        ? 'Generated Audio'
+        : skippedCount > 0
+          ? 'Audio Generation Stopped'
+          : pendingCount > 0 && jobStatus !== 'running'
+            ? 'Audio Generation Incomplete'
+            : 'Generating Audio';
+
+  useEffect(() => {
+    const list = audioListRef.current;
+    if (!activeNodeIds || !list) return;
+    const activeNodeIdList = activeNodeIds.split('|');
+    const lastActiveNodeId = activeNodeIdList[activeNodeIdList.length - 1];
+    const activeItems = activeNodeIdList
+      .map((nodeId) => list.querySelector<HTMLElement>(`[data-node-id="${nodeId}"]`))
+      .filter((item): item is HTMLElement => Boolean(item));
+    const lastActiveItem = activeItems[activeItems.length - 1];
+    if (!lastActiveItem) return;
+
+    requestAnimationFrame(() => {
+      const listRect = list.getBoundingClientRect();
+      const lastRect = lastActiveItem.getBoundingClientRect();
+      const bottomOverflow = lastRect.bottom - listRect.bottom;
+      if (bottomOverflow > 0) {
+        list.scrollTo({
+          top: Math.min(list.scrollHeight - list.clientHeight, list.scrollTop + bottomOverflow) + 5,
+          behavior: 'smooth'
+        });
+      }
+    });
+  }, [activeNodeIds]);
+
+  return (
+    <section className="workflowAudioStage" aria-label={audioStageTitle}>
+      <div className="workflowAudioStageHeader">
+        <span className="workflowNodeIcon">
+          {activeCount > 0 ? <LoaderCircle className="spin" size={18} /> : <Headphones size={18} />}
+        </span>
+        <div>
+          <strong>{audioStageTitle}</strong>
+          <small>{doneCount} of {nodes.length} audio conversations done</small>
+        </div>
+        {onRegenerateAudio ? (
+          <button className="workflowAudioRefreshButton" disabled={regenerateDisabled} onClick={onRegenerateAudio} type="button">
+            {regenerateDisabled ? <RefreshCw className="spin" size={14} /> : <RefreshCw size={14} />}
+            {regenerateLabel}
+          </button>
+        ) : null}
+      </div>
+      {nodes.length > 0 ? (
+        <div className="workflowAudioList" ref={audioListRef}>
+          {nodes.map((node, index) => (
+            <button
+              className={`workflowAudioItem ${node.status} ${selectedNodeId === node.id ? 'selected' : ''}`}
+              data-node-id={node.id}
+              key={node.id}
+              onClick={() => onSelectNode(node.id)}
+              type="button"
+            >
+              <span className="workflowAudioItemNumber">{index + 1}</span>
+              <span className="workflowAudioItemText">
+                <strong>{workflowNodeTitle(node)}</strong>
+                <small>{workflowNodeDetail(node)}</small>
+              </span>
+              <span className="workflowAudioItemIcon" aria-hidden="true">
+                <WorkflowStatusIcon node={node} size={15} />
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="workflowAudioListEmpty">Audio skipped</div>
+      )}
+    </section>
   );
 }
 
 function WorkflowAuditFlow({
   job,
   selectedNodeId,
-  onSelectNode
+  onSelectNode,
+  onRegenerateAudio,
+  regenerateAudioDisabled
 }: {
   job: WorkflowJob;
   selectedNodeId?: string;
   onSelectNode: (nodeId: string) => void;
+  onRegenerateAudio?: () => void;
+  regenerateAudioDisabled?: boolean;
 }) {
   const [inputTab, setInputTab] = useState<'prompt' | 'settings'>('prompt');
   const [outputTab, setOutputTab] = useState<'response' | 'metadata'>('response');
@@ -945,8 +1302,8 @@ function WorkflowAuditFlow({
       <div className="workflowHeader">
         <div>
           <p className="eyebrow">Live LLM pipeline</p>
-          <h3>Generator to balancer to audio</h3>
-          <p>{job.primaryConversationCount} primary + {job.balanceConversationCount} balanced - {workflowAudioSummary(job.audioRequestedCount)}</p>
+          <h3>Initial set to balance to audio</h3>
+          <p>{pluralize(job.primaryConversationCount, 'primary conversation')} + {pluralize(job.balanceConversationCount, 'balanced conversation')} - {workflowAudioSummary(job.audioRequestedCount)}</p>
         </div>
         <span className={`workflowJobStatus ${job.status}`}>
           {job.status === 'running' ? <LoaderCircle className="spin" size={15} /> : job.status === 'failed' ? <CircleAlert size={15} /> : <Sparkles size={15} />}
@@ -959,23 +1316,14 @@ function WorkflowAuditFlow({
         <span className="workflowArrow" aria-hidden="true">&rarr;</span>
         {balancer ? <WorkflowNodeButton node={balancer} selected={selectedNode?.id === balancer.id} onSelect={() => onSelectNode(balancer.id)} /> : null}
         <span className="workflowArrow branch" aria-hidden="true">&rarr;</span>
-        <div className="workflowAudioBranch">
-          {audioNodes.length > 0 ? (
-            audioNodes.map((node) => (
-              <WorkflowNodeButton key={node.id} node={node} selected={selectedNode?.id === node.id} onSelect={() => onSelectNode(node.id)} />
-            ))
-          ) : (
-            <div className="workflowNode workflowNodeAbsent" aria-label="Audio agent skipped">
-              <span className="workflowNodeIcon">
-                <Headphones size={18} />
-              </span>
-              <span>
-                <strong>Audio Agent Skipped</strong>
-                <small>Not included in this run</small>
-              </span>
-            </div>
-          )}
-        </div>
+        <WorkflowAudioStage
+          nodes={audioNodes}
+          jobStatus={job.status}
+          selectedNodeId={selectedNode?.id}
+          onSelectNode={onSelectNode}
+          onRegenerateAudio={onRegenerateAudio}
+          regenerateDisabled={regenerateAudioDisabled}
+        />
       </div>
 
       {selectedNode ? (
@@ -1182,9 +1530,12 @@ function GenerateModal({
 }) {
   const selectedSet = sets.find((item) => item.set === state.setNumber);
   const conversationCount = Number(state.conversationCount);
+  const isWorkflowMode = state.runMode !== 'text-only';
+  const minConversationCount = isWorkflowMode ? 6 : 4;
+  const placeholder = isWorkflowMode ? 'Select 6-30' : 'Select 4-30';
   const canSubmit = busy === null
     && Number.isInteger(conversationCount)
-    && conversationCount >= 4
+    && conversationCount >= minConversationCount
     && conversationCount <= 30
     && state.textModelId.length > 0;
 
@@ -1220,9 +1571,9 @@ function GenerateModal({
           <label>
             <span>Conversations</span>
             <input
-              min={4}
+              min={minConversationCount}
               max={30}
-              placeholder="Select 4-30"
+              placeholder={placeholder}
               type="number"
               value={state.conversationCount}
               onChange={(event) => onChange({ ...state, conversationCount: event.target.value })}
@@ -1359,7 +1710,7 @@ function StudioApp() {
   const currentCuratedLibrarySets = useMemo(() => currentLibrarySet && currentLibrarySet.conversations.length > 0 ? [currentLibrarySet] : [], [currentLibrarySet]);
   const currentRecommendations = recommendations?.setNumber === setNumber ? recommendations : null;
   const leastCoveredWordSet = useMemo(() => new Set(currentRecommendations?.leastCoveredWords.map((word) => word.japanese) ?? []), [currentRecommendations]);
-  const showRunContent = Boolean(boardMode === 'runs' && currentRun && currentRun.setNumber === setNumber && !generationSession);
+  const showRunContent = Boolean(boardMode === 'runs' && currentRun && currentRun.setNumber === setNumber && !generationSession && !workflowJob);
   const showLibraryContent = Boolean(boardMode === 'library' && !generationSession);
   const showRecommendationsContent = Boolean(boardMode === 'recommendations' && !generationSession);
   const currentExchanges = currentRun?.llmExchanges ?? [];
@@ -1619,7 +1970,8 @@ function StudioApp() {
   async function submitGenerateModal() {
     if (!generateModal) return;
     const nextConversationCount = Number(generateModal.conversationCount);
-    if (!Number.isInteger(nextConversationCount) || nextConversationCount < 4 || nextConversationCount > 30 || !generateModal.textModelId) {
+    const minConversationCount = generateModal.runMode === 'text-only' ? 4 : 6;
+    if (!Number.isInteger(nextConversationCount) || nextConversationCount < minConversationCount || nextConversationCount > 30 || !generateModal.textModelId) {
       setError('Choose a set, conversation count, model, and run type before generating.');
       return;
     }
@@ -1639,7 +1991,12 @@ function StudioApp() {
       return;
     }
 
-    await generateWorkflow(config, generateModal.runMode === 'workflow-audio' ? 2 : 0);
+    if (generateModal.runMode === 'workflow-max-audio') {
+      await generateWorkflow(config, config.conversationCount, 'max');
+      return;
+    }
+
+    await generateWorkflow(config, generateModal.runMode === 'workflow-audio' ? 2 : 0, 'fixed');
   }
 
   async function generate(config: GenerateRunConfig) {
@@ -1698,8 +2055,8 @@ function StudioApp() {
     }
   }
 
-  async function generateWorkflow(config: GenerateRunConfig, audioCount: number) {
-    const requestBody = { ...config, audioCount };
+  async function generateWorkflow(config: GenerateRunConfig, audioCount: number, audioMode: 'fixed' | 'max' = 'fixed') {
+    const requestBody = { ...config, audioCount, audioMode };
     setBusy('workflow');
     setError(null);
     setEdit(null);
@@ -1921,6 +2278,66 @@ function StudioApp() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       await refreshRun(sourceRunId).catch(() => undefined);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function regenerateAllAudio(runId = visibleWorkflowJob?.run?.id ?? currentRun?.id) {
+    if (!runId) return;
+    const sourceRun = visibleWorkflowJob?.run?.id === runId ? visibleWorkflowJob.run : currentRun?.id === runId ? currentRun : runs.find((run) => run.id === runId) ?? null;
+    if (!sourceRun) return;
+    const sourceNodes = visibleWorkflowJob?.run?.id === runId ? visibleWorkflowJob.nodes : workflowJobForRun(sourceRun)?.nodes ?? [];
+    const mode: 'replace' | 'resume' = workflowAudioNeedsResume(sourceNodes) ? 'resume' : 'replace';
+    const confirmation = mode === 'replace'
+      ? 'Regenerate all audio for this run? Existing audio files will be replaced.'
+      : 'Generate audio for unfinished conversations? Existing successful audio will be kept.';
+    if (!window.confirm(confirmation)) {
+      return;
+    }
+
+    const marker = `audio-all:${runId}` as BusyAction;
+    setBusy(marker);
+    setError(null);
+    const optimisticRun = optimisticAudioRun(sourceRun, mode);
+    setCurrentRun(optimisticRun);
+    setRuns((existing) => [optimisticRun, ...existing.filter((run) => run.id !== optimisticRun.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    setWorkflowJob(null);
+    setAuditOpen(true);
+    let audioRequestSettled = false;
+    const applyLatestRun = (latestRun: PracticeRun) => {
+      setCurrentRun((previous) => previous?.id === latestRun.id ? latestRun : previous);
+      setRuns((existing) => [latestRun, ...existing.filter((run) => run.id !== latestRun.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      setWorkflowJob(null);
+      setAuditOpen(true);
+    };
+    const pollRunWhileGenerating = async () => {
+      while (!audioRequestSettled) {
+        await delay(700);
+        if (audioRequestSettled) return;
+        try {
+          const latest = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(runId)}`);
+          applyLatestRun(latest.run);
+        } catch {
+          // The final request handles user-visible errors; transient polling failures can be ignored.
+        }
+      }
+    };
+    const polling = pollRunWhileGenerating();
+    try {
+      const payload = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(runId)}/audio`, {
+        method: 'POST',
+        body: JSON.stringify({ mode })
+      }).finally(() => {
+        audioRequestSettled = true;
+      });
+      await polling;
+      applyLatestRun(payload.run);
+    } catch (caught) {
+      audioRequestSettled = true;
+      await polling;
+      setError(caught instanceof Error ? caught.message : String(caught));
+      await refreshRun(runId).catch(() => undefined);
     } finally {
       setBusy(null);
     }
@@ -2423,9 +2840,7 @@ function StudioApp() {
           </div>
           {workflowJob ? (
             <div className="runStats">
-              <span>{workflowJob.requestedTotalConversationCount} requested</span>
-              <span>{workflowAudioSummary(workflowJob.audioRequestedCount)}</span>
-              <span>{workflowJob.status}</span>
+              {workflowPlanChips(workflowJob).map((chip) => <span key={chip}>{chip}</span>)}
             </div>
           ) : generationSession ? (
             <div className="runStats">
@@ -2492,6 +2907,8 @@ function StudioApp() {
             job={visibleWorkflowJob}
             selectedNodeId={selectedWorkflowNodeId}
             onSelectNode={setSelectedWorkflowNodeId}
+            onRegenerateAudio={visibleWorkflowJob.run && visibleWorkflowJob.status !== 'running' ? () => regenerateAllAudio(visibleWorkflowJob.run?.id) : undefined}
+            regenerateAudioDisabled={Boolean(visibleWorkflowJob.run && busy === `audio-all:${visibleWorkflowJob.run.id}`)}
           />
         ) : null}
 

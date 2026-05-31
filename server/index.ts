@@ -2,8 +2,8 @@ import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
 import path from 'node:path';
-import { mkdir, unlink } from 'node:fs/promises';
-import type { GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRunAudit } from '../shared/types.ts';
+import { mkdir, readFile, unlink } from 'node:fs/promises';
+import type { GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRunAudit } from '../shared/types.ts';
 import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR } from './paths.ts';
 import { buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
 import { buildTtsPrompt, generateConversationAudio, generateConversationJson } from './gemini.ts';
@@ -30,6 +30,14 @@ const workflowJobs = new Map<string, WorkflowJob>();
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function splitWorkflowConversationTarget(totalConversationCount: number): { primaryConversationCount: number; balanceConversationCount: number } {
+  const primaryConversationCount = Math.ceil(totalConversationCount * 2 / 3);
+  return {
+    primaryConversationCount,
+    balanceConversationCount: totalConversationCount - primaryConversationCount
+  };
 }
 
 function routeParam(value: string | string[] | undefined): string {
@@ -70,26 +78,54 @@ function validateGenerateRequest(body: GenerateRequest): { setNumber: number; co
   return { setNumber, conversationCount };
 }
 
-function validateWorkflowGenerateRequest(body: WorkflowGenerateRequest): { setNumber: number; conversationCount: number; balanceConversationCount: number; audioCount: number } | { error: string; status: number } {
+async function readWavDurationSeconds(filePath: string): Promise<number | undefined> {
+  const buffer = await readFile(filePath).catch(() => undefined);
+  if (!buffer || buffer.length < 44 || buffer.toString('ascii', 0, 4) !== 'RIFF' || buffer.toString('ascii', 8, 12) !== 'WAVE') {
+    return undefined;
+  }
+
+  const byteRate = buffer.readUInt32LE(28);
+  if (!byteRate) return undefined;
+
+  let offset = 12;
+  while (offset + 8 <= buffer.length) {
+    const chunkId = buffer.toString('ascii', offset, offset + 4);
+    const chunkSize = buffer.readUInt32LE(offset + 4);
+    if (chunkId === 'data') {
+      return Math.max(1, Math.round(chunkSize / byteRate));
+    }
+    offset += 8 + chunkSize + (chunkSize % 2);
+  }
+
+  return undefined;
+}
+
+function validateWorkflowGenerateRequest(body: WorkflowGenerateRequest): { setNumber: number; conversationCount: number; balanceConversationCount: number; audioCount: number; audioMode: WorkflowAudioMode } | { error: string; status: number } {
   const setNumber = Number(body.setNumber);
-  const conversationCount = Number(body.conversationCount);
-  const audioCount = body.audioCount === undefined ? 2 : Number(body.audioCount);
+  const requestedTotalConversationCount = Number(body.conversationCount);
+  const audioMode = body.audioMode ?? 'fixed';
+  const { primaryConversationCount, balanceConversationCount } = splitWorkflowConversationTarget(requestedTotalConversationCount);
+  const audioCount = audioMode === 'max' ? requestedTotalConversationCount : body.audioCount === undefined ? 2 : Number(body.audioCount);
 
   if (!Number.isInteger(setNumber) || setNumber < 1) {
     return { status: 400, error: 'Set number must be a positive integer.' };
   }
-  if (!Number.isInteger(conversationCount) || conversationCount < 4 || conversationCount > 30) {
-    return { status: 400, error: 'Conversation count must be between 4 and 30.' };
+  if (!Number.isInteger(requestedTotalConversationCount) || requestedTotalConversationCount < 6 || requestedTotalConversationCount > 30) {
+    return { status: 400, error: 'Workflow conversation count must be between 6 and 30.' };
   }
-  if (!Number.isInteger(audioCount) || audioCount < 0 || audioCount > 5) {
+  if (audioMode !== 'fixed' && audioMode !== 'max') {
+    return { status: 400, error: 'Workflow audio mode must be fixed or max.' };
+  }
+  if (!Number.isInteger(audioCount) || audioCount < 0 || (audioMode === 'fixed' && audioCount > 5)) {
     return { status: 400, error: 'Workflow audio count must be between 0 and 5.' };
   }
 
   return {
     setNumber,
-    conversationCount,
-    balanceConversationCount: Math.ceil(conversationCount / 2),
-    audioCount
+    conversationCount: primaryConversationCount,
+    balanceConversationCount,
+    audioCount,
+    audioMode
   };
 }
 
@@ -119,7 +155,7 @@ async function getGenerateContext(body: GenerateRequest): Promise<
 }
 
 async function getWorkflowGenerateContext(body: WorkflowGenerateRequest): Promise<
-  | { setNumber: number; conversationCount: number; balanceConversationCount: number; audioCount: number; allowedVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string }
+  | { setNumber: number; conversationCount: number; balanceConversationCount: number; audioCount: number; audioMode: WorkflowAudioMode; allowedVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string }
   | { error: string; status: number }
 > {
   const validated = validateWorkflowGenerateRequest(body);
@@ -191,19 +227,19 @@ function makeWorkflowNodes(audioCount: number): WorkflowAuditNode[] {
     {
       id: 'generator',
       kind: 'generator',
-      title: 'Generator Agent',
+      title: 'Generating Initial Set',
       status: 'pending'
     },
     {
       id: 'balancer',
       kind: 'balancer',
-      title: 'Balancer Agent',
+      title: 'Balancing Set',
       status: 'pending'
     },
     ...Array.from({ length: audioCount }, (_, index) => ({
       id: `audio-${index + 1}`,
       kind: 'audio' as const,
-      title: `Audio Agent: Conversation ${index + 1}`,
+      title: `Conversation ${index + 1}`,
       status: 'pending' as const
     }))
   ];
@@ -293,6 +329,50 @@ function workflowAuditForJob(job: WorkflowJob): WorkflowRunAudit {
   };
 }
 
+function workflowAuditWithNode(run: PracticeRun, nodeId: string, patch: Partial<Omit<WorkflowAuditNode, 'id' | 'kind' | 'title'>>): WorkflowRunAudit | undefined {
+  if (!run.workflowAudit) return undefined;
+  return {
+    ...run.workflowAudit,
+    nodes: run.workflowAudit.nodes.map((node) => node.id === nodeId ? { ...node, ...patch } : node),
+    updatedAt: nowIso()
+  };
+}
+
+function workflowAuditWithConversationAudioCleared(run: PracticeRun, conversationId: string): WorkflowRunAudit | undefined {
+  if (!run.workflowAudit) return undefined;
+  const nodes = run.workflowAudit.nodes.map((node) => {
+    if (node.kind !== 'audio') return node;
+    const input = node.input && typeof node.input === 'object' && !Array.isArray(node.input)
+      ? node.input as Record<string, unknown>
+      : {};
+    return input.conversationId === conversationId
+      ? {
+        ...node,
+        status: 'pending' as const,
+        output: undefined,
+        error: undefined,
+        completedAt: undefined
+      }
+      : node;
+  });
+  const audioGeneratedCount = nodes.filter((node) => node.kind === 'audio' && node.status === 'done').length;
+  const audioErrors = nodes
+    .filter((node) => node.kind === 'audio' && node.status === 'error')
+    .map((node) => ({
+      conversationId: String((node.input as { conversationId?: unknown } | undefined)?.conversationId ?? node.id),
+      error: node.error ?? 'Audio generation failed.'
+    }));
+
+  return {
+    ...run.workflowAudit,
+    status: audioErrors.length || nodes.some((node) => node.kind === 'audio' && node.status !== 'done') ? 'failed' : run.workflowAudit.status,
+    audioGeneratedCount,
+    audioErrors,
+    nodes,
+    updatedAt: nowIso()
+  };
+}
+
 function renumberConversations(conversations: PracticeConversation[], startNumber: number): PracticeConversation[] {
   return conversations.map((conversation, index) => {
     const number = startNumber + index;
@@ -333,7 +413,7 @@ async function generateTextBatch(
   };
 }
 
-async function generateWorkflowAudio(run: PracticeRun, audioCount: number): Promise<{
+async function generateWorkflowAudio(run: PracticeRun, audioCount: number, options: { stopOnFirstError?: boolean; concurrency?: number } = {}): Promise<{
   run: PracticeRun;
   audioGeneratedCount: number;
   audioErrors: Array<{ conversationId: string; error: string }>;
@@ -349,7 +429,39 @@ async function generateWorkflowAudio(run: PracticeRun, audioCount: number): Prom
   updatedRun.status = runStatusFor(updatedRun.conversations);
   await saveRun(updatedRun);
 
-  const results = await Promise.allSettled(targetConversations.map((conversation) => generateConversationAudio(run.id, conversation)));
+  const results: Array<PromiseSettledResult<{ fileName: string; filePath: string }> | undefined> = [];
+  if (options.stopOnFirstError) {
+    const concurrency = Math.max(1, options.concurrency ?? 1);
+    let nextIndex = 0;
+    let stopStarting = false;
+
+    async function audioWorker(): Promise<void> {
+      while (!stopStarting) {
+        const currentIndex = nextIndex;
+        nextIndex += 1;
+        const conversation = targetConversations[currentIndex];
+        if (!conversation) return;
+
+        try {
+          results[currentIndex] = {
+            status: 'fulfilled',
+            value: await generateConversationAudio(run.id, conversation)
+          };
+        } catch (error) {
+          results[currentIndex] = {
+            status: 'rejected',
+            reason: error
+          };
+          stopStarting = true;
+          return;
+        }
+      }
+    }
+
+    await Promise.all(Array.from({ length: Math.min(concurrency, targetConversations.length) }, () => audioWorker()));
+  } else {
+    results.push(...await Promise.allSettled(targetConversations.map((conversation) => generateConversationAudio(run.id, conversation))));
+  }
   const audioErrors: Array<{ conversationId: string; error: string }> = [];
   let audioGeneratedCount = 0;
 
@@ -360,6 +472,13 @@ async function generateWorkflowAudio(run: PracticeRun, audioCount: number): Prom
       if (targetIndex === -1) return conversation;
 
       const result = results[targetIndex];
+      if (!result) {
+        return touchConversation({
+          ...targetConversations[targetIndex],
+          status: 'draft',
+          error: undefined
+        });
+      }
       if (result?.status === 'fulfilled') {
         audioGeneratedCount += 1;
         const audioUrl = `/audio/${encodeURIComponent(run.id)}/audio/${encodeURIComponent(result.value.fileName)}`;
@@ -515,7 +634,7 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
     await saveRun(run);
     updateWorkflowJob(jobId, (job) => ({ ...job, run }));
 
-    const audioResults = await Promise.allSettled(audioTargets.map(async (conversation, index) => {
+    const generateAudioTarget = async (conversation: PracticeConversation, index: number) => {
       const nodeId = `audio-${index + 1}`;
       const prompt = buildTtsPrompt(conversation);
       updateWorkflowNode(jobId, nodeId, {
@@ -535,16 +654,18 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
 
       try {
         const audio = await generateConversationAudio(run.id, conversation);
+        const durationSeconds = await readWavDurationSeconds(audio.filePath);
         updateWorkflowNode(jobId, nodeId, {
           status: 'done',
           completedAt: nowIso(),
           output: {
             fileName: audio.fileName,
             audioUrl: `/audio/${encodeURIComponent(run.id)}/audio/${encodeURIComponent(audio.fileName)}`,
-            filePath: audio.filePath
+            filePath: audio.filePath,
+            durationSeconds
           }
         });
-        return { conversationId: conversation.id, audio };
+        return { conversationId: conversation.id, audio, durationSeconds };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         updateWorkflowNode(jobId, nodeId, {
@@ -554,7 +675,50 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
         });
         throw { conversationId: conversation.id, error: message };
       }
-    }));
+    };
+
+    const audioResults: Array<PromiseSettledResult<{ conversationId: string; audio: { fileName: string; filePath: string }; durationSeconds?: number }> | undefined> = [];
+    if (context.audioMode === 'max') {
+      const audioConcurrency = 3;
+      let nextAudioIndex = 0;
+      let stopStartingAudio = false;
+
+      async function audioWorker(): Promise<void> {
+        while (!stopStartingAudio) {
+          const currentIndex = nextAudioIndex;
+          nextAudioIndex += 1;
+          const conversation = audioTargets[currentIndex];
+          if (!conversation) return;
+
+          try {
+            audioResults[currentIndex] = {
+              status: 'fulfilled',
+              value: await generateAudioTarget(conversation, currentIndex)
+            };
+          } catch (error) {
+            audioResults[currentIndex] = {
+              status: 'rejected',
+              reason: error
+            };
+            stopStartingAudio = true;
+            return;
+          }
+        }
+      }
+
+      await Promise.all(Array.from({ length: Math.min(audioConcurrency, audioTargets.length) }, () => audioWorker()));
+      for (let index = 0; index < audioTargets.length; index += 1) {
+        if (!audioResults[index]) {
+          updateWorkflowNode(jobId, `audio-${index + 1}`, {
+            status: 'skipped',
+            completedAt: nowIso(),
+            error: 'Audio generation skipped after an earlier failure.'
+          });
+        }
+      }
+    } else {
+      audioResults.push(...await Promise.allSettled(audioTargets.map(generateAudioTarget)));
+    }
 
     let audioGeneratedCount = 0;
     const audioErrors: Array<{ conversationId: string; error: string }> = [];
@@ -565,6 +729,13 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
         if (targetIndex === -1) return conversation;
 
         const result = audioResults[targetIndex];
+        if (!result) {
+          return touchConversation({
+            ...audioTargets[targetIndex],
+            status: 'draft',
+            error: undefined
+          });
+        }
         if (result?.status === 'fulfilled') {
           audioGeneratedCount += 1;
           const audioUrl = `/audio/${encodeURIComponent(run.id)}/audio/${encodeURIComponent(result.value.audio.fileName)}`;
@@ -889,7 +1060,10 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
     conversations
   });
 
-  const audio = await generateWorkflowAudio(run, Math.min(context.audioCount, conversations.length));
+  const audio = await generateWorkflowAudio(run, Math.min(context.audioCount, conversations.length), {
+    stopOnFirstError: context.audioMode === 'max',
+    concurrency: context.audioMode === 'max' ? 3 : undefined
+  });
   run = audio.run;
 
   res.json({
@@ -1033,7 +1207,7 @@ app.delete('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(
     await deleteAudioFile(runId, conversation.audioFileName);
   }
 
-  const updated = await updateConversation(runId, conversationId, (current) => {
+  let updated = await updateConversation(runId, conversationId, (current) => {
     return touchConversation({
       ...current,
       status: 'draft',
@@ -1042,7 +1216,221 @@ app.delete('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(
       error: undefined
     });
   });
+  const workflowAudit = workflowAuditWithConversationAudioCleared(updated, conversationId);
+  if (workflowAudit) {
+    updated = await saveRun({ ...updated, workflowAudit, updatedAt: nowIso() });
+  }
   res.json({ run: updated });
+}));
+
+app.post('/api/runs/:runId/audio', asyncHandler(async (req, res) => {
+  const runId = routeParam(req.params.runId);
+  const mode = (req.body as { mode?: string } | undefined)?.mode === 'resume' ? 'resume' : 'replace';
+  let run = await readRun(runId);
+  if (run.conversations.some((conversation) => conversation.curatedId)) {
+    throw new Error('Remove Library conversations before regenerating all audio for this run.');
+  }
+  if (run.conversations.some((conversation) => conversation.status === 'audio_generating')) {
+    throw new Error('Wait for current audio generation to finish before regenerating all audio.');
+  }
+
+  const targetIds = new Set((mode === 'resume'
+    ? run.conversations.filter((conversation) => conversation.status !== 'audio_ready' || !conversation.audioFileName)
+    : run.conversations).map((conversation) => conversation.id));
+
+  await Promise.all(run.conversations.map((conversation) => targetIds.has(conversation.id) && conversation.audioFileName
+    ? deleteAudioFile(runId, conversation.audioFileName)
+    : Promise.resolve()));
+
+  const timestamp = nowIso();
+  const existingAudit = run.workflowAudit;
+  const baseNodes = existingAudit?.nodes.filter((node) => node.kind !== 'audio') ?? makeWorkflowNodes(0);
+  const audioNodes = run.conversations.map((conversation, index): WorkflowAuditNode => {
+    const existingNode = existingAudit?.nodes.find((node) => node.id === `audio-${index + 1}`);
+    return {
+      id: `audio-${index + 1}`,
+      kind: 'audio',
+      title: `Conversation ${index + 1}`,
+      status: targetIds.has(conversation.id) ? 'pending' : 'done',
+      input: {
+        conversationId: conversation.id,
+        conversationTitle: conversation.title
+      },
+      output: targetIds.has(conversation.id) ? undefined : existingNode?.output ?? {
+        fileName: conversation.audioFileName,
+        audioUrl: conversation.audioUrl
+      }
+    };
+  });
+
+  run = await saveRun({
+    ...run,
+    status: 'generated',
+    workflowAudit: existingAudit ? {
+      ...existingAudit,
+      audioRequestedCount: run.conversations.length,
+      audioGeneratedCount: run.conversations.length - targetIds.size,
+      audioErrors: [],
+      nodes: [...baseNodes, ...audioNodes],
+      updatedAt: timestamp
+    } : undefined,
+    conversations: run.conversations.map((conversation) => targetIds.has(conversation.id)
+      ? touchConversation({
+        ...conversation,
+        status: 'audio_generating',
+        audioFileName: undefined,
+        audioUrl: undefined,
+        error: undefined
+      })
+      : conversation),
+    updatedAt: timestamp
+  });
+
+  const audioResults: Array<PromiseSettledResult<{ conversationId: string; audio: { fileName: string; filePath: string }; durationSeconds?: number }> | undefined> = [];
+  let nextAudioIndex = 0;
+  let stopStartingAudio = false;
+  let auditSaveQueue: Promise<void> = Promise.resolve();
+
+  async function saveAuditNode(nodeId: string, patch: Partial<Omit<WorkflowAuditNode, 'id' | 'kind' | 'title'>>): Promise<void> {
+    const save = auditSaveQueue.then(async () => {
+      const workflowAudit = workflowAuditWithNode(run, nodeId, patch);
+      if (!workflowAudit) return;
+      run = await saveRun({ ...run, workflowAudit, updatedAt: nowIso() });
+    });
+    auditSaveQueue = save.catch(() => undefined);
+    await save;
+  }
+
+  async function regenerateAudioTarget(conversation: PracticeConversation, index: number) {
+    const nodeId = `audio-${index + 1}`;
+    const prompt = buildTtsPrompt(conversation);
+    await saveAuditNode(nodeId, {
+      status: 'processing',
+      startedAt: nowIso(),
+      error: undefined,
+      input: {
+        conversationId: conversation.id,
+        conversationTitle: conversation.title,
+        model: process.env.GEMINI_TTS_MODEL ?? 'GEMINI_TTS_MODEL not configured',
+        voiceConfig: {
+          speaker1: process.env.GEMINI_TTS_SPEAKER_1 || 'Zephyr',
+          speaker2: process.env.GEMINI_TTS_SPEAKER_2 || 'Puck'
+        },
+        prompt
+      }
+    });
+
+    const audio = await generateConversationAudio(run.id, conversation);
+    const durationSeconds = await readWavDurationSeconds(audio.filePath);
+    await saveAuditNode(nodeId, {
+      status: 'done',
+      completedAt: nowIso(),
+      output: {
+        fileName: audio.fileName,
+        audioUrl: `/audio/${encodeURIComponent(run.id)}/audio/${encodeURIComponent(audio.fileName)}`,
+        filePath: audio.filePath,
+        durationSeconds
+      }
+    });
+    return { conversationId: conversation.id, audio, durationSeconds };
+  }
+
+  async function audioWorker(): Promise<void> {
+    while (!stopStartingAudio) {
+      const currentIndex = nextAudioIndex;
+      nextAudioIndex += 1;
+      const conversation = run.conversations.filter((item) => targetIds.has(item.id))[currentIndex];
+      if (!conversation) return;
+      const conversationIndex = run.conversations.findIndex((item) => item.id === conversation.id);
+
+      try {
+        audioResults[conversationIndex] = {
+          status: 'fulfilled',
+          value: await regenerateAudioTarget(conversation, conversationIndex)
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        audioResults[conversationIndex] = {
+          status: 'rejected',
+          reason: { conversationId: conversation.id, error: message }
+        };
+        await saveAuditNode(`audio-${conversationIndex + 1}`, {
+          status: 'error',
+          completedAt: nowIso(),
+          error: message
+        });
+        stopStartingAudio = true;
+        return;
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(3, targetIds.size) }, () => audioWorker()));
+
+  for (let index = 0; index < run.conversations.length; index += 1) {
+    if (targetIds.has(run.conversations[index].id) && !audioResults[index]) {
+      await saveAuditNode(`audio-${index + 1}`, {
+        status: 'skipped',
+        completedAt: nowIso(),
+        error: 'Audio generation skipped after an earlier failure.'
+      });
+    }
+  }
+
+  let audioGeneratedCount = 0;
+  const audioErrors: Array<{ conversationId: string; error: string }> = [];
+  run = {
+    ...run,
+    conversations: run.conversations.map((conversation, index) => {
+      if (!targetIds.has(conversation.id)) return conversation;
+      const result = audioResults[index];
+      if (!result) {
+        return touchConversation({
+          ...conversation,
+          status: 'draft',
+          error: undefined
+        });
+      }
+      if (result.status === 'fulfilled') {
+        audioGeneratedCount += 1;
+        return touchConversation({
+          ...conversation,
+          status: 'audio_ready',
+          audioFileName: result.value.audio.fileName,
+          audioUrl: `/audio/${encodeURIComponent(run.id)}/audio/${encodeURIComponent(result.value.audio.fileName)}`,
+          error: undefined
+        });
+      }
+
+      const reason = result.reason as { conversationId?: string; error?: string };
+      const message = reason.error ?? 'Audio generation failed.';
+      audioErrors.push({ conversationId: conversation.id, error: message });
+      return touchConversation({
+        ...conversation,
+        status: 'audio_failed',
+        error: message
+      });
+    }),
+    updatedAt: nowIso()
+  };
+  run.status = runStatusFor(run.conversations);
+  const totalAudioReadyCount = run.conversations.filter((conversation) => conversation.audioFileName).length;
+  if (run.workflowAudit) {
+    run.workflowAudit = {
+      ...run.workflowAudit,
+      status: audioErrors.length ? 'failed' : 'complete',
+      audioRequestedCount: run.conversations.length,
+      audioGeneratedCount: totalAudioReadyCount,
+      audioErrors,
+      updatedAt: run.updatedAt
+    };
+  }
+  run = await saveRun(run);
+  if (audioErrors.length) {
+    res.status(502).json({ error: 'One or more audio calls failed.', run });
+    return;
+  }
+  res.json({ run });
 }));
 
 app.post('/api/runs/:runId/conversations/:conversationId/library', asyncHandler(async (req, res) => {

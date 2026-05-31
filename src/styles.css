@@ -764,7 +764,7 @@ textarea:focus {
 
 .workflowGraph {
   display: grid;
-  grid-template-columns: minmax(170px, 1fr) auto minmax(170px, 1fr) auto minmax(210px, 1.1fr);
+  grid-template-columns: minmax(170px, 0.9fr) auto minmax(170px, 0.9fr) auto minmax(300px, 1.35fr);
   gap: 12px;
   align-items: center;
 }
@@ -780,9 +780,194 @@ textarea:focus {
   gap: 10px;
 }
 
+.workflowAudioStage {
+  border: 1px solid var(--studio-border-soft);
+  border-radius: 8px;
+  background: var(--studio-surface);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  box-shadow: 0 8px 22px rgba(31, 42, 46, 0.04);
+}
+
+.workflowAudioStageHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px;
+  border-bottom: 1px solid var(--studio-border-muted);
+  background: var(--studio-surface-raised);
+}
+
+.workflowAudioStageHeader strong,
+.workflowAudioStageHeader small {
+  display: block;
+}
+
+.workflowAudioRefreshButton {
+  min-height: 32px;
+  border: 1px solid var(--studio-border-soft);
+  border-radius: 8px;
+  background: var(--studio-surface);
+  color: var(--studio-text-soft);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.workflowAudioRefreshButton:hover:not(:disabled) {
+  border-color: var(--studio-accent);
+  color: var(--studio-accent);
+}
+
+.workflowAudioRefreshButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.workflowAudioStageHeader small {
+  margin-top: 3px;
+  color: var(--studio-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.workflowAudioList {
+  min-height: 0;
+  max-height: 276px;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 10px;
+}
+
+.workflowAudioItem {
+  width: 100%;
+  min-height: 58px;
+  border: 1px solid var(--studio-border-soft);
+  border-radius: 8px;
+  background: var(--studio-surface-raised);
+  color: var(--studio-text-soft);
+  padding: 9px 10px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+}
+
+.workflowAudioItem.selected {
+  outline: 3px solid var(--studio-focus-ring);
+}
+
+.workflowAudioItemNumber {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, currentColor 11%, var(--studio-surface));
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.workflowAudioItemText strong,
+.workflowAudioItemText small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.workflowAudioItemText strong {
+  font-size: 13px;
+}
+
+.workflowAudioItemText small {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workflowAudioItemIcon {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+}
+
+.workflowAudioItem.pending {
+  background: #f4f2ed;
+  border-color: #beb7a9;
+  color: #514b43;
+}
+
+.workflowAudioItem.processing {
+  border-color: transparent;
+  background:
+    linear-gradient(var(--studio-info-soft), var(--studio-info-soft)) padding-box,
+    conic-gradient(from var(--workflow-spin-angle), transparent 0deg, var(--studio-info) 62deg, transparent 118deg, transparent 360deg) border-box;
+  color: var(--studio-info);
+  border-width: 2px;
+  animation: workflowBorderSpin 1.15s linear infinite;
+}
+
+.workflowAudioItem.processing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.48), transparent);
+  translate: -115% 0;
+  animation: workflowNodeSweep 1.45s ease-in-out infinite;
+}
+
+.workflowAudioItem > * {
+  position: relative;
+  z-index: 1;
+}
+
+.workflowAudioItem.done {
+  background: #eef7ed;
+  border-color: #9cc59a;
+  color: #2f6835;
+}
+
+.workflowAudioItem.error {
+  background: var(--studio-danger-soft);
+  border-color: var(--studio-danger-border);
+  color: var(--studio-danger);
+}
+
+.workflowAudioItem.skipped {
+  background: #f4f2ed;
+  border-style: dashed;
+  border-color: #beb7a9;
+  color: var(--studio-text-muted);
+}
+
+.workflowAudioListEmpty {
+  margin: 10px;
+  border: 1px dashed var(--studio-border-muted);
+  border-radius: 8px;
+  padding: 20px;
+  color: var(--studio-text-muted);
+  text-align: center;
+}
+
 .workflowNode {
   width: 100%;
-  min-height: 78px;
+  min-height: 0;
   border: 1px solid var(--studio-border-soft);
   border-radius: 8px;
   background: var(--studio-surface);
@@ -843,6 +1028,13 @@ textarea:focus {
   color: var(--studio-danger);
 }
 
+.workflowNode.skipped {
+  background: #f4f2ed;
+  border-style: dashed;
+  border-color: #beb7a9;
+  color: var(--studio-text-muted);
+}
+
 .workflowNodeAbsent {
   cursor: default;
   border-style: dashed;
@@ -869,8 +1061,8 @@ textarea:focus {
 .workflowNode small {
   margin-top: 3px;
   font-size: 12px;
-  font-weight: 850;
-  text-transform: uppercase;
+  font-weight: 500;
+  text-transform: none;
 }
 
 .workflowInspector {

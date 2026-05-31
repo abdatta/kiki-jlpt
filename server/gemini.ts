@@ -16,6 +16,69 @@ interface GeminiInlineAudio {
   data?: string;
 }
 
+function envFlag(name: string): boolean {
+  return ['1', 'true', 'yes', 'on'].includes((process.env[name] ?? '').trim().toLowerCase());
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function mockDelayMs(): number {
+  const minimumMs = 5000;
+  const randomJitterMs = Math.floor(Math.random() * 3001);
+  return minimumMs + randomJitterMs;
+}
+
+function mockAudioDurationSeconds(conversation: PracticeConversation): number {
+  const spokenCharacterCount = conversation.text.reduce((sum, line) => sum + line.japanese.length, 0);
+  return Math.max(18, Math.min(55, Math.round(spokenCharacterCount / 4)));
+}
+
+function wavHeader(dataLength: number, sampleRate: number, bitsPerSample: number, numChannels: number): Buffer {
+  const byteRate = sampleRate * numChannels * bitsPerSample / 8;
+  const blockAlign = numChannels * bitsPerSample / 8;
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + dataLength, 4);
+  header.write('WAVE', 8);
+  header.write('fmt ', 12);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20);
+  header.writeUInt16LE(numChannels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(bitsPerSample, 34);
+  header.write('data', 36);
+  header.writeUInt32LE(dataLength, 40);
+  return header;
+}
+
+function mockWavBuffer(durationSeconds: number): Buffer {
+  const sampleRate = 8000;
+  const bitsPerSample = 16;
+  const numChannels = 1;
+  const dataLength = durationSeconds * sampleRate * numChannels * bitsPerSample / 8;
+  return Buffer.concat([wavHeader(dataLength, sampleRate, bitsPerSample, numChannels), Buffer.alloc(dataLength)]);
+}
+
+async function generateMockConversationAudio(runId: string, conversation: PracticeConversation): Promise<{ fileName: string; filePath: string }> {
+  await sleep(mockDelayMs());
+
+  const failAt = Number(process.env.MOCK_TTS_FAIL_AT);
+  if (Number.isInteger(failAt) && failAt === conversation.number) {
+    throw new Error(`Mock TTS failure for conversation ${conversation.number}.`);
+  }
+
+  const outputDir = runAudioDir(runId);
+  await mkdir(outputDir, { recursive: true });
+  const fileName = `${conversation.id}.mock.wav`;
+  const filePath = path.join(outputDir, fileName);
+  await writeFile(filePath, mockWavBuffer(mockAudioDurationSeconds(conversation)));
+  return { fileName, filePath };
+}
+
 function getAi(): GoogleGenAI {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -204,6 +267,10 @@ ${conversation.text.map(transcriptLine).join('\n')}`;
 }
 
 export async function generateConversationAudio(runId: string, conversation: PracticeConversation): Promise<{ fileName: string; filePath: string }> {
+  if (envFlag('MOCK_TTS_AUDIO')) {
+    return generateMockConversationAudio(runId, conversation);
+  }
+
   const ai = getAi();
   const model = process.env.GEMINI_TTS_MODEL;
   if (!model) {
