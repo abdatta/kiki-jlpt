@@ -236,6 +236,30 @@ function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values));
 }
 
+function levelIdPrefix(level: number): string {
+  return `set-${String(level).padStart(2, '0')}-`;
+}
+
+function effectiveCompletedIdsForLevel(
+  conversations: StaticLibraryConversation[],
+  storedCompletedIds: string[],
+  level: number
+): Set<string> {
+  const levelScopedCompletedCount = uniqueStrings(storedCompletedIds)
+    .filter((id) => id.startsWith(levelIdPrefix(level)))
+    .length;
+
+  if (levelScopedCompletedCount > 0) {
+    return new Set(conversations
+      .slice(0, Math.min(conversations.length, levelScopedCompletedCount))
+      .map((conversation) => conversation.id));
+  }
+
+  return new Set(conversations
+    .filter((conversation) => storedCompletedIds.includes(conversation.id))
+    .map((conversation) => conversation.id));
+}
+
 function isConversationUnlocked(
   conversations: StaticLibraryConversation[],
   conversationIndex: number,
@@ -277,15 +301,18 @@ function levelLabel(level: number): string {
 
 function buildLevelProgress(vocabStats: StatsMap, conversationProgress: ConversationProgress, library: StaticLibraryManifest): LevelProgress[] {
   let previousLevelsComplete = true;
-  const completedConversationIds = new Set(conversationProgress.completedConversationIds);
 
   return levelSummaries.map((summary) => {
     const cards = vocabCards.filter((card) => card.level === summary.set);
+    const levelConversations = library.conversations.filter((conversation) => conversation.level === summary.set);
+    const completedConversationIds = effectiveCompletedIdsForLevel(
+      levelConversations,
+      conversationProgress.completedConversationIds,
+      summary.set
+    );
     const strongVocabCount = cards.filter((card) => getBucket(getStats(vocabStats, card.id)) === 'strong').length;
     const vocabMasteryRatio = cards.length > 0 ? strongVocabCount / cards.length : 0;
-    const listeningAttemptCount = library.conversations
-      .filter((conversation) => conversation.level === summary.set && completedConversationIds.has(conversation.id))
-      .length;
+    const listeningAttemptCount = levelConversations.filter((conversation) => completedConversationIds.has(conversation.id)).length;
     const unlocked = previousLevelsComplete;
     const complete = vocabMasteryRatio >= LEVEL_MASTERY_RATIO && listeningAttemptCount >= LEVEL_LISTENING_TARGET;
 
@@ -1103,17 +1130,20 @@ function ConversationsPage({
   const [unlockModalReason, setUnlockModalReason] = useState<'listening' | 'vocab' | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const allConversations = useMemo(() => library.conversations.filter((conversation) => conversation.level === level), [library, level]);
-  const completedIds = useMemo(() => new Set(conversationProgress.completedConversationIds), [conversationProgress.completedConversationIds]);
   const starredIds = useMemo(() => new Set(conversationProgress.starredConversationIds), [conversationProgress.starredConversationIds]);
   const starredConversations = useMemo(() => allConversations.filter((conversation) => starredIds.has(conversation.id)), [allConversations, starredIds]);
   const conversations = allConversations;
+  const completedIds = useMemo(
+    () => effectiveCompletedIdsForLevel(conversations, conversationProgress.completedConversationIds, level),
+    [conversationProgress.completedConversationIds, conversations, level]
+  );
   const emptyBody = PRACTICE_ONLY
     ? 'Published conversations will appear after the curated library is exported.'
     : 'Run the library export after approving conversations and generating audio in Kiki JLPT Studio.';
 
   useEffect(() => {
     setSelectedConversationId(defaultConversationId(conversations, completedIds));
-  }, [level, library.generatedAt, conversations]);
+  }, [level, library.generatedAt, conversations, completedIds]);
 
   const selectedConversationIndex = conversations.findIndex((conversation) => conversation.id === selectedConversationId);
   const fallbackConversationId = defaultConversationId(conversations, completedIds);

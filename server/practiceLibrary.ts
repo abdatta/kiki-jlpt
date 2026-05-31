@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CuratedSet } from '../shared/types.ts';
@@ -23,6 +24,69 @@ function curatedUpdatedAt(sets: CuratedSet[]): string {
     set.updatedAt,
     ...set.conversations.map((conversation) => conversation.curatedAt ?? conversation.updatedAt ?? conversation.createdAt)
   ]));
+}
+
+function stableJson(value: unknown): string {
+  return JSON.stringify(value);
+}
+
+function contentFingerprint(level: number, conversation: {
+  title: string;
+  scene: string;
+  sampleContext?: string;
+  text: unknown;
+  englishTranslation: unknown;
+  listeningQuestions: unknown;
+  answerKey: unknown;
+}): string {
+  return createHash('sha256')
+    .update(stableJson({
+      level,
+      title: conversation.title,
+      scene: conversation.scene,
+      sampleContext: conversation.sampleContext ?? '',
+      text: conversation.text,
+      englishTranslation: conversation.englishTranslation,
+      listeningQuestions: conversation.listeningQuestions,
+      answerKey: conversation.answerKey
+    }))
+    .digest('hex');
+}
+
+function fallbackPublishedId(level: number, fingerprint: string): string {
+  return `${setSlug(level)}-${fingerprint.slice(0, 16)}`;
+}
+
+function uniquePublishedId(baseId: string, usedIds: Set<string>): string {
+  if (!usedIds.has(baseId)) return baseId;
+
+  let suffix = 2;
+  let nextId = `${baseId}-${suffix}`;
+  while (usedIds.has(nextId)) {
+    suffix += 1;
+    nextId = `${baseId}-${suffix}`;
+  }
+  return nextId;
+}
+
+interface PreviousPublishedConversation {
+  id: string;
+  order: number;
+}
+
+function previousConversationsByFingerprint(manifest: StaticLibraryManifest | null): Map<string, PreviousPublishedConversation[]> {
+  const conversationsByFingerprint = new Map<string, PreviousPublishedConversation[]>();
+  if (!manifest) return conversationsByFingerprint;
+
+  manifest.conversations.forEach((conversation, order) => {
+    const fingerprint = contentFingerprint(conversation.level, conversation);
+    conversationsByFingerprint.set(fingerprint, [
+      ...(conversationsByFingerprint.get(fingerprint) ?? []),
+      { id: conversation.id, order }
+    ]);
+  });
+
+  return conversationsByFingerprint;
 }
 
 async function readPracticeManifest(): Promise<StaticLibraryManifest | null> {
@@ -61,7 +125,12 @@ export async function getPracticeLibraryPublishStatus() {
 
 export async function publishPracticeLibrary() {
   const sets = await listCuratedSets();
-  const conversations: StaticLibraryConversation[] = [];
+  const previousManifest = await readPracticeManifest();
+  const reusableConversations = previousConversationsByFingerprint(previousManifest);
+  const usedIds = new Set<string>();
+  const previousConversationCount = previousManifest?.conversations.length ?? 0;
+  const conversations: Array<StaticLibraryConversation & { publishOrder: number }> = [];
+  let nextNewConversationOrder = previousConversationCount;
 
   await mkdir(PRACTICE_LIBRARY_DIR, { recursive: true });
   await rm(libraryAudioDir, { recursive: true, force: true });
@@ -80,8 +149,13 @@ export async function publishPracticeLibrary() {
       await mkdir(outputAudioDir, { recursive: true });
       await copyFile(sourceAudio, outputAudio);
 
+      const fingerprint = contentFingerprint(set.setNumber, conversation);
+      const reusableConversation = reusableConversations.get(fingerprint)?.shift();
+      const publishedId = uniquePublishedId(reusableConversation?.id ?? fallbackPublishedId(set.setNumber, fingerprint), usedIds);
+      usedIds.add(publishedId);
+
       conversations.push({
-        id: conversation.id,
+        id: publishedId,
         level: set.setNumber,
         title: conversation.title,
         scene: conversation.scene,
@@ -91,17 +165,18 @@ export async function publishPracticeLibrary() {
         englishTranslation: conversation.englishTranslation,
         listeningQuestions: conversation.listeningQuestions,
         answerKey: conversation.answerKey,
-        createdAt: conversation.curatedAt ?? conversation.createdAt
+        createdAt: conversation.curatedAt ?? conversation.createdAt,
+        publishOrder: reusableConversation?.order ?? nextNewConversationOrder++
       });
     }
   }
 
-  conversations.sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
+  conversations.sort((a, b) => a.publishOrder - b.publishOrder || (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
 
   const manifest: StaticLibraryManifest = {
     version: 1,
     generatedAt: curatedUpdatedAt(sets),
-    conversations
+    conversations: conversations.map(({ publishOrder: _publishOrder, ...conversation }) => conversation)
   };
 
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
