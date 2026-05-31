@@ -232,6 +232,26 @@ function targetProgressPercent(value: number, target: number): number {
   return Math.min(100, (value / target) * 100);
 }
 
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+function isConversationUnlocked(
+  conversations: StaticLibraryConversation[],
+  conversationIndex: number,
+  completedIds: Set<string>
+): boolean {
+  if (conversationIndex < 0 || conversationIndex >= conversations.length) return false;
+  return conversations.slice(0, conversationIndex).every((conversation) => completedIds.has(conversation.id));
+}
+
+function defaultConversationId(conversations: StaticLibraryConversation[], completedIds: Set<string>): string | null {
+  const firstUnlockedUncompleted = conversations.find((conversation, index) => (
+    !completedIds.has(conversation.id) && isConversationUnlocked(conversations, index, completedIds)
+  ));
+  return firstUnlockedUncompleted?.id ?? conversations[conversations.length - 1]?.id ?? null;
+}
+
 function routeForArea(area: PracticeArea): string {
   if (area === 'conversations') return '#/practice/conversations';
   if (area === 'settings') return '#/practice/settings';
@@ -912,7 +932,8 @@ function ConversationPractice({
   }
 
   const allAttempted = conversation.listeningQuestions.length > 0
-    && conversation.listeningQuestions.every((_, index) => questionStates[index]?.result);
+    ? conversation.listeningQuestions.every((_, index) => questionStates[index]?.result)
+    : played;
   const shouldShowTranscript = isCompleted || allAttempted;
   const hasAnsweredAny = Object.values(questionStates).some((state) => Boolean(state.result));
   const canStar = isStarred || isCompleted || hasCompletedInitialPlay;
@@ -1091,14 +1112,17 @@ function ConversationsPage({
     : 'Run the library export after approving conversations and generating audio in Kiki JLPT Studio.';
 
   useEffect(() => {
-    const firstUncompleted = conversations.find((conversation) => !completedIds.has(conversation.id)) ?? conversations[0] ?? null;
-    setSelectedConversationId(firstUncompleted?.id ?? null);
+    setSelectedConversationId(defaultConversationId(conversations, completedIds));
   }, [level, library.generatedAt, conversations]);
 
-  const current = conversations.find((conversation) => conversation.id === selectedConversationId) ?? conversations.find((conversation) => !completedIds.has(conversation.id)) ?? conversations[0];
-  const currentConversationIndex = current ? conversations.findIndex((conversation) => conversation.id === current.id) + 1 : 0;
-  const completedConversationIdsForLevel = conversationProgress.completedConversationIds.filter((id) => allConversations.some((conversation) => conversation.id === id));
-  const currentCompletedIndex = current ? completedConversationIdsForLevel.indexOf(current.id) : -1;
+  const selectedConversationIndex = conversations.findIndex((conversation) => conversation.id === selectedConversationId);
+  const fallbackConversationId = defaultConversationId(conversations, completedIds);
+  const fallbackConversationIndex = conversations.findIndex((conversation) => conversation.id === fallbackConversationId);
+  const currentIndex = isConversationUnlocked(conversations, selectedConversationIndex, completedIds)
+    ? selectedConversationIndex
+    : fallbackConversationIndex;
+  const current = currentIndex >= 0 ? conversations[currentIndex] : undefined;
+  const currentConversationIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
   const listeningComplete = progress.listeningAttemptCount >= LEVEL_LISTENING_TARGET;
   const nextLevelNumber = nextProgress?.level ?? null;
   const levelProgressLabel = progress.complete && nextLevelNumber
@@ -1107,16 +1131,14 @@ function ConversationsPage({
       ? 'Vocabulary needed'
       : `${Math.max(0, LEVEL_LISTENING_TARGET - progress.listeningAttemptCount)} more to unlock!`;
   const listeningProgressWidth = `${targetProgressPercent(progress.listeningAttemptCount, LEVEL_LISTENING_TARGET)}%`;
-  const previousConversationId = currentCompletedIndex > 0
-    ? completedConversationIdsForLevel[currentCompletedIndex - 1]
-    : completedConversationIdsForLevel[completedConversationIdsForLevel.length - 1];
-  const nextConversationId = current
-    ? conversations
-      .slice(conversations.findIndex((conversation) => conversation.id === current.id) + 1)
-      .find((conversation) => !completedIds.has(conversation.id))?.id ?? null
+  const previousConversationId = isConversationUnlocked(conversations, currentIndex - 1, completedIds)
+    ? conversations[currentIndex - 1]?.id ?? null
     : null;
-  const canGoPrevious = Boolean(previousConversationId && previousConversationId !== current?.id);
-  const canGoNext = Boolean(current && completedIds.has(current.id) && nextConversationId);
+  const nextConversationId = isConversationUnlocked(conversations, currentIndex + 1, completedIds)
+    ? conversations[currentIndex + 1]?.id ?? null
+    : null;
+  const canGoPrevious = Boolean(previousConversationId);
+  const canGoNext = Boolean(nextConversationId);
 
   function updatePlaybackSpeed(speed: number) {
     setPlaybackSpeed(speed);
@@ -1125,7 +1147,7 @@ function ConversationsPage({
 
   function completeConversation(conversationId: string) {
     setConversationProgress((currentProgress) => {
-      const withoutCurrent = currentProgress.completedConversationIds.filter((id) => id !== conversationId);
+      const withoutCurrent = uniqueStrings(currentProgress.completedConversationIds).filter((id) => id !== conversationId);
       const nextProgress = {
         ...currentProgress,
         completedConversationIds: [...withoutCurrent, conversationId]
@@ -1225,7 +1247,7 @@ function ConversationsPage({
         />
       ) : allConversations.length === 0 ? (
         <EmptyState title="No published conversations yet" body={emptyBody} />
-      ) : (
+      ) : current ? (
         <ConversationPractice
           key={current.id}
           conversation={current}
@@ -1238,6 +1260,8 @@ function ConversationsPage({
           onNext={showNextConversation}
           canGoNext={canGoNext}
         />
+      ) : (
+        <EmptyState title="No available conversation" body="Choose another level in Settings." />
       )}
       {isStarredModalOpen ? (
         <StarredConversationModal

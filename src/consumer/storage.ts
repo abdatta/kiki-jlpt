@@ -21,6 +21,10 @@ function writeJson(key: string, value: unknown): void {
   window.localStorage.setItem(key, JSON.stringify(value));
 }
 
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
 export function loadSettings(fallbackLevel: number): LearnerSettings {
   const stored = readJson<Partial<LearnerSettings>>(SETTINGS_KEY, {});
   return {
@@ -45,16 +49,19 @@ export function loadConversationProgress(): ConversationProgress {
   const stored = readJson<Partial<ConversationProgress>>(CONVERSATION_PROGRESS_KEY, {});
   return {
     completedConversationIds: Array.isArray(stored.completedConversationIds)
-      ? stored.completedConversationIds.filter((id): id is string => typeof id === 'string')
+      ? uniqueStrings(stored.completedConversationIds.filter((id): id is string => typeof id === 'string'))
       : [],
     starredConversationIds: Array.isArray(stored.starredConversationIds)
-      ? stored.starredConversationIds.filter((id): id is string => typeof id === 'string')
+      ? uniqueStrings(stored.starredConversationIds.filter((id): id is string => typeof id === 'string'))
       : []
   };
 }
 
 export function saveConversationProgress(progress: ConversationProgress): void {
-  writeJson(CONVERSATION_PROGRESS_KEY, progress);
+  writeJson(CONVERSATION_PROGRESS_KEY, {
+    completedConversationIds: uniqueStrings(progress.completedConversationIds),
+    starredConversationIds: uniqueStrings(progress.starredConversationIds)
+  });
 }
 
 export function loadConversationPlaybackSpeed(fallback = 1): number {
