@@ -103,8 +103,12 @@ interface VocabStatsAnalysis {
 function navFromHash(): PracticeArea {
   if (typeof window === 'undefined') return 'vocab';
   if (window.location.hash.includes('/conversations')) return 'conversations';
-  if (window.location.hash.includes('/settings')) return 'settings';
   return 'vocab';
+}
+
+function settingsFromHash(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.location.hash.includes('/settings');
 }
 
 function deviceMikanTheme(): MikanTheme {
@@ -1142,7 +1146,14 @@ function ConversationsPage({
     : 'Run the library export after approving conversations and generating audio in Kiki JLPT Studio.';
 
   useEffect(() => {
-    setSelectedConversationId(defaultConversationId(conversations, completedIds));
+    setSelectedConversationId((currentId) => {
+      const currentSelectedIndex = conversations.findIndex((conversation) => conversation.id === currentId);
+      if (currentId && isConversationUnlocked(conversations, currentSelectedIndex, completedIds)) {
+        return currentId;
+      }
+
+      return defaultConversationId(conversations, completedIds);
+    });
   }, [level, library.generatedAt, conversations, completedIds]);
 
   const selectedConversationIndex = conversations.findIndex((conversation) => conversation.id === selectedConversationId);
@@ -1370,13 +1381,13 @@ function SettingsPage({
   setSettings,
   library,
   levelProgress,
-  closeHref
+  onClose
 }: {
   settings: LearnerSettings;
   setSettings: (settings: LearnerSettings) => void;
   library: StaticLibraryManifest;
   levelProgress: LevelProgress[];
-  closeHref: string;
+  onClose: () => void;
 }) {
   function update(nextSettings: LearnerSettings) {
     setSettings(nextSettings);
@@ -1385,7 +1396,7 @@ function SettingsPage({
 
   function chooseLevel(level: number) {
     update({ ...settings, level });
-    window.location.hash = closeHref;
+    onClose();
   }
 
   const selectedProgress = levelProgress.find((progress) => progress.level === settings.level) ?? levelProgress[0];
@@ -1395,11 +1406,11 @@ function SettingsPage({
       <div className="panelHeader">
         <div>
           <p>Settings</p>
-          <h2>Practice setup</h2>
+          <h2 id="settings-title">Practice setup</h2>
         </div>
-        <a className="settingsCloseButton" href={closeHref} aria-label="Close settings" title="Close settings">
+        <button className="settingsCloseButton" onClick={onClose} aria-label="Close settings" title="Close settings" type="button">
           <X size={20} />
-        </a>
+        </button>
       </div>
 
       <section className="settingsBlock">
@@ -1510,6 +1521,7 @@ function CompletionPanel({ label, onNext }: { label: string; onNext: () => void 
 export function ConsumerApp() {
   const [area, setArea] = useState<PracticeArea>(navFromHash);
   const [lastPracticeArea, setLastPracticeArea] = useState<PracticeArea>('vocab');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(settingsFromHash);
   const [settings, setSettings] = useState<LearnerSettings>(() => loadSettings(levelSummaries[0]?.set ?? 1));
   const [mikanTheme, setMikanTheme] = useState<MikanTheme>(deviceMikanTheme);
   const [vocabStats, setVocabStats] = useState<StatsMap>(loadVocabStats);
@@ -1518,7 +1530,13 @@ export function ConsumerApp() {
   const [libraryError, setLibraryError] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleHashChange = () => setArea(navFromHash());
+    const handleHashChange = () => {
+      const nextSettingsOpen = settingsFromHash();
+      setIsSettingsOpen(nextSettingsOpen);
+      if (!nextSettingsOpen) {
+        setArea(navFromHash());
+      }
+    };
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
@@ -1549,7 +1567,6 @@ export function ConsumerApp() {
   const levelProgress = useMemo(() => buildLevelProgress(vocabStats, conversationProgress, library), [vocabStats, conversationProgress, library]);
   const currentProgress = levelProgress.find((progress) => progress.level === settings.level) ?? levelProgress[0];
   const nextProgress = levelProgress.find((progress) => progress.level === settings.level + 1) ?? null;
-  const settingsHref = '#/practice/settings';
   const settingsCloseHref = routeForArea(lastPracticeArea);
   const libraryReady = library.generatedAt !== '' || library.conversations.length > 0;
 
@@ -1570,6 +1587,13 @@ export function ConsumerApp() {
     window.location.hash = routeForArea('vocab');
   }
 
+  function closeSettings() {
+    setIsSettingsOpen(false);
+    if (settingsFromHash()) {
+      window.location.hash = settingsCloseHref;
+    }
+  }
+
   return (
     <main className="practiceShell" data-theme={mikanTheme}>
       <aside className="practiceSidebar">
@@ -1582,15 +1606,16 @@ export function ConsumerApp() {
               </div>
             </div>
           </div>
-          <a
+          <button
             aria-label={`Change level. Current ${levelLabel(settings.level)}`}
-            className={`settingsIconLink levelNavLink ${area === 'settings' ? 'active' : ''}`}
-            href={settingsHref}
+            className={`settingsIconLink levelNavLink ${isSettingsOpen ? 'active' : ''}`}
+            onClick={() => setIsSettingsOpen(true)}
             title={`Change level. Current ${levelLabel(settings.level)}`}
+            type="button"
           >
             <span className="levelNavKanji" aria-hidden="true">{levelKanji(settings.level)}</span>
             <span>Level {settings.level}</span>
-          </a>
+          </button>
         </div>
         <nav className="practiceNav">
           <a className={area === 'vocab' ? 'active' : ''} href="#/practice">
@@ -1628,10 +1653,13 @@ export function ConsumerApp() {
             onOpenNextLevel={openLevelVocab}
           />
         ) : null}
-        {area === 'settings' ? (
-          <SettingsPage settings={settings} setSettings={setSettings} library={library} levelProgress={levelProgress} closeHref={settingsCloseHref} />
-        ) : null}
       </section>
+      {isSettingsOpen ? (
+        <div className="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+          <button className="settingsModalBackdrop" aria-label="Close settings overlay" onClick={closeSettings} type="button" />
+          <SettingsPage settings={settings} setSettings={setSettings} library={library} levelProgress={levelProgress} onClose={closeSettings} />
+        </div>
+      ) : null}
     </main>
   );
 }
