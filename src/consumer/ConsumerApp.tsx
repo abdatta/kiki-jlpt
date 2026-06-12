@@ -25,17 +25,16 @@ import { buildSessionQueue, calculateNextStats, getBucket, getStats } from './de
 import { levelSummaries, vocabCards } from './vocabData.ts';
 import { loadLibrary } from './library.ts';
 import {
-  loadSettings,
+  loadLevel,
   loadVocabStats,
   loadConversationPlaybackSpeed,
   loadConversationProgress,
   saveConversationPlaybackSpeed,
   saveConversationProgress,
-  saveSettings,
+  saveLevel,
   saveVocabStats
 } from './storage.ts';
 import type {
-  LearnerSettings,
   PracticeArea,
   PracticeCard,
   ConversationProgress,
@@ -106,9 +105,9 @@ function navFromHash(): PracticeArea {
   return 'vocab';
 }
 
-function settingsFromHash(): boolean {
+function levelLadderFromHash(): boolean {
   if (typeof window === 'undefined') return false;
-  return window.location.hash.includes('/settings');
+  return window.location.hash.includes('/level') || window.location.hash.includes('/settings');
 }
 
 function deviceMikanTheme(): MikanTheme {
@@ -119,57 +118,6 @@ function deviceMikanTheme(): MikanTheme {
 function strengthLabel(cardId: string, stats: StatsMap): string {
   const bucket = getBucket(getStats(stats, cardId));
   return bucket[0].toUpperCase() + bucket.slice(1);
-}
-
-function isKanji(char: string): boolean {
-  return /[\u3400-\u9FFF]/u.test(char);
-}
-
-function isJapaneseKanaText(value: string): boolean {
-  return /^[\u3040-\u30FFー]+$/u.test(value);
-}
-
-function tokenizeForFurigana(value: string): Array<{ text: string; kanji: boolean }> {
-  const tokens: Array<{ text: string; kanji: boolean }> = [];
-
-  for (const char of value) {
-    const kanji = isKanji(char);
-    const previous = tokens[tokens.length - 1];
-    if (previous && previous.kanji === kanji) {
-      previous.text += char;
-    } else {
-      tokens.push({ text: char, kanji });
-    }
-  }
-
-  return tokens;
-}
-
-function furiganaParts(japanese: string, reading: string): Array<{ text: string; reading?: string }> {
-  if (!reading || reading === japanese || !japanese.split('').some(isKanji)) {
-    return [{ text: japanese }];
-  }
-
-  const tokens = tokenizeForFurigana(japanese);
-  let readingIndex = 0;
-
-  return tokens.map((token, index) => {
-    if (!token.kanji) {
-      if (isJapaneseKanaText(token.text)) {
-        const foundAt = reading.indexOf(token.text, readingIndex);
-        if (foundAt >= readingIndex) {
-          readingIndex = foundAt + token.text.length;
-        }
-      }
-      return { text: token.text };
-    }
-
-    const nextKanaToken = tokens.slice(index + 1).find((item) => !item.kanji && isJapaneseKanaText(item.text));
-    const nextKanaIndex = nextKanaToken ? reading.indexOf(nextKanaToken.text, readingIndex) : -1;
-    const rubyText = nextKanaIndex >= readingIndex ? reading.slice(readingIndex, nextKanaIndex) : reading.slice(readingIndex);
-    readingIndex = nextKanaIndex >= readingIndex ? nextKanaIndex : reading.length;
-    return { text: token.text, reading: rubyText || undefined };
-  });
 }
 
 function applyReview(stats: StatsMap, id: string, result: ReviewResult): StatsMap {
@@ -282,19 +230,18 @@ function defaultConversationId(conversations: StaticLibraryConversation[], compl
 
 function routeForArea(area: PracticeArea): string {
   if (area === 'conversations') return '#/practice/conversations';
-  if (area === 'settings') return '#/practice/settings';
   return '#/practice';
 }
 
 function levelKanji(level: number): string {
-  const numerals = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const numerals = ['\u96f6', '\u4e00', '\u4e8c', '\u4e09', '\u56db', '\u4e94', '\u516d', '\u4e03', '\u516b', '\u4e5d'];
   if (!Number.isInteger(level) || level < 0) return String(level);
   if (level < 10) return numerals[level];
-  if (level === 10) return '十';
-  if (level < 20) return `十${numerals[level % 10]}`;
+  if (level === 10) return '\u5341';
+  if (level < 20) return `\u5341${numerals[level % 10]}`;
   if (level < 100) {
     const ones = level % 10;
-    return `${numerals[Math.floor(level / 10)]}十${ones === 0 ? '' : numerals[ones]}`;
+    return `${numerals[Math.floor(level / 10)]}\u5341${ones === 0 ? '' : numerals[ones]}`;
   }
   return String(level);
 }
@@ -340,12 +287,10 @@ function buildLevelProgress(vocabStats: StatsMap, conversationProgress: Conversa
 
 function VocabFlashcard({
   card,
-  showKana,
   stats,
   onReview
 }: {
   card: VocabPracticeCard;
-  showKana: boolean;
   stats: StatsMap;
   onReview: (id: string, result: ReviewResult) => void;
 }) {
@@ -362,8 +307,6 @@ function VocabFlashcard({
     window.setTimeout(() => onReview(card.id, nextResult), 260);
   }
 
-  const promptParts = showKana ? furiganaParts(card.japanese, card.reading) : [{ text: card.japanese }];
-
   return (
     <article className={`practiceCard vocabCard ${revealed ? 'revealed' : ''} ${result ?? ''}`}>
       <div className="cardMeta">
@@ -372,18 +315,7 @@ function VocabFlashcard({
       </div>
 
       <div className="vocabPrompt">
-        <span className="furiganaWord">
-          {promptParts.map((part, index) => (
-            part.reading ? (
-              <ruby key={`${part.text}:${index}`}>
-                {part.text}
-                <rt>{part.reading}</rt>
-              </ruby>
-            ) : (
-              <span key={`${part.text}:${index}`}>{part.text}</span>
-            )
-          ))}
-        </span>
+        <span>{card.japanese}</span>
       </div>
 
       {revealed ? (
@@ -698,13 +630,11 @@ function LevelUnlockModal({
 
 function VocabPage({
   level,
-  showKana,
   stats,
   setStats,
   progress
 }: {
   level: number;
-  showKana: boolean;
   stats: StatsMap;
   setStats: (stats: StatsMap) => void;
   progress: LevelProgress;
@@ -766,11 +696,11 @@ function VocabPage({
 
       <div className="vocabCardStage">
         {activeCards.length === 0 ? (
-          <EmptyState title="No words in this level" body="Choose another level in Settings." />
+          <EmptyState title="No words in this level" body="Choose another level from the level ladder." />
         ) : complete ? (
           <CompletionPanel label="Vocabulary session complete" onNext={startSession} />
         ) : current ? (
-          <VocabFlashcard card={current} showKana={showKana} stats={stats} onReview={review} />
+          <VocabFlashcard card={current} stats={stats} onReview={review} />
         ) : null}
       </div>
 
@@ -1170,7 +1100,7 @@ function ConversationsPage({
     ? 'Next level unlocked!'
     : listeningComplete
       ? 'Vocabulary needed'
-      : `${Math.max(0, LEVEL_LISTENING_TARGET - progress.listeningAttemptCount)} more to unlock!`;
+      : `${progress.listeningAttemptCount}/${LEVEL_LISTENING_TARGET} Completed`;
   const listeningProgressWidth = `${targetProgressPercent(progress.listeningAttemptCount, LEVEL_LISTENING_TARGET)}%`;
   const previousConversationId = isConversationUnlocked(conversations, currentIndex - 1, completedIds)
     ? conversations[currentIndex - 1]?.id ?? null
@@ -1302,7 +1232,7 @@ function ConversationsPage({
           canGoNext={canGoNext}
         />
       ) : (
-        <EmptyState title="No available conversation" body="Choose another level in Settings." />
+        <EmptyState title="No available conversation" body="Choose another level from the level ladder." />
       )}
       {isStarredModalOpen ? (
         <StarredConversationModal
@@ -1376,110 +1306,64 @@ function StarredConversationModal({
   );
 }
 
-function SettingsPage({
-  settings,
-  setSettings,
-  library,
+function LevelLadderPanel({
+  level,
+  setLevel,
   levelProgress,
   onClose
 }: {
-  settings: LearnerSettings;
-  setSettings: (settings: LearnerSettings) => void;
-  library: StaticLibraryManifest;
+  level: number;
+  setLevel: (level: number) => void;
   levelProgress: LevelProgress[];
   onClose: () => void;
 }) {
-  function update(nextSettings: LearnerSettings) {
-    setSettings(nextSettings);
-    saveSettings(nextSettings);
-  }
-
-  function chooseLevel(level: number) {
-    update({ ...settings, level });
+  function chooseLevel(nextLevel: number) {
+    setLevel(nextLevel);
+    saveLevel(nextLevel);
     onClose();
   }
 
-  const selectedProgress = levelProgress.find((progress) => progress.level === settings.level) ?? levelProgress[0];
-
   return (
-    <section className="practicePanel settingsPanel">
-      <div className="panelHeader">
+    <section className="practicePanel levelLadderPanel">
+      <div className="levelLadderHeader">
         <div>
-          <p>Settings</p>
-          <h2 id="settings-title">Practice setup</h2>
+          <span>Level ladder</span>
+          <h2 id="level-ladder-title">Choose your current level</h2>
         </div>
-        <button className="settingsCloseButton" onClick={onClose} aria-label="Close settings" title="Close settings" type="button">
+        <Trophy size={22} />
+        <button className="levelCloseButton" onClick={onClose} aria-label="Close level ladder" title="Close level ladder" type="button">
           <X size={20} />
         </button>
       </div>
 
-      <section className="settingsBlock">
-        <div className="settingsBlockHeader">
-          <div>
-            <span>Level ladder</span>
-            <h3>Choose your current level</h3>
-          </div>
-          <Trophy size={22} />
-        </div>
-        <p className="settingsHelp">
-          Listening opens after {LISTENING_UNLOCK_PERCENT}% of a level's words are strong. The next level opens after {LEVEL_MASTERY_PERCENT}% strong vocabulary and 20 completed listening conversations.
-        </p>
-        <div className="levelButtonGrid">
-          {levelProgress.map((progress) => {
-            const isSelected = settings.level === progress.level;
-            return (
-              <button
-                aria-pressed={isSelected}
-                className={`levelButton ${isSelected ? 'active' : ''} ${progress.unlocked ? '' : 'locked'}`}
-                disabled={!progress.unlocked}
-                key={progress.level}
-                onClick={() => chooseLevel(progress.level)}
-                type="button"
-              >
-                <span className="levelButtonTop">
-                  <strong>{levelLabel(progress.level)}</strong>
-                  {progress.unlocked ? progress.complete ? <Check size={17} /> : null : <Lock size={16} />}
-                </span>
-                <span className="levelTheme">{progress.theme}</span>
-                <span className="levelMeters">
-                  <i><b style={{ width: `${Math.min(100, percent(progress.vocabMasteryRatio))}%` }} /></i>
-                  <em>{percent(progress.vocabMasteryRatio)}% vocab</em>
-                </span>
-                <span className="levelListening">{Math.min(progress.listeningAttemptCount, LEVEL_LISTENING_TARGET)} / {LEVEL_LISTENING_TARGET} listening</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {selectedProgress ? (
-        <section className="settingsBlock compactBlock">
-          <div className="progressRuleGrid">
-            <div className={selectedProgress.listeningUnlocked ? 'ruleCard done' : 'ruleCard'}>
-              <span>{percent(selectedProgress.vocabMasteryRatio)}%</span>
-              <strong>Listening access</strong>
-              <p>{selectedProgress.listeningUnlocked ? 'Unlocked for this level.' : `${Math.max(0, Math.ceil(selectedProgress.vocabTotal * LISTENING_UNLOCK_RATIO) - selectedProgress.strongVocabCount)} more strong words needed.`}</p>
-            </div>
-            <div className={selectedProgress.complete ? 'ruleCard done' : 'ruleCard'}>
-              <span>{selectedProgress.listeningAttemptCount}</span>
-              <strong>Next level</strong>
-              <p>{selectedProgress.complete ? 'Next level is open.' : `Reach ${LEVEL_MASTERY_PERCENT}% strong vocab and 20 completed listening conversations.`}</p>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      <label className="toggleField">
-        <input
-          type="checkbox"
-          checked={settings.showKana}
-          onChange={(event) => update({ ...settings, showKana: event.target.checked })}
-        />
-        <span>Show kana above kanji on vocabulary cards</span>
-      </label>
-      <div className="settingsStats">
-        <span>{vocabCards.filter((card) => card.level === settings.level).length} words in this level</span>
-        <span>{library.conversations.filter((conversation) => conversation.level === settings.level).length} published conversations</span>
+      <p className="levelLadderHelp">
+        Listening opens after {LISTENING_UNLOCK_PERCENT}% of a level's words are strong. The next level opens after {LEVEL_MASTERY_PERCENT}% strong vocabulary and 20 completed listening conversations.
+      </p>
+      <div className="levelButtonGrid">
+        {levelProgress.map((progress) => {
+          const isSelected = level === progress.level;
+          return (
+            <button
+              aria-pressed={isSelected}
+              className={`levelButton ${isSelected ? 'active' : ''} ${progress.unlocked ? '' : 'locked'}`}
+              disabled={!progress.unlocked}
+              key={progress.level}
+              onClick={() => chooseLevel(progress.level)}
+              type="button"
+            >
+              <span className="levelButtonTop">
+                <strong>{levelLabel(progress.level)}</strong>
+                {progress.unlocked ? progress.complete ? <Check size={17} /> : null : <Lock size={16} />}
+              </span>
+              <span className="levelTheme">{progress.theme}</span>
+              <span className="levelMeters">
+                <i><b style={{ width: `${Math.min(100, percent(progress.vocabMasteryRatio))}%` }} /></i>
+                <em>{percent(progress.vocabMasteryRatio)}% vocab</em>
+              </span>
+              <span className="levelListening">{Math.min(progress.listeningAttemptCount, LEVEL_LISTENING_TARGET)} / {LEVEL_LISTENING_TARGET} listening</span>
+            </button>
+          );
+        })}
       </div>
     </section>
   );
@@ -1521,8 +1405,8 @@ function CompletionPanel({ label, onNext }: { label: string; onNext: () => void 
 export function ConsumerApp() {
   const [area, setArea] = useState<PracticeArea>(navFromHash);
   const [lastPracticeArea, setLastPracticeArea] = useState<PracticeArea>('vocab');
-  const [isSettingsOpen, setIsSettingsOpen] = useState(settingsFromHash);
-  const [settings, setSettings] = useState<LearnerSettings>(() => loadSettings(levelSummaries[0]?.set ?? 1));
+  const [isLevelLadderOpen, setIsLevelLadderOpen] = useState(levelLadderFromHash);
+  const [level, setLevel] = useState(() => loadLevel(levelSummaries[0]?.set ?? 1));
   const [mikanTheme, setMikanTheme] = useState<MikanTheme>(deviceMikanTheme);
   const [vocabStats, setVocabStats] = useState<StatsMap>(loadVocabStats);
   const [conversationProgress, setConversationProgress] = useState<ConversationProgress>(loadConversationProgress);
@@ -1531,9 +1415,9 @@ export function ConsumerApp() {
 
   useEffect(() => {
     const handleHashChange = () => {
-      const nextSettingsOpen = settingsFromHash();
-      setIsSettingsOpen(nextSettingsOpen);
-      if (!nextSettingsOpen) {
+      const nextLevelLadderOpen = levelLadderFromHash();
+      setIsLevelLadderOpen(nextLevelLadderOpen);
+      if (!nextLevelLadderOpen) {
         setArea(navFromHash());
       }
     };
@@ -1542,9 +1426,7 @@ export function ConsumerApp() {
   }, []);
 
   useEffect(() => {
-    if (area !== 'settings') {
-      setLastPracticeArea(area);
-    }
+    setLastPracticeArea(area);
   }, [area]);
 
   useEffect(() => {
@@ -1565,9 +1447,9 @@ export function ConsumerApp() {
   }, []);
 
   const levelProgress = useMemo(() => buildLevelProgress(vocabStats, conversationProgress, library), [vocabStats, conversationProgress, library]);
-  const currentProgress = levelProgress.find((progress) => progress.level === settings.level) ?? levelProgress[0];
-  const nextProgress = levelProgress.find((progress) => progress.level === settings.level + 1) ?? null;
-  const settingsCloseHref = routeForArea(lastPracticeArea);
+  const currentProgress = levelProgress.find((progress) => progress.level === level) ?? levelProgress[0];
+  const nextProgress = levelProgress.find((progress) => progress.level === level + 1) ?? null;
+  const levelLadderCloseHref = routeForArea(lastPracticeArea);
   const libraryReady = library.generatedAt !== '' || library.conversations.length > 0;
 
   useEffect(() => {
@@ -1575,22 +1457,20 @@ export function ConsumerApp() {
     if (!currentProgress || currentProgress.unlocked) return;
     const fallback = levelProgress.find((progress) => progress.unlocked) ?? levelProgress[0];
     if (!fallback) return;
-    const nextSettings = { ...settings, level: fallback.level };
-    setSettings(nextSettings);
-    saveSettings(nextSettings);
-  }, [currentProgress, levelProgress, settings, libraryReady]);
+    setLevel(fallback.level);
+    saveLevel(fallback.level);
+  }, [currentProgress, levelProgress, libraryReady]);
 
   function openLevelVocab(level: number) {
-    const nextSettings = { ...settings, level };
-    setSettings(nextSettings);
-    saveSettings(nextSettings);
+    setLevel(level);
+    saveLevel(level);
     window.location.hash = routeForArea('vocab');
   }
 
-  function closeSettings() {
-    setIsSettingsOpen(false);
-    if (settingsFromHash()) {
-      window.location.hash = settingsCloseHref;
+  function closeLevelLadder() {
+    setIsLevelLadderOpen(false);
+    if (levelLadderFromHash()) {
+      window.location.hash = levelLadderCloseHref;
     }
   }
 
@@ -1607,14 +1487,14 @@ export function ConsumerApp() {
             </div>
           </div>
           <button
-            aria-label={`Change level. Current ${levelLabel(settings.level)}`}
-            className={`settingsIconLink levelNavLink ${isSettingsOpen ? 'active' : ''}`}
-            onClick={() => setIsSettingsOpen(true)}
-            title={`Change level. Current ${levelLabel(settings.level)}`}
+            aria-label={`Change level. Current ${levelLabel(level)}`}
+            className={`headerIconButton levelNavLink ${isLevelLadderOpen ? 'active' : ''}`}
+            onClick={() => setIsLevelLadderOpen(true)}
+            title={`Change level. Current ${levelLabel(level)}`}
             type="button"
           >
-            <span className="levelNavKanji" aria-hidden="true">{levelKanji(settings.level)}</span>
-            <span>Level {settings.level}</span>
+            <span className="levelNavKanji" aria-hidden="true">{levelKanji(level)}</span>
+            <span>Level {level}</span>
           </button>
         </div>
         <nav className="practiceNav">
@@ -1640,11 +1520,11 @@ export function ConsumerApp() {
       <section className="practiceWorkspace">
         {libraryError ? <div className="practiceError">{libraryError}</div> : null}
         {area === 'vocab' ? (
-          <VocabPage level={settings.level} showKana={settings.showKana} stats={vocabStats} setStats={setVocabStats} progress={currentProgress} />
+          <VocabPage level={level} stats={vocabStats} setStats={setVocabStats} progress={currentProgress} />
         ) : null}
         {area === 'conversations' ? (
           <ConversationsPage
-            level={settings.level}
+            level={level}
             library={library}
             conversationProgress={conversationProgress}
             setConversationProgress={setConversationProgress}
@@ -1654,10 +1534,10 @@ export function ConsumerApp() {
           />
         ) : null}
       </section>
-      {isSettingsOpen ? (
-        <div className="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-          <button className="settingsModalBackdrop" aria-label="Close settings overlay" onClick={closeSettings} type="button" />
-          <SettingsPage settings={settings} setSettings={setSettings} library={library} levelProgress={levelProgress} onClose={closeSettings} />
+      {isLevelLadderOpen ? (
+        <div className="levelLadderModal" role="dialog" aria-modal="true" aria-labelledby="level-ladder-title">
+          <button className="levelLadderModalBackdrop" aria-label="Close level ladder" onClick={closeLevelLadder} type="button" />
+          <LevelLadderPanel level={level} setLevel={setLevel} levelProgress={levelProgress} onClose={closeLevelLadder} />
         </div>
       ) : null}
     </main>

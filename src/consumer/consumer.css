@@ -363,7 +363,6 @@
 .speedControlLabel,
 .listenHint,
 .practiceEmpty p,
-.settingsStats,
 .cardMeta {
   color: var(--muted);
 }
@@ -394,8 +393,8 @@
 
 .practiceNav a,
 .studioLink,
-.settingsIconLink,
-.settingsCloseButton,
+.headerIconButton,
+.levelCloseButton,
 .iconTextButton,
 .primaryPracticeButton,
 .missButton,
@@ -408,11 +407,6 @@
   gap: 8px;
   font-weight: 800;
   text-decoration: none;
-}
-
-button.settingsIconLink,
-button.settingsCloseButton {
-  font: inherit;
 }
 
 .practiceNav a {
@@ -445,7 +439,7 @@ button.settingsCloseButton {
   position: relative;
 }
 
-.settingsIconLink {
+.headerIconButton {
   flex: 0 0 auto;
   width: 44px;
   min-height: 44px;
@@ -455,7 +449,7 @@ button.settingsCloseButton {
   box-shadow: 0 10px 24px var(--shadow);
 }
 
-.settingsIconLink.levelNavLink {
+.headerIconButton.levelNavLink {
   width: auto;
   min-width: 92px;
   padding: 0 12px;
@@ -469,17 +463,12 @@ button.settingsCloseButton {
   line-height: 1;
 }
 
-.settingsIconLink.active {
+.headerIconButton.active {
   background: var(--accent-soft);
   color: var(--accent-text);
 }
 
-.settingsIconLink.closeSettings {
-  background: var(--danger-bg);
-  color: var(--danger-text);
-}
-
-.settingsModal {
+.levelLadderModal {
   position: fixed;
   inset: 0;
   z-index: 18;
@@ -489,14 +478,14 @@ button.settingsCloseButton {
   padding: 14px;
 }
 
-.settingsModalBackdrop {
+.levelLadderModalBackdrop {
   position: absolute;
   inset: 0;
   border: 0;
   background: rgba(0, 0, 0, 0.48);
 }
 
-.settingsModal .settingsPanel {
+.levelLadderModal .levelLadderPanel {
   position: relative;
   z-index: 1;
   width: min(460px, 100%);
@@ -505,7 +494,7 @@ button.settingsCloseButton {
   scrollbar-width: none;
 }
 
-.settingsModal .settingsPanel::-webkit-scrollbar {
+.levelLadderModal .levelLadderPanel::-webkit-scrollbar {
   display: none;
 }
 
@@ -560,15 +549,6 @@ button.settingsCloseButton {
 .panelHeader h2 {
   font-size: 26px;
   line-height: 1.1;
-}
-
-.settingsCloseButton {
-  flex: 0 0 auto;
-  width: 42px;
-  min-height: 42px;
-  border: 1px solid color-mix(in srgb, var(--accent) 42%, var(--border));
-  background: var(--surface);
-  color: var(--accent-text);
 }
 
 .iconTextButton {
@@ -1100,14 +1080,14 @@ button.settingsCloseButton {
 .listenCard,
 .questionCard,
 .transcriptPanel,
-.settingsPanel {
+.levelLadderPanel {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
   box-shadow: 0 18px 50px var(--shadow);
 }
 
-.settingsPanel {
+.levelLadderPanel {
   padding: 18px;
 }
 
@@ -1152,34 +1132,10 @@ button.settingsCloseButton {
   margin: 50px 0;
 }
 
-.vocabPrompt span,
-.vocabPrompt ruby {
+.vocabPrompt span {
   font-size: clamp(42px, 13vw, 62px);
   font-weight: 900;
   line-height: 1.1;
-}
-
-.vocabPrompt .furiganaWord {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.02em;
-}
-
-.vocabPrompt ruby {
-  ruby-align: center;
-  ruby-position: over;
-}
-
-.vocabPrompt rt {
-  color: var(--accent);
-  font-size: 0.38em;
-  font-weight: 900;
-  line-height: 1.8;
-  text-align: center;
-  margin-bottom: 10px;
-  margin-top: -10px;
 }
 
 .vocabAnswer {
@@ -1593,22 +1549,19 @@ button.settingsCloseButton {
   background: var(--success-text);
 }
 
-.settingsBlock {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-soft);
-  padding: 14px;
-  margin-top: 14px;
-}
-
-.settingsBlockHeader {
+.levelLadderHeader {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
 
-.settingsBlockHeader span {
+.levelLadderHeader div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.levelLadderHeader span {
   display: block;
   color: var(--muted);
   font-size: 11px;
@@ -1617,19 +1570,28 @@ button.settingsCloseButton {
   text-transform: uppercase;
 }
 
-.settingsBlockHeader h3 {
+.levelLadderHeader h2 {
   margin: 4px 0 0;
   color: var(--text-strong);
   font-size: 20px;
   line-height: 1.15;
 }
 
-.settingsBlockHeader svg {
+.levelLadderHeader > svg {
   color: var(--accent);
   flex: 0 0 auto;
 }
 
-.settingsHelp {
+.levelCloseButton {
+  flex: 0 0 auto;
+  width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.levelLadderHelp {
   margin: 12px 0 0;
   color: var(--muted-strong);
   font-size: 14px;
@@ -1719,97 +1681,6 @@ button.settingsCloseButton {
   font-size: 12px;
   font-style: normal;
   font-weight: 900;
-}
-
-.compactBlock {
-  background: var(--surface);
-}
-
-.progressRuleGrid {
-  display: grid;
-  gap: 10px;
-}
-
-.ruleCard {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-soft);
-  padding: 12px;
-}
-
-.ruleCard.done {
-  border-color: var(--success-border);
-  background: var(--success-bg);
-}
-
-.ruleCard span {
-  display: block;
-  color: var(--accent);
-  font-size: 24px;
-  font-weight: 950;
-  line-height: 1;
-}
-
-.ruleCard strong {
-  display: block;
-  margin-top: 6px;
-  color: var(--text-strong);
-}
-
-.ruleCard p {
-  margin: 6px 0 0;
-  color: var(--muted-strong);
-  font-size: 13px;
-  font-weight: 750;
-  line-height: 1.35;
-}
-
-.ruleCard.done span,
-.ruleCard.done p {
-  color: var(--success-text);
-}
-
-.settingField,
-.toggleField {
-  display: grid;
-  gap: 8px;
-  margin-top: 16px;
-  font-weight: 900;
-}
-
-.settingField select {
-  min-height: 44px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-  padding: 0 12px;
-}
-
-.toggleField {
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-soft);
-  padding: 14px;
-}
-
-.toggleField input {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--accent);
-}
-
-.settingsStats {
-  margin-top: 14px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface-soft);
-  padding: 14px;
-  display: grid;
-  gap: 8px;
-  font-weight: 800;
 }
 
 .practiceEmpty {

@@ -1,6 +1,7 @@
-import type { ConversationProgress, LearnerSettings, StatsMap } from './types.ts';
+import type { ConversationProgress, StatsMap } from './types.ts';
 
-const SETTINGS_KEY = 'kiki-jlpt.practice.settings';
+const LEVEL_KEY = 'kiki-jlpt.practice.level';
+const LEGACY_SETTINGS_KEY = 'kiki-jlpt.practice.settings';
 const VOCAB_STATS_KEY = 'kiki-jlpt.practice.vocabStats';
 const CONVERSATION_PROGRESS_KEY = 'kiki-jlpt.practice.conversationProgress';
 const CONVERSATION_PLAYBACK_SPEED_KEY = 'kiki-jlpt.practice.conversationPlaybackSpeed';
@@ -25,16 +26,16 @@ function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values));
 }
 
-export function loadSettings(fallbackLevel: number): LearnerSettings {
-  const stored = readJson<Partial<LearnerSettings>>(SETTINGS_KEY, {});
-  return {
-    level: typeof stored.level === 'number' && Number.isFinite(stored.level) ? stored.level : fallbackLevel,
-    showKana: typeof stored.showKana === 'boolean' ? stored.showKana : true
-  };
+export function loadLevel(fallbackLevel: number): number {
+  const stored = readJson<number | null>(LEVEL_KEY, null);
+  if (typeof stored === 'number' && Number.isFinite(stored)) return stored;
+
+  const legacy = readJson<{ level?: unknown }>(LEGACY_SETTINGS_KEY, {});
+  return typeof legacy.level === 'number' && Number.isFinite(legacy.level) ? legacy.level : fallbackLevel;
 }
 
-export function saveSettings(settings: LearnerSettings): void {
-  writeJson(SETTINGS_KEY, settings);
+export function saveLevel(level: number): void {
+  writeJson(LEVEL_KEY, level);
 }
 
 export function loadVocabStats(): StatsMap {

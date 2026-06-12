@@ -1,6 +1,6 @@
 import type { ConversationLine, EnglishLine } from '../../shared/types.ts';
 
-export type PracticeArea = 'vocab' | 'conversations' | 'settings';
+export type PracticeArea = 'vocab' | 'conversations';
 export type ReviewResult = 'gotIt' | 'missed';
 export type StrengthBucket = 'new' | 'weak' | 'improving' | 'strong';
 export type CardKind = 'vocab' | 'question';
@@ -49,11 +49,6 @@ export interface DirectionStats {
 }
 
 export type StatsMap = Record<string, DirectionStats>;
-
-export interface LearnerSettings {
-  level: number;
-  showKana: boolean;
-}
 
 export interface ConversationProgress {
   completedConversationIds: string[];
