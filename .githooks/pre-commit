@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+set -e
+
+npm run library:check-published
+
+if ! git diff --quiet -- public/library/library.json; then
+  cat <<'EOF'
+
+public/library/library.json has unstaged changes.
+
+Stage the published library snapshot before committing:
+  git add public/library/library.json
+
+EOF
+  exit 1
+fi
