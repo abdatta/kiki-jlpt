@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "generatedAt": "2026-06-27T19:01:07.282Z",
   "conversations": [
     {
@@ -98,6 +98,30 @@
         "She tells him to open this door.",
         "It is in her bag.",
         "He says, 'Excuse me for entering' / 'Shitsurei shimasu.'"
+      ],
+      "vocabularyUsed": [
+        "あちら",
+        "アパート",
+        "ありがとうございます",
+        "かばん",
+        "ここ",
+        "この",
+        "こんにちは",
+        "すみません",
+        "する",
+        "ドア",
+        "どこ",
+        "はい",
+        "開ける",
+        "鍵",
+        "玄関",
+        "在る",
+        "四",
+        "私",
+        "失礼します",
+        "二",
+        "入れる",
+        "有る"
       ],
       "createdAt": "2026-05-25T22:08:27.427Z"
     },
@@ -210,6 +234,25 @@
         "No, it is small, but it is good.",
         "He wants to open the window."
       ],
+      "vocabularyUsed": [
+        "あそこ",
+        "いい",
+        "いいえ",
+        "この",
+        "テーブル",
+        "どうぞ",
+        "どこ",
+        "はい",
+        "ベッド",
+        "開ける",
+        "机",
+        "小さい",
+        "新しい",
+        "窓",
+        "大きい",
+        "部屋",
+        "隣"
+      ],
       "createdAt": "2026-05-25T21:44:24.752Z"
     },
     {
@@ -309,6 +352,23 @@
         "She asks whether they will eat breakfast.",
         "Yes, her mother has already gotten up.",
         "They decide to eat breakfast."
+      ],
+      "vocabularyUsed": [
+        "～時",
+        "おはようございます",
+        "お母さん",
+        "はい",
+        "起きる",
+        "今朝",
+        "私",
+        "七",
+        "食べる",
+        "朝",
+        "朝御飯",
+        "二",
+        "母",
+        "来る",
+        "六"
       ],
       "createdAt": "2026-05-25T21:44:22.597Z"
     },
@@ -443,6 +503,25 @@
         "No, not yet.",
         "He says it is delicious."
       ],
+      "vocabularyUsed": [
+        "あそこ",
+        "あなた",
+        "いえ",
+        "おはようございます",
+        "お父さん",
+        "お母さん",
+        "これ",
+        "どこ",
+        "飲む",
+        "何",
+        "何～",
+        "起きる",
+        "私",
+        "食べる",
+        "寝る",
+        "弟",
+        "美味しい"
+      ],
       "createdAt": "2026-05-05T19:21:00.204Z"
     },
     {
@@ -563,6 +642,25 @@
         "No, he is not coming.",
         "7, 0, 8 (Shichi, zero, hachi).",
         "Shitsurei shimasu (Excuse me)."
+      ],
+      "vocabularyUsed": [
+        "いえ",
+        "こんばんは",
+        "さようなら",
+        "する",
+        "ゼロ",
+        "そこ",
+        "はい",
+        "開く",
+        "帰る",
+        "居る",
+        "兄",
+        "四",
+        "七",
+        "失礼します",
+        "二",
+        "八",
+        "来る"
       ],
       "createdAt": "2026-05-05T19:18:16.362Z"
     },
@@ -685,6 +783,23 @@
         "He is a teacher.",
         "She is Speaker 2's older sister."
       ],
+      "vocabularyUsed": [
+        "あの",
+        "お願いします",
+        "こんにちは",
+        "する",
+        "どなた",
+        "はい",
+        "よろしく",
+        "学生",
+        "四",
+        "姉",
+        "初めまして",
+        "女",
+        "人",
+        "先生",
+        "男"
+      ],
       "createdAt": "2026-05-05T19:16:48.394Z"
     },
     {
@@ -793,6 +908,22 @@
         "He is returning (going home).",
         "His mother and younger sister.",
         "Two family members."
+      ],
+      "vocabularyUsed": [
+        "あちら",
+        "こんばんは",
+        "さようなら",
+        "そこ",
+        "どこ",
+        "はい",
+        "家族",
+        "帰る",
+        "居る",
+        "行く",
+        "三",
+        "二",
+        "母",
+        "妹"
       ],
       "createdAt": "2026-05-05T18:43:19.044Z"
     },
@@ -905,6 +1036,23 @@
         "He asks whether they are friends.",
         "They are talking together."
       ],
+      "vocabularyUsed": [
+        "あそこ",
+        "あの",
+        "いい",
+        "はい",
+        "居る",
+        "見る",
+        "子供",
+        "女の子",
+        "小さい",
+        "人",
+        "男の子",
+        "二",
+        "二人",
+        "友達",
+        "話す"
+      ],
       "createdAt": "2026-05-04T14:01:11.726Z"
     },
     {
@@ -1015,6 +1163,24 @@
         "No, he says it is not far.",
         "No, he suggests not going alone.",
         "Two people."
+      ],
+      "vocabularyUsed": [
+        "あそこ",
+        "いいえ",
+        "お願いします",
+        "ここ",
+        "する",
+        "そこ",
+        "はい",
+        "一",
+        "一人",
+        "行く",
+        "在る",
+        "四",
+        "人",
+        "二",
+        "二人",
+        "有る"
       ],
       "createdAt": "2026-05-04T14:00:26.611Z"
     },
@@ -1127,6 +1293,20 @@
         "Yes, she says she understands.",
         "She asks him to say/listen once more, using please."
       ],
+      "vocabularyUsed": [
+        "あの",
+        "いい",
+        "お願いします",
+        "する",
+        "どなた",
+        "はい",
+        "何",
+        "何～",
+        "言う",
+        "四",
+        "先生",
+        "聞く"
+      ],
       "createdAt": "2026-05-04T13:59:13.676Z"
     },
     {
@@ -1237,6 +1417,23 @@
         "She asks whether it is bad.",
         "No, he says it is not bad.",
         "They say excuse me / I will take my leave."
+      ],
+      "vocabularyUsed": [
+        "ああ",
+        "ありがとうございます",
+        "いい",
+        "いいえ",
+        "ごめんなさい",
+        "これ",
+        "すみません",
+        "する",
+        "どうも",
+        "はい",
+        "悪い",
+        "在る",
+        "四",
+        "失礼します",
+        "有る"
       ],
       "createdAt": "2026-05-04T13:58:46.921Z"
     },
@@ -1349,6 +1546,19 @@
         "Yes, she likes blue things.",
         "He is surprised and asks whether she likes blue."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "あなた",
+        "はい",
+        "何",
+        "何～",
+        "嫌い",
+        "好き",
+        "私",
+        "青い",
+        "赤い",
+        "美味しい"
+      ],
       "createdAt": "2026-05-04T13:56:42.695Z"
     },
     {
@@ -1459,6 +1669,23 @@
         "No, it is small.",
         "Her father, her mother, and herself.",
         "Three people."
+      ],
+      "vocabularyUsed": [
+        "あなた",
+        "いい",
+        "いいえ",
+        "お父さん",
+        "お母さん",
+        "はい",
+        "家族",
+        "居る",
+        "三",
+        "私",
+        "小さい",
+        "人",
+        "大きい",
+        "父",
+        "母"
       ],
       "createdAt": "2026-05-04T13:51:48.850Z"
     },
@@ -1571,6 +1798,20 @@
         "It is smaller than one hundred.",
         "She says she understands and thanks him."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "ありがとうございます",
+        "いいえ",
+        "これ",
+        "それ",
+        "はい",
+        "在る",
+        "十",
+        "小さい",
+        "千",
+        "百",
+        "有る"
+      ],
       "createdAt": "2026-05-04T13:50:59.574Z"
     },
     {
@@ -1681,6 +1922,24 @@
         "Six.",
         "No, he says it is good.",
         "She says thank you very much."
+      ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "いい",
+        "ゼロ",
+        "どうぞ",
+        "はい",
+        "一",
+        "九",
+        "言う",
+        "五",
+        "三",
+        "四",
+        "七",
+        "十",
+        "二",
+        "八",
+        "六"
       ],
       "createdAt": "2026-05-04T13:50:12.089Z"
     },
@@ -1793,6 +2052,23 @@
         "The person that way / over there politely.",
         "They decide to go together."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "あそこ",
+        "あちら",
+        "あの",
+        "いいえ",
+        "その",
+        "どこ",
+        "はい",
+        "居る",
+        "行く",
+        "在る",
+        "人",
+        "二",
+        "友達",
+        "有る"
+      ],
       "createdAt": "2026-05-04T13:49:19.728Z"
     },
     {
@@ -1904,6 +2180,22 @@
         "No, he says it is not bad.",
         "He asks her to listen."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "あれ",
+        "いいえ",
+        "ここ",
+        "すみません",
+        "はい",
+        "悪い",
+        "開く",
+        "居る",
+        "見る",
+        "在る",
+        "大きい",
+        "聞く",
+        "有る"
+      ],
       "createdAt": "2026-05-03T05:11:55.756Z"
     },
     {
@@ -2014,6 +2306,23 @@
         "She says it is small.",
         "Yes, he likes the old one too.",
         "He says the new one is good."
+      ],
+      "vocabularyUsed": [
+        "いい",
+        "この",
+        "その",
+        "どの",
+        "はい",
+        "悪い",
+        "見る",
+        "古い",
+        "好き",
+        "在る",
+        "私",
+        "小さい",
+        "新しい",
+        "大きい",
+        "有る"
       ],
       "createdAt": "2026-05-03T05:11:04.083Z"
     },
@@ -2138,6 +2447,23 @@
         "One girl is mentioned.",
         "Two children."
       ],
+      "vocabularyUsed": [
+        "あそこ",
+        "ここ",
+        "はい",
+        "一",
+        "一人",
+        "何",
+        "何～",
+        "居る",
+        "三",
+        "子供",
+        "女の子",
+        "人",
+        "男の子",
+        "二",
+        "二人"
+      ],
       "createdAt": "2026-05-03T05:06:09.441Z"
     },
     {
@@ -2261,6 +2587,27 @@
         "Up to six.",
         "Yes, he says it is good."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "いい",
+        "これ",
+        "すみません",
+        "それ",
+        "どうぞ",
+        "はい",
+        "一",
+        "何",
+        "何～",
+        "見る",
+        "言う",
+        "五",
+        "三",
+        "四",
+        "先生",
+        "二",
+        "聞く",
+        "六"
+      ],
       "createdAt": "2026-05-03T05:05:20.057Z"
     },
     {
@@ -2371,6 +2718,19 @@
         "She asks him to get up and come here.",
         "He says sorry.",
         "She suggests talking."
+      ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "いいえ",
+        "おはようございます",
+        "ここ",
+        "ごめんなさい",
+        "はい",
+        "起きる",
+        "行く",
+        "寝る",
+        "来る",
+        "話す"
       ],
       "createdAt": "2026-05-03T05:04:20.055Z"
     },
@@ -2495,6 +2855,18 @@
         "She asks what he wants to drink.",
         "He wants to drink that one."
       ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "これ",
+        "それ",
+        "どうぞ",
+        "はい",
+        "飲む",
+        "何",
+        "何～",
+        "食べる",
+        "美味しい"
+      ],
       "createdAt": "2026-05-03T04:59:14.151Z"
     },
     {
@@ -2617,6 +2989,27 @@
         "Yes, he is her older brother.",
         "She is Speaker 1's older sister.",
         "Her younger brother and younger sister."
+      ],
+      "vocabularyUsed": [
+        "あの",
+        "この",
+        "これ",
+        "どなた",
+        "はい",
+        "家族",
+        "居る",
+        "兄",
+        "姉",
+        "子供",
+        "私",
+        "女",
+        "人",
+        "大きい",
+        "男",
+        "弟",
+        "父",
+        "母",
+        "妹"
       ],
       "createdAt": "2026-05-02T21:44:35.769Z"
     },
@@ -2741,6 +3134,26 @@
         "He asks whether it is old.",
         "No, she says it is old but not bad."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "あれ",
+        "いい",
+        "これ",
+        "その",
+        "それ",
+        "どれ",
+        "はい",
+        "悪い",
+        "古い",
+        "好き",
+        "在る",
+        "私",
+        "青",
+        "青い",
+        "赤",
+        "赤い",
+        "有る"
+      ],
       "createdAt": "2026-05-02T21:44:33.064Z"
     },
     {
@@ -2863,6 +3276,22 @@
         "His name is Sato.",
         "No, she is a student, not a teacher.",
         "He says please treat me well / regards."
+      ],
+      "vocabularyUsed": [
+        "ああ",
+        "あなた",
+        "おはようございます",
+        "お願いします",
+        "する",
+        "どうぞ",
+        "はい",
+        "よろしく",
+        "学生",
+        "在る",
+        "四",
+        "初めまして",
+        "先生",
+        "有る"
       ],
       "createdAt": "2026-05-02T21:23:58.674Z"
     },
@@ -2987,6 +3416,25 @@
         "Three children.",
         "Two people."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "あなた",
+        "いい",
+        "おはようございます",
+        "お父さん",
+        "お母さん",
+        "何",
+        "何～",
+        "家族",
+        "居る",
+        "五",
+        "三",
+        "子供",
+        "私",
+        "人",
+        "二",
+        "二人"
+      ],
       "createdAt": "2026-05-31T02:55:03.909Z"
     },
     {
@@ -3110,6 +3558,26 @@
         "The word is 'Arigatou'.",
         "Yes, he says 'it is okay' (ii desu yo)."
       ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "いい",
+        "おはようございます",
+        "お願いします",
+        "この",
+        "これ",
+        "する",
+        "それ",
+        "どうぞ",
+        "はい",
+        "何",
+        "何～",
+        "見る",
+        "言う",
+        "四",
+        "失礼します",
+        "先生",
+        "聞く"
+      ],
       "createdAt": "2026-05-31T02:35:42.425Z"
     },
     {
@@ -3221,6 +3689,29 @@
         "She says it is very old.",
         "He says it is a good book."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "あそこ",
+        "ありがとうございます",
+        "いい",
+        "ここ",
+        "この",
+        "ごめんなさい",
+        "これ",
+        "こんばんは",
+        "すみません",
+        "そこ",
+        "どこ",
+        "どの",
+        "はい",
+        "開く",
+        "見る",
+        "古い",
+        "在る",
+        "赤い",
+        "二",
+        "有る"
+      ],
       "createdAt": "2026-05-31T02:35:39.738Z"
     },
     {
@@ -3331,6 +3822,24 @@
         "She goes to sleep at 9 o'clock.",
         "She will wake up at 7 o'clock.",
         "He will come at 7 o'clock."
+      ],
+      "vocabularyUsed": [
+        "いえ",
+        "さようなら",
+        "どこ",
+        "何",
+        "何～",
+        "帰る",
+        "起きる",
+        "九",
+        "行く",
+        "三",
+        "私",
+        "七",
+        "寝る",
+        "二",
+        "来る",
+        "六"
       ],
       "createdAt": "2026-05-31T02:35:37.029Z"
     },
@@ -3455,6 +3964,31 @@
         "He has zero younger brothers.",
         "He has one younger sister."
       ],
+      "vocabularyUsed": [
+        "いいえ",
+        "この",
+        "ゼロ",
+        "一",
+        "一人",
+        "何",
+        "何～",
+        "学生",
+        "居る",
+        "三",
+        "四",
+        "十",
+        "女の子",
+        "人",
+        "先生",
+        "千",
+        "男の子",
+        "弟",
+        "二",
+        "八",
+        "百",
+        "妹",
+        "六"
+      ],
       "createdAt": "2026-05-31T02:35:35.433Z"
     },
     {
@@ -3577,6 +4111,28 @@
         "It is small.",
         "It is new.",
         "The old blue bag is his."
+      ],
+      "vocabularyUsed": [
+        "あなた",
+        "あの",
+        "ありがとうございます",
+        "あれ",
+        "いい",
+        "この",
+        "これ",
+        "どれ",
+        "はい",
+        "見る",
+        "古い",
+        "在る",
+        "三",
+        "私",
+        "小さい",
+        "新しい",
+        "青い",
+        "赤い",
+        "大きい",
+        "有る"
       ],
       "createdAt": "2026-05-31T02:35:32.573Z"
     },
@@ -3701,6 +4257,26 @@
         "No, he doesn't have a younger sister.",
         "There are six people."
       ],
+      "vocabularyUsed": [
+        "あの",
+        "どなた",
+        "はい",
+        "一",
+        "一人",
+        "家族",
+        "居る",
+        "兄",
+        "姉",
+        "人",
+        "弟",
+        "二",
+        "二人",
+        "父",
+        "母",
+        "妹",
+        "六",
+        "話す"
+      ],
       "createdAt": "2026-05-31T02:35:31.357Z"
     },
     {
@@ -3809,6 +4385,25 @@
         "Yes, she likes meat.",
         "She dislikes fish.",
         "It is new (fresh) and delicious."
+      ],
+      "vocabularyUsed": [
+        "あなた",
+        "いい",
+        "いいえ",
+        "この",
+        "これ",
+        "どうも",
+        "はい",
+        "悪い",
+        "飲む",
+        "何",
+        "何～",
+        "嫌い",
+        "好き",
+        "私",
+        "食べる",
+        "新しい",
+        "美味しい"
       ],
       "createdAt": "2026-05-31T02:35:28.987Z"
     },
@@ -3919,6 +4514,24 @@
         "He is a student.",
         "The teacher is over there."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "あちら",
+        "ありがとうございます",
+        "お願いします",
+        "こんにちは",
+        "する",
+        "はい",
+        "よろしく",
+        "学生",
+        "居る",
+        "三",
+        "四",
+        "私",
+        "初めまして",
+        "先生",
+        "二"
+      ],
       "createdAt": "2026-05-31T02:35:27.030Z"
     },
     {
@@ -4027,6 +4640,23 @@
         "Red.",
         "Yes, he said 'here you go'.",
         "He said they are new."
+      ],
+      "vocabularyUsed": [
+        "ああ",
+        "ありがとうございます",
+        "いい",
+        "お願いします",
+        "この",
+        "これ",
+        "すみません",
+        "する",
+        "その",
+        "どうぞ",
+        "はい",
+        "四",
+        "新しい",
+        "青い",
+        "赤い"
       ],
       "createdAt": "2026-06-04T04:38:23.630Z"
     },
@@ -4149,6 +4779,23 @@
         "She is a student.",
         "No, he is not."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "あそこ",
+        "あの",
+        "いい",
+        "いいえ",
+        "はい",
+        "学生",
+        "居る",
+        "私",
+        "女",
+        "人",
+        "男",
+        "二",
+        "妹",
+        "友達"
+      ],
       "createdAt": "2026-06-04T04:38:27.565Z"
     },
     {
@@ -4269,6 +4916,24 @@
         "Her father and mother.",
         "Her friend.",
         "She will drink 'this one'."
+      ],
+      "vocabularyUsed": [
+        "ああ",
+        "あそこ",
+        "いい",
+        "お父さん",
+        "お母さん",
+        "これ",
+        "こんにちは",
+        "さようなら",
+        "どこ",
+        "飲む",
+        "何",
+        "何～",
+        "居る",
+        "行く",
+        "食べる",
+        "友達"
       ],
       "createdAt": "2026-06-04T04:38:29.483Z"
     },
@@ -4425,6 +5090,44 @@
         "Speaker 1's father, mother, and younger sister are here.",
         "Speaker 1's older brother, older sister, and younger brother are not over there."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "あそこ",
+        "あちら",
+        "いい",
+        "おはようございます",
+        "お願いします",
+        "お父さん",
+        "お母さん",
+        "ここ",
+        "こんにちは",
+        "する",
+        "どなた",
+        "はい",
+        "よろしく",
+        "家族",
+        "学生",
+        "居る",
+        "兄",
+        "四",
+        "姉",
+        "私",
+        "失礼します",
+        "初めまして",
+        "女",
+        "女の子",
+        "人",
+        "先生",
+        "男",
+        "男の子",
+        "弟",
+        "二",
+        "二人",
+        "父",
+        "母",
+        "妹",
+        "友達"
+      ],
       "createdAt": "2026-06-04T04:51:37.536Z"
     },
     {
@@ -4575,6 +5278,49 @@
         "Speaker 2 asks whether this opens.",
         "Speaker 2 says six, seven, eight, nine, ten, hundred, and thousand."
       ],
+      "vocabularyUsed": [
+        "あの",
+        "あれ",
+        "いい",
+        "いいえ",
+        "いえ",
+        "この",
+        "これ",
+        "すみません",
+        "ゼロ",
+        "その",
+        "どの",
+        "どれ",
+        "はい",
+        "悪い",
+        "一",
+        "開く",
+        "九",
+        "嫌い",
+        "見る",
+        "言う",
+        "古い",
+        "五",
+        "好き",
+        "在る",
+        "三",
+        "四",
+        "七",
+        "十",
+        "小さい",
+        "新しい",
+        "青",
+        "青い",
+        "赤",
+        "赤い",
+        "千",
+        "大きい",
+        "二",
+        "八",
+        "百",
+        "有る",
+        "六"
+      ],
       "createdAt": "2026-06-04T04:51:39.406Z"
     },
     {
@@ -4724,6 +5470,38 @@
         "Speaker 1 says it is delicious, and says the teacher also says it is delicious.",
         "Yes, Speaker 2 wants to drink too.",
         "Speaker 2 counts three people."
+      ],
+      "vocabularyUsed": [
+        "ああ",
+        "あなた",
+        "ありがとうございます",
+        "いい",
+        "お願いします",
+        "ここ",
+        "これ",
+        "こんにちは",
+        "する",
+        "それ",
+        "どうぞ",
+        "どうも",
+        "はい",
+        "一",
+        "一人",
+        "飲む",
+        "何",
+        "何～",
+        "学生",
+        "居る",
+        "言う",
+        "三",
+        "四",
+        "子供",
+        "食べる",
+        "人",
+        "先生",
+        "二",
+        "二人",
+        "美味しい"
       ],
       "createdAt": "2026-06-04T04:51:42.087Z"
     },
@@ -4877,6 +5655,36 @@
         "Speaker 1's mother is coming.",
         "Speaker 2 will go home, sleep, get up, and go."
       ],
+      "vocabularyUsed": [
+        "あそこ",
+        "あなた",
+        "いい",
+        "いいえ",
+        "お母さん",
+        "ここ",
+        "ごめんなさい",
+        "こんばんは",
+        "さようなら",
+        "すみません",
+        "する",
+        "そこ",
+        "どこ",
+        "はい",
+        "何",
+        "何～",
+        "帰る",
+        "起きる",
+        "行く",
+        "四",
+        "私",
+        "失礼します",
+        "寝る",
+        "父",
+        "聞く",
+        "母",
+        "来る",
+        "話す"
+      ],
       "createdAt": "2026-06-04T04:51:43.883Z"
     },
     {
@@ -5005,6 +5813,36 @@
         "They are Speaker 2's younger brother and younger sister, and they are children.",
         "She suggests going that way.",
         "He thanks her and says please treat me well."
+      ],
+      "vocabularyUsed": [
+        "ああ",
+        "あそこ",
+        "あちら",
+        "あの",
+        "ありがとうございます",
+        "いいえ",
+        "お願いします",
+        "お母さん",
+        "こんにちは",
+        "する",
+        "どなた",
+        "よろしく",
+        "家族",
+        "学生",
+        "居る",
+        "兄",
+        "行く",
+        "四",
+        "子供",
+        "私",
+        "女の子",
+        "人",
+        "男の子",
+        "弟",
+        "二",
+        "父",
+        "母",
+        "妹"
       ],
       "createdAt": "2026-06-04T04:51:45.993Z"
     },
@@ -5161,6 +5999,37 @@
         "He chooses the small one.",
         "No, she says she already drank."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "あなた",
+        "ありがとうございます",
+        "あれ",
+        "いいえ",
+        "この",
+        "これ",
+        "こんばんは",
+        "さようなら",
+        "する",
+        "それ",
+        "どうぞ",
+        "どれ",
+        "飲む",
+        "古い",
+        "在る",
+        "四",
+        "私",
+        "失礼します",
+        "小さい",
+        "食べる",
+        "新しい",
+        "青",
+        "青い",
+        "赤",
+        "赤い",
+        "大きい",
+        "美味しい",
+        "有る"
+      ],
       "createdAt": "2026-06-04T04:51:47.520Z"
     },
     {
@@ -5271,6 +6140,27 @@
         "He will wear a shirt and a jacket.",
         "His socks are not ready yet.",
         "She puts them in the bag."
+      ],
+      "vocabularyUsed": [
+        "あなた",
+        "いいえ",
+        "かばん",
+        "コート",
+        "ここ",
+        "シャツ",
+        "はい",
+        "何",
+        "何～",
+        "靴",
+        "靴下",
+        "戸",
+        "今朝",
+        "在る",
+        "上着",
+        "着る",
+        "二",
+        "入れる",
+        "有る"
       ],
       "createdAt": "2026-06-26T02:22:05.066Z"
     },
@@ -5383,6 +6273,31 @@
         "She asks him to hang them here.",
         "Yes, she asks him to do that."
       ],
+      "vocabularyUsed": [
+        "いい",
+        "いいえ",
+        "お願いします",
+        "ここ",
+        "この",
+        "スカート",
+        "する",
+        "その",
+        "はい",
+        "悪い",
+        "掛ける",
+        "古い",
+        "好き",
+        "在る",
+        "四",
+        "上着",
+        "新しい",
+        "青い",
+        "赤い",
+        "脱ぐ",
+        "二",
+        "服",
+        "有る"
+      ],
       "createdAt": "2026-06-26T02:22:09.497Z"
     },
     {
@@ -5493,6 +6408,24 @@
         "No, he will not put it in the bag.",
         "She says the bag is big.",
         "He will hold it in his hand."
+      ],
+      "vocabularyUsed": [
+        "かばん",
+        "この",
+        "する",
+        "どうぞ",
+        "どこ",
+        "はい",
+        "玄関",
+        "午後",
+        "差す",
+        "在る",
+        "傘",
+        "四",
+        "大きい",
+        "二",
+        "入れる",
+        "有る"
       ],
       "createdAt": "2026-06-26T02:22:12.237Z"
     },
@@ -5605,6 +6538,27 @@
         "She asks whether the door is open.",
         "Yes, it is open."
       ],
+      "vocabularyUsed": [
+        "あちら",
+        "ありがとうございます",
+        "お手洗い",
+        "この",
+        "すみません",
+        "する",
+        "その",
+        "ドア",
+        "トイレ",
+        "どこ",
+        "はい",
+        "開く",
+        "階段",
+        "角",
+        "居る",
+        "行く",
+        "四",
+        "失礼します",
+        "隣"
+      ],
       "createdAt": "2026-06-26T02:22:15.369Z"
     },
     {
@@ -5715,6 +6669,23 @@
         "Every night.",
         "She asks him to close the bath door.",
         "Yes, he agrees."
+      ],
+      "vocabularyUsed": [
+        "～時",
+        "ありがとうございます",
+        "お風呂",
+        "はい",
+        "何",
+        "何～",
+        "戸",
+        "今晩",
+        "七",
+        "食べる",
+        "二",
+        "晩",
+        "晩御飯",
+        "閉める",
+        "毎晩"
       ],
       "createdAt": "2026-06-26T02:22:17.697Z"
     },
@@ -5827,6 +6798,22 @@
         "She suggests Saturday.",
         "They choose Saturday."
       ],
+      "vocabularyUsed": [
+        "いい",
+        "暇",
+        "火曜日",
+        "金曜日",
+        "月曜日",
+        "戸",
+        "今週",
+        "在る",
+        "水曜日",
+        "土曜日",
+        "二",
+        "日曜日",
+        "有る",
+        "遊ぶ"
+      ],
       "createdAt": "2026-06-26T02:22:21.411Z"
     },
     {
@@ -5937,6 +6924,28 @@
         "She wants to go at 9 a.m.",
         "He suggests returning in the afternoon.",
         "Yes, she accepts."
+      ],
+      "vocabularyUsed": [
+        "～時",
+        "～時間",
+        "あそこ",
+        "いい",
+        "お願いします",
+        "かかる",
+        "ここ",
+        "する",
+        "はい",
+        "バス",
+        "何",
+        "何～",
+        "帰る",
+        "九",
+        "午後",
+        "午前",
+        "行く",
+        "四",
+        "時間",
+        "二"
       ],
       "createdAt": "2026-06-26T02:22:23.849Z"
     },
@@ -6049,6 +7058,32 @@
         "She says last year it was not Thursday.",
         "She will eat dinner with friends."
       ],
+      "vocabularyUsed": [
+        "～月",
+        "～日",
+        "あなた",
+        "いい",
+        "する",
+        "何",
+        "何～",
+        "去年",
+        "金曜日",
+        "戸",
+        "五",
+        "五日",
+        "今年",
+        "在る",
+        "四",
+        "私",
+        "食べる",
+        "誕生日",
+        "二",
+        "二日",
+        "晩",
+        "晩御飯",
+        "友達",
+        "有る"
+      ],
       "createdAt": "2026-06-26T02:22:27.435Z"
     },
     {
@@ -6160,6 +7195,23 @@
         "She thinks it is short.",
         "He wants to play every day."
       ],
+      "vocabularyUsed": [
+        "～日",
+        "はい",
+        "何",
+        "何～",
+        "夏休み",
+        "居る",
+        "在る",
+        "私",
+        "十",
+        "十日",
+        "二",
+        "二十日",
+        "毎日",
+        "有る",
+        "遊ぶ"
+      ],
       "createdAt": "2026-06-26T02:22:31.098Z"
     },
     {
@@ -6270,6 +7322,23 @@
         "She likes spring and summer.",
         "Last summer was good.",
         "The winter two years ago was bad."
+      ],
+      "vocabularyUsed": [
+        "いい",
+        "おととし",
+        "さ来年",
+        "はい",
+        "悪い",
+        "夏",
+        "去年",
+        "嫌い",
+        "言う",
+        "戸",
+        "好き",
+        "私",
+        "秋",
+        "春",
+        "冬"
       ],
       "createdAt": "2026-06-26T02:22:34.804Z"
     },
@@ -6394,6 +7463,32 @@
         "Every month.",
         "He goes with his family."
       ],
+      "vocabularyUsed": [
+        "～時",
+        "あそこ",
+        "いつも",
+        "どこ",
+        "はい",
+        "何",
+        "何～",
+        "家族",
+        "起きる",
+        "戸",
+        "行く",
+        "時々",
+        "食べる",
+        "朝",
+        "朝御飯",
+        "二",
+        "毎月",
+        "毎週",
+        "毎朝",
+        "毎日",
+        "毎年",
+        "友達",
+        "六",
+        "話す"
+      ],
       "createdAt": "2026-06-26T02:22:37.596Z"
     },
     {
@@ -6504,6 +7599,25 @@
         "No, it is not.",
         "It is inside the box.",
         "She asks him to open the box."
+      ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "いいえ",
+        "これ",
+        "すみません",
+        "その",
+        "どうぞ",
+        "どこ",
+        "はい",
+        "開ける",
+        "机",
+        "在る",
+        "私",
+        "時計",
+        "二",
+        "箱",
+        "万年筆",
+        "有る"
       ],
       "createdAt": "2026-06-26T02:22:41.502Z"
     },
@@ -6616,6 +7730,23 @@
         "No, she still wants the door open.",
         "She wants that Japanese-style door closed."
       ],
+      "vocabularyUsed": [
+        "いいえ",
+        "する",
+        "その",
+        "テーブル",
+        "ドア",
+        "はい",
+        "開ける",
+        "居る",
+        "戸",
+        "四",
+        "洗う",
+        "窓",
+        "晩",
+        "晩御飯",
+        "閉める"
+      ],
       "createdAt": "2026-06-27T19:00:17.109Z"
     },
     {
@@ -6726,6 +7857,30 @@
         "His father, mother, and younger brother.",
         "She says it is nice.",
         "They both say 'Nice to meet you.'"
+      ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "いい",
+        "うち",
+        "お願いします",
+        "ここ",
+        "この",
+        "する",
+        "どうぞ",
+        "はい",
+        "よろしく",
+        "家族",
+        "居る",
+        "戸",
+        "五",
+        "四",
+        "初めて",
+        "初めまして",
+        "弟",
+        "二",
+        "父",
+        "母",
+        "来る"
       ],
       "createdAt": "2026-06-27T19:00:20.443Z"
     },
@@ -6838,6 +7993,30 @@
         "Speaker 2's younger brother is next to her.",
         "They are over that way."
       ],
+      "vocabularyUsed": [
+        "あちら",
+        "お父さん",
+        "お母さん",
+        "この",
+        "その",
+        "どなた",
+        "はい",
+        "家族",
+        "学生",
+        "居る",
+        "兄",
+        "戸",
+        "私",
+        "女の子",
+        "人",
+        "大きい",
+        "男の子",
+        "弟",
+        "父",
+        "母",
+        "妹",
+        "隣"
+      ],
       "createdAt": "2026-06-27T19:00:23.621Z"
     },
     {
@@ -6948,6 +8127,27 @@
         "The 9th was Sunday.",
         "She concludes the 10th is Monday.",
         "The 20th is Thursday."
+      ],
+      "vocabularyUsed": [
+        "～日",
+        "ありがとうございます",
+        "はい",
+        "何",
+        "何～",
+        "金曜日",
+        "九",
+        "九日",
+        "月曜日",
+        "今月",
+        "三",
+        "三日",
+        "七",
+        "七日",
+        "十",
+        "十日",
+        "二",
+        "二十日",
+        "日曜日"
       ],
       "createdAt": "2026-06-27T19:00:27.822Z"
     },
@@ -7060,6 +8260,21 @@
         "She suggests hanging out this week.",
         "Last month, last week, this month, and this week."
       ],
+      "vocabularyUsed": [
+        "いいえ",
+        "うち",
+        "どこ",
+        "はい",
+        "一月",
+        "暇",
+        "行く",
+        "今月",
+        "今週",
+        "先月",
+        "先週",
+        "友達",
+        "遊ぶ"
+      ],
       "createdAt": "2026-06-27T19:00:30.468Z"
     },
     {
@@ -7158,6 +8373,24 @@
         "People are there in the afternoon too.",
         "Speaker 1's mother will go there."
       ],
+      "vocabularyUsed": [
+        "ああ",
+        "あそこ",
+        "あの",
+        "ありがとうございます",
+        "すみません",
+        "どうぞ",
+        "どこ",
+        "はい",
+        "角",
+        "居る",
+        "午後",
+        "交番",
+        "行く",
+        "小さい",
+        "人",
+        "母"
+      ],
       "createdAt": "2026-06-27T19:00:34.320Z"
     },
     {
@@ -7254,6 +8487,29 @@
         "He says he will wear this.",
         "She asks about socks.",
         "They are there."
+      ],
+      "vocabularyUsed": [
+        "いいえ",
+        "お願いします",
+        "かぶる",
+        "この",
+        "これ",
+        "する",
+        "そこ",
+        "その",
+        "はい",
+        "居る",
+        "靴",
+        "靴下",
+        "今朝",
+        "四",
+        "上着",
+        "青い",
+        "赤い",
+        "着る",
+        "二",
+        "服",
+        "有る"
       ],
       "createdAt": "2026-06-27T19:00:37.106Z"
     },
@@ -7354,6 +8610,27 @@
         "They will start in the morning.",
         "They will wash the table and desk."
       ],
+      "vocabularyUsed": [
+        "～時間",
+        "～日",
+        "いい",
+        "かかる",
+        "この",
+        "する",
+        "テーブル",
+        "はい",
+        "一",
+        "一日",
+        "机",
+        "古い",
+        "戸",
+        "午前",
+        "四",
+        "時間",
+        "洗う",
+        "大きい",
+        "部屋"
+      ],
       "createdAt": "2026-06-27T19:00:41.201Z"
     },
     {
@@ -7450,6 +8727,29 @@
         "He says this year's summer vacation was good.",
         "He ate breakfast at noon.",
         "He played with friends in the afternoon."
+      ],
+      "vocabularyUsed": [
+        "する",
+        "はい",
+        "何",
+        "何～",
+        "夏休み",
+        "戸",
+        "午後",
+        "午前",
+        "今週",
+        "今年",
+        "四",
+        "終る",
+        "食べる",
+        "寝る",
+        "昼",
+        "朝",
+        "朝御飯",
+        "二",
+        "毎日",
+        "友達",
+        "遊ぶ"
       ],
       "createdAt": "2026-06-27T19:00:44.986Z"
     },
@@ -7550,6 +8850,29 @@
         "His father's age is fifty.",
         "His mother's age is forty-nine."
       ],
+      "vocabularyUsed": [
+        "～年",
+        "アパート",
+        "お父さん",
+        "ここ",
+        "この",
+        "はい",
+        "何",
+        "何～",
+        "家族",
+        "居る",
+        "九",
+        "戸",
+        "五",
+        "三",
+        "四",
+        "十",
+        "新しい",
+        "二",
+        "年",
+        "父",
+        "母"
+      ],
       "createdAt": "2026-06-27T19:00:48.545Z"
     },
     {
@@ -7647,6 +8970,21 @@
         "He will take a bath.",
         "His mother's breakfast is always delicious."
       ],
+      "vocabularyUsed": [
+        "いいえ",
+        "いつも",
+        "おはようございます",
+        "お風呂",
+        "はい",
+        "起きる",
+        "今朝",
+        "食べる",
+        "朝",
+        "朝御飯",
+        "二",
+        "美味しい",
+        "母"
+      ],
       "createdAt": "2026-06-27T19:00:52.595Z"
     },
     {
@@ -7743,6 +9081,21 @@
         "He first suggests the desk.",
         "It is found in the box on the table.",
         "He asks if she will use it in the afternoon."
+      ],
+      "vocabularyUsed": [
+        "ああ",
+        "いいえ",
+        "それ",
+        "テーブル",
+        "どこ",
+        "机",
+        "見る",
+        "午後",
+        "私",
+        "二",
+        "箱",
+        "万年筆",
+        "有る"
       ],
       "createdAt": "2026-06-27T19:00:56.394Z"
     },
@@ -7843,6 +9196,22 @@
         "He does not wash the coat.",
         "They are there by the bed."
       ],
+      "vocabularyUsed": [
+        "コート",
+        "シャツ",
+        "スカート",
+        "そこ",
+        "どこ",
+        "はい",
+        "ベッド",
+        "靴下",
+        "洗う",
+        "土曜日",
+        "二",
+        "服",
+        "毎週",
+        "有る"
+      ],
       "createdAt": "2026-06-27T19:00:59.478Z"
     },
     {
@@ -7942,6 +9311,27 @@
         "She suggests the seventh.",
         "It is his first autumn outing or play time."
       ],
+      "vocabularyUsed": [
+        "～日",
+        "いい",
+        "はい",
+        "暇",
+        "戸",
+        "好き",
+        "今月",
+        "七",
+        "七日",
+        "秋",
+        "十",
+        "十日",
+        "春",
+        "初めて",
+        "冬",
+        "二",
+        "友達",
+        "有る",
+        "遊ぶ"
+      ],
       "createdAt": "2026-06-27T19:01:03.926Z"
     },
     {
@@ -8040,6 +9430,24 @@
         "It takes two hours.",
         "She decides they should go already.",
         "He takes the key."
+      ],
+      "vocabularyUsed": [
+        "～時",
+        "～時間",
+        "かかる",
+        "はい",
+        "バス",
+        "何",
+        "何～",
+        "見る",
+        "鍵",
+        "玄関",
+        "行く",
+        "時間",
+        "時計",
+        "二",
+        "八",
+        "有る"
       ],
       "createdAt": "2026-06-27T19:01:07.282Z"
     }

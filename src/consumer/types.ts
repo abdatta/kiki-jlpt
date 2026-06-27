@@ -51,6 +51,7 @@ export interface DirectionStats {
 export type StatsMap = Record<string, DirectionStats>;
 
 export interface ConversationProgress {
+  completionOrderVersion: 0 | 1;
   completedConversationIds: string[];
   starredConversationIds: string[];
 }
@@ -66,6 +67,7 @@ export interface StaticLibraryConversation {
   englishTranslation: EnglishLine[];
   listeningQuestions: string[];
   answerKey: string[];
+  vocabularyUsed: string[];
   createdAt?: string;
 }
 

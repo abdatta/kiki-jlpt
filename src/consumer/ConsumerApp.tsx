@@ -3,6 +3,7 @@ import type { CSSProperties, Dispatch, ReactNode, SetStateAction } from 'react';
 import {
   BookOpen,
   Check,
+  CheckCheck,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -17,11 +18,15 @@ import {
   SkipBack,
   SkipForward,
   Star,
+  TriangleAlert,
   Trophy,
   X
 } from 'lucide-react';
 import { BrandLogo } from '../components/BrandLogo.tsx';
 import { buildSessionQueue, calculateNextStats, getBucket, getStats } from './deck.ts';
+import { conversationVocabularyTerms, orderConversations, sortUnmasteredVocabularyCards } from './conversationOrdering.ts';
+import type { ConversationVocabularyTerm } from './conversationOrdering.ts';
+import { completedConversationIds, migrateConversationProgress, recordConversationCompletion } from './conversationProgress.ts';
 import { levelSummaries, vocabCards } from './vocabData.ts';
 import { loadLibrary } from './library.ts';
 import {
@@ -86,7 +91,7 @@ interface LevelProgress {
 }
 
 interface VocabWordStat {
-  card: VocabPracticeCard;
+  card: VocabCard;
   reviews: number;
   streak: number;
   accuracy: number;
@@ -120,6 +125,12 @@ function strengthLabel(cardId: string, stats: StatsMap): string {
   return bucket[0].toUpperCase() + bucket.slice(1);
 }
 
+function strengthStatusLabel(cardId: string, stats: StatsMap): string {
+  const bucket = getBucket(getStats(stats, cardId));
+  if (bucket === 'weak') return 'Needs Work';
+  return bucket[0].toUpperCase() + bucket.slice(1);
+}
+
 function applyReview(stats: StatsMap, id: string, result: ReviewResult): StatsMap {
   return {
     ...stats,
@@ -134,6 +145,17 @@ function statAccuracy(cardStats: ReturnType<typeof getStats>): number {
     return recent.reduce<number>((sum, value) => sum + value, 0) / recent.length;
   }
   return cardStats.streak > 0 ? 1 : 0;
+}
+
+function wordDetailSelection(card: VocabCard, stats: StatsMap): VocabWordStat | VocabCard {
+  const cardStats = getStats(stats, card.id);
+  if (cardStats.reviews === 0) return card;
+  return {
+    card,
+    reviews: cardStats.reviews,
+    streak: cardStats.streak,
+    accuracy: statAccuracy(cardStats)
+  };
 }
 
 function analyzeVocabStats(cards: VocabPracticeCard[], stats: StatsMap): VocabStatsAnalysis {
@@ -188,30 +210,6 @@ function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values));
 }
 
-function levelIdPrefix(level: number): string {
-  return `set-${String(level).padStart(2, '0')}-`;
-}
-
-function effectiveCompletedIdsForLevel(
-  conversations: StaticLibraryConversation[],
-  storedCompletedIds: string[],
-  level: number
-): Set<string> {
-  const levelScopedCompletedCount = uniqueStrings(storedCompletedIds)
-    .filter((id) => id.startsWith(levelIdPrefix(level)))
-    .length;
-
-  if (levelScopedCompletedCount > 0) {
-    return new Set(conversations
-      .slice(0, Math.min(conversations.length, levelScopedCompletedCount))
-      .map((conversation) => conversation.id));
-  }
-
-  return new Set(conversations
-    .filter((conversation) => storedCompletedIds.includes(conversation.id))
-    .map((conversation) => conversation.id));
-}
-
 function isConversationUnlocked(
   conversations: StaticLibraryConversation[],
   conversationIndex: number,
@@ -256,14 +254,10 @@ function buildLevelProgress(vocabStats: StatsMap, conversationProgress: Conversa
   return levelSummaries.map((summary) => {
     const cards = vocabCards.filter((card) => card.level === summary.set);
     const levelConversations = library.conversations.filter((conversation) => conversation.level === summary.set);
-    const completedConversationIds = effectiveCompletedIdsForLevel(
-      levelConversations,
-      conversationProgress.completedConversationIds,
-      summary.set
-    );
+    const completedIds = completedConversationIds(levelConversations, conversationProgress.completedConversationIds);
     const strongVocabCount = cards.filter((card) => getBucket(getStats(vocabStats, card.id)) === 'strong').length;
     const vocabMasteryRatio = cards.length > 0 ? strongVocabCount / cards.length : 0;
-    const listeningAttemptCount = levelConversations.filter((conversation) => completedConversationIds.has(conversation.id)).length;
+    const listeningAttemptCount = levelConversations.filter((conversation) => completedIds.has(conversation.id)).length;
     const unlocked = previousLevelsComplete;
     const complete = vocabMasteryRatio >= LEVEL_MASTERY_RATIO && listeningAttemptCount >= LEVEL_LISTENING_TARGET;
 
@@ -348,20 +342,21 @@ function VocabFlashcard({
   );
 }
 
-function WordStatTile({ item, onSelect }: { item: VocabWordStat; onSelect: (item: VocabWordStat) => void }) {
+function WordTile({
+  card,
+  label,
+  isNew = false,
+  onSelect
+}: {
+  card: VocabCard;
+  label: string;
+  isNew?: boolean;
+  onSelect: () => void;
+}) {
   return (
-    <button className="wordStatTile" onClick={() => onSelect(item)} type="button">
-      <strong>{item.card.japanese}</strong>
-      <span>{Math.round(item.accuracy * 100)}%</span>
-    </button>
-  );
-}
-
-function NewWordTile({ card, onSelect }: { card: VocabPracticeCard; onSelect: (card: VocabPracticeCard) => void }) {
-  return (
-    <button className="wordStatTile newWordTile" onClick={() => onSelect(card)} type="button">
+    <button className={isNew ? 'wordStatTile newWordTile' : 'wordStatTile'} onClick={onSelect} type="button">
       <strong>{card.japanese}</strong>
-      <span>New</span>
+      <span>{label}</span>
     </button>
   );
 }
@@ -390,7 +385,7 @@ function WordDetailModal({
   selected,
   onClose
 }: {
-  selected: VocabWordStat | VocabPracticeCard;
+  selected: VocabWordStat | VocabCard;
   onClose: () => void;
 }) {
   const isReviewed = 'accuracy' in selected;
@@ -402,7 +397,7 @@ function WordDetailModal({
       <section className="wordDetailPanel">
         <header>
           <div>
-            <p>Word details</p>
+            <p>Set {card.level} · Word details</p>
             <h3 id="word-detail-title">{card.japanese}</h3>
             <span>{card.romaji || card.reading}</span>
           </div>
@@ -410,11 +405,11 @@ function WordDetailModal({
             <X size={18} />
           </button>
         </header>
-        <div className="wordMeaningBox">
-          <span>Meaning</span>
-          <strong>{card.meaning}</strong>
-        </div>
         <div className="wordDetailGrid">
+          <div className="wordMeaningBox">
+            <span>Meaning</span>
+            <strong>{card.meaning}</strong>
+          </div>
           <div>
             <span>Reading</span>
             <strong>{card.reading || '-'}</strong>
@@ -464,7 +459,7 @@ function VocabStatsModal({
   onClose: () => void;
 }) {
   const [showNewWords, setShowNewWords] = useState(false);
-  const [selectedWord, setSelectedWord] = useState<VocabWordStat | VocabPracticeCard | null>(null);
+  const [selectedWord, setSelectedWord] = useState<VocabWordStat | VocabCard | null>(null);
   const progressPercent = percent(progress.vocabMasteryRatio);
   const progressLabel = progress.complete
     ? 'Next Level Unlocked'
@@ -495,15 +490,15 @@ function VocabStatsModal({
         </div>
 
         <WordStatSection title="Strong" count={analysis.strong.length}>
-          <div className="wordStatList">{analysis.strong.map((item) => <WordStatTile key={item.card.id} item={item} onSelect={setSelectedWord} />)}</div>
+          <div className="wordStatList">{analysis.strong.map((item) => <WordTile card={item.card} key={item.card.id} label={`${Math.round(item.accuracy * 100)}%`} onSelect={() => setSelectedWord(item)} />)}</div>
         </WordStatSection>
 
         <WordStatSection title="Improving" count={analysis.improving.length}>
-          <div className="wordStatList">{analysis.improving.map((item) => <WordStatTile key={item.card.id} item={item} onSelect={setSelectedWord} />)}</div>
+          <div className="wordStatList">{analysis.improving.map((item) => <WordTile card={item.card} key={item.card.id} label={`${Math.round(item.accuracy * 100)}%`} onSelect={() => setSelectedWord(item)} />)}</div>
         </WordStatSection>
 
         <WordStatSection title="Needs Work" count={analysis.weak.length}>
-          <div className="wordStatList">{analysis.weak.map((item) => <WordStatTile key={item.card.id} item={item} onSelect={setSelectedWord} />)}</div>
+          <div className="wordStatList">{analysis.weak.map((item) => <WordTile card={item.card} key={item.card.id} label={`${Math.round(item.accuracy * 100)}%`} onSelect={() => setSelectedWord(item)} />)}</div>
         </WordStatSection>
 
         <section className="wordStatSection">
@@ -524,7 +519,7 @@ function VocabStatsModal({
           </header>
           {showNewWords ? (
             analysis.newWords.length === 0 ? <p className="emptyStatText">All words have appeared.</p> : (
-              <div className="wordStatList">{analysis.newWords.map((card) => <NewWordTile key={card.id} card={card} onSelect={setSelectedWord} />)}</div>
+              <div className="wordStatList">{analysis.newWords.map((card) => <WordTile card={card} isNew key={card.id} label="New" onSelect={() => setSelectedWord(card)} />)}</div>
             )
           ) : (
             <p className="emptyStatText">Hidden by default.</p>
@@ -758,8 +753,80 @@ function QuestionCard({
   );
 }
 
+function unmasteredWordLabel(count: number): string {
+  if (count === 0) return 'All words mastered';
+  return `${count} unmastered ${count === 1 ? 'word' : 'words'}`;
+}
+
+function ConversationVocabularyModal({
+  conversation,
+  terms,
+  stats,
+  onClose
+}: {
+  conversation: StaticLibraryConversation;
+  terms: ConversationVocabularyTerm[];
+  stats: StatsMap;
+  onClose: () => void;
+}) {
+  const [selectedWord, setSelectedWord] = useState<VocabWordStat | VocabCard | null>(null);
+  const cardsByLevel = new Map<number, VocabCard[]>();
+
+  for (const term of terms) {
+    for (const card of term.variants) {
+      if (getBucket(getStats(stats, card.id)) === 'strong') continue;
+      cardsByLevel.set(card.level, [...(cardsByLevel.get(card.level) ?? []), card]);
+    }
+  }
+
+  const levelGroups = [...cardsByLevel.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([setNumber, cards]) => [setNumber, sortUnmasteredVocabularyCards(cards, stats)] as const);
+
+  return (
+    <div className="statsModal" role="dialog" aria-modal="true" aria-labelledby="conversation-vocabulary-title">
+      <button className="statsModalBackdrop" aria-label="Close conversation vocabulary" onClick={onClose} type="button" />
+      <section className="statsModalPanel conversationVocabularyPanel">
+        <header className="statsModalHeader">
+          <div>
+            <p>{conversation.title}</p>
+            <h2 id="conversation-vocabulary-title">{unmasteredWordLabel(terms.length)}</h2>
+          </div>
+          <button className="modalCloseButton" aria-label="Close conversation vocabulary" onClick={onClose} type="button">
+            <X size={18} />
+          </button>
+        </header>
+
+        {levelGroups.length === 0 ? (
+          <p className="emptyStatText conversationVocabularyEmpty">Every tracked vocabulary word in this conversation is strong.</p>
+        ) : (
+          levelGroups.map(([setNumber, cards]) => (
+            <WordStatSection title={`Set ${setNumber}`} count={cards.length} key={setNumber}>
+              <div className="wordStatList">
+                {cards.map((card) => (
+                  <WordTile
+                    card={card}
+                    isNew={getBucket(getStats(stats, card.id)) === 'new'}
+                    key={card.id}
+                    label={strengthStatusLabel(card.id, stats)}
+                    onSelect={() => setSelectedWord(wordDetailSelection(card, stats))}
+                  />
+                ))}
+              </div>
+            </WordStatSection>
+          ))
+        )}
+
+        {selectedWord ? <WordDetailModal selected={selectedWord} onClose={() => setSelectedWord(null)} /> : null}
+      </section>
+    </div>
+  );
+}
+
 function ConversationPractice({
   conversation,
+  vocabularyTerms,
+  vocabStats,
   isCompleted,
   isStarred,
   playbackSpeed,
@@ -770,6 +837,8 @@ function ConversationPractice({
   canGoNext
 }: {
   conversation: StaticLibraryConversation;
+  vocabularyTerms: ConversationVocabularyTerm[];
+  vocabStats: StatsMap;
   isCompleted: boolean;
   isStarred: boolean;
   playbackSpeed: number;
@@ -785,6 +854,7 @@ function ConversationPractice({
   const [hasCompletedInitialPlay, setHasCompletedInitialPlay] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isSpeedMenuOpen, setIsSpeedMenuOpen] = useState(false);
+  const [isVocabularyModalOpen, setIsVocabularyModalOpen] = useState(false);
   const [visibleTranslations, setVisibleTranslations] = useState<Record<number, boolean>>({});
   const [questionStates, setQuestionStates] = useState<Record<number, QuestionState>>({});
   const completionNotifiedRef = useRef(false);
@@ -794,6 +864,7 @@ function ConversationPractice({
     setPlayed(completedOrNoAudio);
     setHasCompletedInitialPlay(isCompleted || !conversation.audioUrl);
     setIsPlaying(false);
+    setIsVocabularyModalOpen(false);
     setVisibleTranslations({});
     setQuestionStates({});
     completionNotifiedRef.current = false;
@@ -898,6 +969,7 @@ function ConversationPractice({
   const shouldShowTranscript = isCompleted || allAttempted;
   const hasAnsweredAny = Object.values(questionStates).some((state) => Boolean(state.result));
   const canStar = isStarred || isCompleted || hasCompletedInitialPlay;
+  const unmasteredTerms = vocabularyTerms.filter((term) => !term.mastered);
 
   useEffect(() => {
     if (allAttempted && !completionNotifiedRef.current) {
@@ -911,6 +983,22 @@ function ConversationPractice({
       <article className="listenCard">
         <h2>{conversation.title}</h2>
         <span>{conversation.scene}</span>
+        <button
+          className="conversationVocabularyPill"
+          aria-label={unmasteredWordLabel(unmasteredTerms.length)}
+          onClick={() => setIsVocabularyModalOpen(true)}
+          title={unmasteredWordLabel(unmasteredTerms.length)}
+          type="button"
+        >
+          {unmasteredTerms.length === 0 ? (
+            <CheckCheck size={18} />
+          ) : (
+            <>
+              <TriangleAlert size={15} />
+              <span>{unmasteredTerms.length}</span>
+            </>
+          )}
+        </button>
         <div className="listenControls" aria-label="Conversation audio controls">
           <div className="playerSpeedMenu" ref={speedMenuRef}>
             <button
@@ -1038,6 +1126,14 @@ function ConversationPractice({
           </button>
         </section>
       ) : null}
+      {isVocabularyModalOpen ? (
+        <ConversationVocabularyModal
+          conversation={conversation}
+          terms={unmasteredTerms}
+          stats={vocabStats}
+          onClose={() => setIsVocabularyModalOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -1045,6 +1141,7 @@ function ConversationPractice({
 function ConversationsPage({
   level,
   library,
+  vocabStats,
   conversationProgress,
   setConversationProgress,
   progress,
@@ -1053,6 +1150,7 @@ function ConversationsPage({
 }: {
   level: number;
   library: StaticLibraryManifest;
+  vocabStats: StatsMap;
   conversationProgress: ConversationProgress;
   setConversationProgress: Dispatch<SetStateAction<ConversationProgress>>;
   progress: LevelProgress;
@@ -1066,10 +1164,15 @@ function ConversationsPage({
   const allConversations = useMemo(() => library.conversations.filter((conversation) => conversation.level === level), [library, level]);
   const starredIds = useMemo(() => new Set(conversationProgress.starredConversationIds), [conversationProgress.starredConversationIds]);
   const starredConversations = useMemo(() => allConversations.filter((conversation) => starredIds.has(conversation.id)), [allConversations, starredIds]);
-  const conversations = allConversations;
+  const conversations = useMemo(() => orderConversations(
+    allConversations,
+    conversationProgress.completedConversationIds,
+    vocabCards,
+    vocabStats
+  ), [allConversations, conversationProgress.completedConversationIds, vocabStats]);
   const completedIds = useMemo(
-    () => effectiveCompletedIdsForLevel(conversations, conversationProgress.completedConversationIds, level),
-    [conversationProgress.completedConversationIds, conversations, level]
+    () => completedConversationIds(conversations, conversationProgress.completedConversationIds),
+    [conversationProgress.completedConversationIds, conversations]
   );
   const emptyBody = PRACTICE_ONLY
     ? 'Published conversations will appear after the curated library is exported.'
@@ -1093,6 +1196,10 @@ function ConversationsPage({
     ? selectedConversationIndex
     : fallbackConversationIndex;
   const current = currentIndex >= 0 ? conversations[currentIndex] : undefined;
+  const currentVocabularyTerms = useMemo(
+    () => current ? conversationVocabularyTerms(current, vocabCards, vocabStats) : [],
+    [current, vocabStats]
+  );
   const currentConversationIndex = currentIndex >= 0 ? currentIndex + 1 : 0;
   const listeningComplete = progress.listeningAttemptCount >= LEVEL_LISTENING_TARGET;
   const nextLevelNumber = nextProgress?.level ?? null;
@@ -1118,11 +1225,8 @@ function ConversationsPage({
 
   function completeConversation(conversationId: string) {
     setConversationProgress((currentProgress) => {
-      const withoutCurrent = uniqueStrings(currentProgress.completedConversationIds).filter((id) => id !== conversationId);
-      const nextProgress = {
-        ...currentProgress,
-        completedConversationIds: [...withoutCurrent, conversationId]
-      };
+      const nextProgress = recordConversationCompletion(currentProgress, conversationId);
+      if (nextProgress === currentProgress) return currentProgress;
       saveConversationProgress(nextProgress);
       return nextProgress;
     });
@@ -1222,6 +1326,8 @@ function ConversationsPage({
         <ConversationPractice
           key={current.id}
           conversation={current}
+          vocabularyTerms={currentVocabularyTerms}
+          vocabStats={vocabStats}
           isCompleted={completedIds.has(current.id)}
           isStarred={starredIds.has(current.id)}
           playbackSpeed={playbackSpeed}
@@ -1410,7 +1516,7 @@ export function ConsumerApp() {
   const [mikanTheme, setMikanTheme] = useState<MikanTheme>(deviceMikanTheme);
   const [vocabStats, setVocabStats] = useState<StatsMap>(loadVocabStats);
   const [conversationProgress, setConversationProgress] = useState<ConversationProgress>(loadConversationProgress);
-  const [library, setLibrary] = useState<StaticLibraryManifest>({ version: 1, generatedAt: '', conversations: [] });
+  const [library, setLibrary] = useState<StaticLibraryManifest>({ version: 2, generatedAt: '', conversations: [] });
   const [libraryError, setLibraryError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1441,6 +1547,13 @@ export function ConsumerApp() {
     loadLibrary()
       .then((manifest) => {
         setLibrary(manifest);
+        setConversationProgress((currentProgress) => {
+          const migratedProgress = migrateConversationProgress(currentProgress, manifest.conversations);
+          if (migratedProgress !== currentProgress) {
+            saveConversationProgress(migratedProgress);
+          }
+          return migratedProgress;
+        });
         setLibraryError(null);
       })
       .catch((error) => setLibraryError(error instanceof Error ? error.message : String(error)));
@@ -1526,6 +1639,7 @@ export function ConsumerApp() {
           <ConversationsPage
             level={level}
             library={library}
+            vocabStats={vocabStats}
             conversationProgress={conversationProgress}
             setConversationProgress={setConversationProgress}
             progress={currentProgress}

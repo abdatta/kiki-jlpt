@@ -1,4 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["src/consumer", "src/practice-main.tsx", "src/vite-env.d.ts", "shared"]
+  "include": ["src/consumer", "src/practice-main.tsx", "src/vite-env.d.ts", "shared"],
+  "exclude": ["src/**/*.test.ts"]
 }

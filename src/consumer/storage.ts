@@ -49,6 +49,7 @@ export function saveVocabStats(stats: StatsMap): void {
 export function loadConversationProgress(): ConversationProgress {
   const stored = readJson<Partial<ConversationProgress>>(CONVERSATION_PROGRESS_KEY, {});
   return {
+    completionOrderVersion: stored.completionOrderVersion === 1 ? 1 : 0,
     completedConversationIds: Array.isArray(stored.completedConversationIds)
       ? uniqueStrings(stored.completedConversationIds.filter((id): id is string => typeof id === 'string'))
       : [],
@@ -60,6 +61,7 @@ export function loadConversationProgress(): ConversationProgress {
 
 export function saveConversationProgress(progress: ConversationProgress): void {
   writeJson(CONVERSATION_PROGRESS_KEY, {
+    completionOrderVersion: progress.completionOrderVersion,
     completedConversationIds: uniqueStrings(progress.completedConversationIds),
     starredConversationIds: uniqueStrings(progress.starredConversationIds)
   });

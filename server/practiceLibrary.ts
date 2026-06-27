@@ -165,6 +165,7 @@ export async function publishPracticeLibrary() {
         englishTranslation: conversation.englishTranslation,
         listeningQuestions: conversation.listeningQuestions,
         answerKey: conversation.answerKey,
+        vocabularyUsed: conversation.vocabularyUsed,
         createdAt: conversation.curatedAt ?? conversation.createdAt,
         publishOrder: reusableConversation?.order ?? nextNewConversationOrder++
       });
@@ -174,7 +175,7 @@ export async function publishPracticeLibrary() {
   conversations.sort((a, b) => a.publishOrder - b.publishOrder || (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
 
   const manifest: StaticLibraryManifest = {
-    version: 1,
+    version: 2,
     generatedAt: curatedUpdatedAt(sets),
     conversations: conversations.map(({ publishOrder: _publishOrder, ...conversation }) => conversation)
   };
