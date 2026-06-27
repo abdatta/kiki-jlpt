@@ -3,7 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import path from 'node:path';
 import { mkdir, readFile, unlink } from 'node:fs/promises';
-import type { GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRunAudit } from '../shared/types.ts';
+import type { GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, RunAudioGenerateRequest, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRunAudit } from '../shared/types.ts';
 import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR } from './paths.ts';
 import { buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
 import { buildTtsPrompt, generateConversationAudio, generateConversationJson } from './gemini.ts';
@@ -1243,18 +1243,24 @@ app.delete('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(
 
 app.post('/api/runs/:runId/audio', asyncHandler(async (req, res) => {
   const runId = routeParam(req.params.runId);
-  const mode = (req.body as { mode?: string } | undefined)?.mode === 'resume' ? 'resume' : 'replace';
+  const mode = (req.body as RunAudioGenerateRequest | undefined)?.mode === 'resume' ? 'resume' : 'replace';
   let run = await readRun(runId);
-  if (run.conversations.some((conversation) => conversation.curatedId)) {
-    throw new Error('Remove Library conversations before regenerating all audio for this run.');
-  }
   if (run.conversations.some((conversation) => conversation.status === 'audio_generating')) {
-    throw new Error('Wait for current audio generation to finish before regenerating all audio.');
+    throw new Error('Wait for current audio generation to finish.');
   }
 
   const targetIds = new Set((mode === 'resume'
-    ? run.conversations.filter((conversation) => conversation.status !== 'audio_ready' || !conversation.audioFileName)
+    ? run.conversations.filter((conversation) => !conversation.audioFileName)
     : run.conversations).map((conversation) => conversation.id));
+  const targetConversations = run.conversations.filter((conversation) => targetIds.has(conversation.id));
+  const initialActiveTargetIds = new Set(targetConversations.slice(0, 3).map((conversation) => conversation.id));
+
+  if (mode === 'replace' && run.conversations.some((conversation) => conversation.curatedId)) {
+    throw new Error('Remove Library conversations before regenerating all audio for this run.');
+  }
+  if (targetConversations.some((conversation) => conversation.curatedId)) {
+    throw new Error('Remove Library conversations that are missing audio before generating missing audio.');
+  }
 
   await Promise.all(run.conversations.map((conversation) => targetIds.has(conversation.id) && conversation.audioFileName
     ? deleteAudioFile(runId, conversation.audioFileName)
@@ -1295,7 +1301,7 @@ app.post('/api/runs/:runId/audio', asyncHandler(async (req, res) => {
     conversations: run.conversations.map((conversation) => targetIds.has(conversation.id)
       ? touchConversation({
         ...conversation,
-        status: 'audio_generating',
+        status: initialActiveTargetIds.has(conversation.id) ? 'audio_generating' : 'draft',
         audioFileName: undefined,
         audioUrl: undefined,
         error: undefined

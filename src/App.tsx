@@ -33,6 +33,7 @@ import type {
   PracticeConversation,
   PracticeRun,
   RunAnalytics,
+  RunAudioGenerateRequest,
   SetSummary,
   TextModelInfo,
   WorkflowAuditNode,
@@ -305,74 +306,40 @@ function makeClientWorkflowJob(setNumber: number, conversationCount: number, aud
 }
 
 function reconcileWorkflowAuditNodes(run: PracticeRun, nodes: WorkflowAuditNode[]): WorkflowAuditNode[] {
-  return nodes.map((node) => {
-    if (node.kind !== 'audio') return node;
+  const nonAudioNodes = nodes.filter((node) => node.kind !== 'audio');
+  const audioNodes = nodes.filter((node) => node.kind === 'audio');
+  const existingByConversationId = new Map<string, WorkflowAuditNode>();
 
-    const nodeIndex = Number(node.id.replace(/^audio-/, '')) - 1;
-    const input = objectValue(node.input);
-    const conversationId = typeof input?.conversationId === 'string' ? input.conversationId : undefined;
-    const conversation = run.conversations.find((item) => item.id === conversationId) ?? run.conversations[nodeIndex];
-    if (!conversation) return node;
-
-    const baseNode: WorkflowAuditNode = {
-      ...node,
-      title: `Conversation ${nodeIndex + 1}`,
-      input: {
-        ...(input ?? {}),
-        conversationId: conversation.id,
-        conversationTitle: conversation.title
-      }
-    };
-    const conversationAudioOutput = conversation.audioFileName && conversation.audioUrl
-      ? {
-        fileName: conversation.audioFileName,
-        audioUrl: conversation.audioUrl
-      }
-      : undefined;
-
-    if (conversationAudioOutput || node.status === 'done' || workflowAudioUrl(node)) {
-      return {
-        ...baseNode,
-        status: 'done',
-        output: node.output ?? conversationAudioOutput,
-        error: undefined
-      };
+  audioNodes.forEach((node) => {
+    const conversationId = objectValue(node.input)?.conversationId;
+    if (typeof conversationId === 'string') {
+      existingByConversationId.set(conversationId, node);
     }
-    if (node.status === 'processing') {
-      return { ...baseNode, status: 'processing', error: undefined };
-    }
-    if (node.status === 'error') {
-      return {
-        ...baseNode,
-        status: 'error',
-        output: undefined,
-        error: node.error ?? conversation.error ?? 'Audio generation failed.'
-      };
-    }
-    if (node.status === 'skipped') {
-      return {
-        ...baseNode,
-        status: 'skipped',
-        output: undefined,
-        error: node.error
-      };
-    }
-    if (conversation.status === 'audio_failed' || conversation.error) {
-      return {
-        ...baseNode,
-        status: 'error',
-        output: undefined,
-        error: conversation.error ?? node.error ?? 'Audio generation failed.'
-      };
-    }
-
-    return {
-      ...baseNode,
-      status: 'pending',
-      output: undefined,
-      error: undefined
-    };
   });
+
+  if (runHasMissingAudio(run) && run.conversations.length > audioNodes.length) {
+    return [
+      ...nonAudioNodes,
+      ...run.conversations.map((conversation, index) => (
+        workflowAudioNodeForConversation(
+          conversation,
+          index,
+          existingByConversationId.get(conversation.id) ?? audioNodes[index]
+        )
+      ))
+    ];
+  }
+
+  return [
+    ...nonAudioNodes,
+    ...audioNodes.map((node) => {
+      const nodeIndex = Number(node.id.replace(/^audio-/, '')) - 1;
+      const input = objectValue(node.input);
+      const conversationId = typeof input?.conversationId === 'string' ? input.conversationId : undefined;
+      const conversation = run.conversations.find((item) => item.id === conversationId) ?? run.conversations[nodeIndex];
+      return conversation ? workflowAudioNodeForConversation(conversation, nodeIndex, node) : node;
+    })
+  ];
 }
 
 function workflowJobForRun(run: PracticeRun | null): WorkflowJob | null {
@@ -400,7 +367,7 @@ function workflowJobForRun(run: PracticeRun | null): WorkflowJob | null {
       primaryConversationCount: run.workflowAudit.primaryConversationCount,
       balanceConversationCount: run.workflowAudit.balanceConversationCount,
       requestedTotalConversationCount: run.workflowAudit.requestedTotalConversationCount,
-      audioRequestedCount: run.workflowAudit.audioRequestedCount,
+      audioRequestedCount: audioNodes.length,
       audioGeneratedCount: audioNodes.filter((node) => node.status === 'done').length,
       audioErrors,
       nodes,
@@ -415,7 +382,9 @@ function workflowJobForRun(run: PracticeRun | null): WorkflowJob | null {
 
   const primaryConversationCount = Math.max(1, Math.floor(run.conversations.length * 2 / 3));
   const balanceConversationCount = Math.max(0, run.conversations.length - primaryConversationCount);
-  const audioConversations = run.conversations.slice(0, 2).filter((conversation) => conversation.audioFileName || conversation.error);
+  const audioConversations = runHasMissingAudio(run)
+    ? run.conversations
+    : run.conversations.slice(0, 2).filter((conversation) => conversation.audioFileName || conversation.error);
   const nodes: WorkflowAuditNode[] = [
     {
       id: 'generator',
@@ -439,11 +408,11 @@ function workflowJobForRun(run: PracticeRun | null): WorkflowJob | null {
       output: exchanges[1],
       error: exchanges[1].error
     },
-    ...audioConversations.map((conversation, index) => ({
+    ...audioConversations.map((conversation, index) => workflowAudioNodeForConversation(conversation, index, {
       id: `audio-${index + 1}`,
-      kind: 'audio' as const,
+      kind: 'audio',
       title: `Conversation ${index + 1}`,
-      status: conversation.audioFileName ? 'done' as const : 'error' as const,
+      status: conversationHasAudio(conversation) ? 'done' : conversation.error ? 'error' : 'pending',
       startedAt: conversation.updatedAt,
       completedAt: conversation.updatedAt,
       input: {
@@ -460,7 +429,7 @@ function workflowJobForRun(run: PracticeRun | null): WorkflowJob | null {
 
   return {
     id: `run-${run.id}-workflow-audit`,
-    status: nodes.some((node) => node.status === 'error') ? 'failed' : 'complete',
+    status: nodes.some((node) => node.kind === 'audio' && node.status !== 'done') || nodes.some((node) => node.status === 'error') ? 'failed' : 'complete',
     setNumber: run.setNumber,
     primaryConversationCount,
     balanceConversationCount,
@@ -869,13 +838,98 @@ function workflowAudioUrl(node?: WorkflowAuditNode): string | undefined {
   return findStringPropertyDeep(node?.output, ['audioUrl']);
 }
 
-function workflowAudioNeedsResume(nodes: WorkflowAuditNode[]): boolean {
-  return nodes.some((node) => node.kind === 'audio' && node.status !== 'done');
+function conversationHasAudio(conversation: PracticeConversation): boolean {
+  return Boolean(conversation.audioFileName);
+}
+
+function runAudioReadyCount(run: PracticeRun): number {
+  return run.conversations.filter(conversationHasAudio).length;
+}
+
+function runHasMissingAudio(run: PracticeRun): boolean {
+  return run.conversations.some((conversation) => !conversationHasAudio(conversation));
+}
+
+function workflowAudioNodeForConversation(
+  conversation: PracticeConversation,
+  index: number,
+  existingNode?: WorkflowAuditNode
+): WorkflowAuditNode {
+  const input = objectValue(existingNode?.input);
+  const conversationAudioOutput = conversation.audioFileName && conversation.audioUrl
+    ? {
+        fileName: conversation.audioFileName,
+        audioUrl: conversation.audioUrl
+      }
+    : undefined;
+  const baseNode: WorkflowAuditNode = {
+    ...(existingNode ?? {}),
+    id: `audio-${index + 1}`,
+    kind: 'audio',
+    title: `Conversation ${index + 1}`,
+    status: existingNode?.status ?? 'pending',
+    input: {
+      ...(input ?? {}),
+      conversationId: conversation.id,
+      conversationTitle: conversation.title
+    }
+  };
+
+  if (conversationAudioOutput) {
+    return {
+      ...baseNode,
+      status: 'done',
+      output: {
+        ...(objectValue(existingNode?.output) ?? {}),
+        ...conversationAudioOutput
+      },
+      error: undefined
+    };
+  }
+  if (existingNode?.status === 'done' && workflowAudioUrl(existingNode)) {
+    return {
+      ...baseNode,
+      status: 'done',
+      output: existingNode.output,
+      error: undefined
+    };
+  }
+  if (existingNode?.status === 'processing' || (!existingNode && conversation.status === 'audio_generating')) {
+    return {
+      ...baseNode,
+      status: 'processing',
+      output: undefined,
+      error: undefined
+    };
+  }
+  if (conversation.status === 'audio_failed' || conversation.error || existingNode?.status === 'error') {
+    return {
+      ...baseNode,
+      status: 'error',
+      output: undefined,
+      error: conversation.error ?? existingNode?.error ?? 'Audio generation failed.'
+    };
+  }
+  if (existingNode?.status === 'skipped') {
+    return {
+      ...baseNode,
+      status: 'skipped',
+      output: undefined,
+      error: existingNode.error
+    };
+  }
+
+  return {
+    ...baseNode,
+    status: 'pending',
+    output: undefined,
+    error: undefined
+  };
 }
 
 function optimisticAudioRun(run: PracticeRun, mode: 'replace' | 'resume'): PracticeRun {
   const targetIds = new Set((mode === 'resume'
-    ? run.conversations.filter((conversation) => conversation.status !== 'audio_ready' || !conversation.audioFileName)
+    ? run.conversations.filter((conversation) => !conversation.audioFileName)
     : run.conversations).map((conversation) => conversation.id));
   const audioTargets = run.conversations.filter((conversation) => targetIds.has(conversation.id));
   const activeTargetIds = new Set(audioTargets.slice(0, 3).map((conversation) => conversation.id));
@@ -901,7 +955,7 @@ function optimisticAudioRun(run: PracticeRun, mode: 'replace' | 'resume'): Pract
     conversations: run.conversations.map((conversation) => targetIds.has(conversation.id)
       ? {
         ...conversation,
-        status: 'audio_generating',
+        status: activeTargetIds.has(conversation.id) ? 'audio_generating' : 'draft',
         audioFileName: undefined,
         audioUrl: undefined,
         error: undefined
@@ -1491,6 +1545,35 @@ function AuditLog({ exchange, fallbackLabel }: { exchange?: LlmExchange; fallbac
         </div>
       ) : null}
     </details>
+  );
+}
+
+function AuditAudioActionPanel({
+  run,
+  disabled,
+  onTryMaxAudio
+}: {
+  run: PracticeRun;
+  disabled?: boolean;
+  onTryMaxAudio: () => void;
+}) {
+  const doneCount = runAudioReadyCount(run);
+  const totalCount = run.conversations.length;
+
+  return (
+    <section className="auditAudioAction" aria-label="Audio generation">
+      <span className="workflowNodeIcon">
+        {disabled ? <RefreshCw className="spin" size={18} /> : <Headphones size={18} />}
+      </span>
+      <div>
+        <strong>Generated Audio</strong>
+        <small>{doneCount} of {totalCount} audio conversations done</small>
+      </div>
+      <button className="workflowAudioRefreshButton" disabled={disabled} onClick={onTryMaxAudio} type="button">
+        {disabled ? <RefreshCw className="spin" size={14} /> : <RefreshCw size={14} />}
+        Generate missing
+      </button>
+    </section>
   );
 }
 
@@ -2305,11 +2388,10 @@ function StudioApp() {
     if (!runId) return;
     const sourceRun = visibleWorkflowJob?.run?.id === runId ? visibleWorkflowJob.run : currentRun?.id === runId ? currentRun : runs.find((run) => run.id === runId) ?? null;
     if (!sourceRun) return;
-    const sourceNodes = visibleWorkflowJob?.run?.id === runId ? visibleWorkflowJob.nodes : workflowJobForRun(sourceRun)?.nodes ?? [];
-    const mode: 'replace' | 'resume' = workflowAudioNeedsResume(sourceNodes) ? 'resume' : 'replace';
+    const mode = runHasMissingAudio(sourceRun) ? 'resume' : 'replace';
     const confirmation = mode === 'replace'
       ? 'Regenerate all audio for this run? Existing audio files will be replaced.'
-      : 'Generate audio for unfinished conversations? Existing successful audio will be kept.';
+      : 'Generate audio for missing conversations? Existing audio will be kept.';
     if (!window.confirm(confirmation)) {
       return;
     }
@@ -2345,7 +2427,7 @@ function StudioApp() {
     try {
       const payload = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(runId)}/audio`, {
         method: 'POST',
-        body: JSON.stringify({ mode })
+        body: JSON.stringify({ mode } satisfies RunAudioGenerateRequest)
       }).finally(() => {
         audioRequestSettled = true;
       });
@@ -2976,6 +3058,13 @@ function StudioApp() {
             {currentExchanges.map((exchange) => (
               <AuditLog exchange={exchange} key={exchange.id} />
             ))}
+            {currentRun && runHasMissingAudio(currentRun) ? (
+              <AuditAudioActionPanel
+                run={currentRun}
+                disabled={busy === `audio-all:${currentRun.id}`}
+                onTryMaxAudio={() => regenerateAllAudio(currentRun.id)}
+              />
+            ) : null}
           </>
         ) : null}
 

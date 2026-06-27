@@ -729,6 +729,30 @@ textarea:focus {
   width: fit-content;
 }
 
+.auditAudioAction {
+  min-height: 64px;
+  border: 1px solid var(--studio-border-muted);
+  border-radius: 8px;
+  background: var(--studio-surface-raised);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.auditAudioAction strong,
+.auditAudioAction small {
+  display: block;
+}
+
+.auditAudioAction small {
+  margin-top: 3px;
+  color: var(--studio-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .auditPending strong {
   font-size: 14px;
 }
@@ -2082,6 +2106,15 @@ audio {
     flex-direction: column;
     gap: 4px;
     padding: 10px 14px;
+  }
+
+  .auditAudioAction {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .auditAudioAction .workflowAudioRefreshButton {
+    grid-column: 1 / -1;
+    justify-content: center;
   }
 
   .agentHero h3 {

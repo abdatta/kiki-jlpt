@@ -184,6 +184,10 @@ export interface GenerateRequest {
   textModelId?: string;
 }
 
+export interface RunAudioGenerateRequest {
+  mode?: 'replace' | 'resume';
+}
+
 export interface LibraryComplementGenerateRequest {
   textModelId?: string;
 }
