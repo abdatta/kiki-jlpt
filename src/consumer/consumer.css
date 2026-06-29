@@ -744,7 +744,7 @@
 }
 
 .modalCloseButton,
-.newWordsControls button {
+.hiddenWordsControls button {
   width: 38px;
   min-height: 38px;
   border: 1px solid var(--border);
@@ -819,7 +819,7 @@
 }
 
 .wordStatSection header > span,
-.newWordsControls > span {
+.hiddenWordsControls > span {
   color: var(--muted);
   font-size: 13px;
   font-weight: 900;
@@ -872,13 +872,13 @@
   background: var(--surface);
 }
 
-.newWordsControls {
+.hiddenWordsControls {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
 
-.newWordsControls button.active {
+.hiddenWordsControls button.active {
   background: var(--accent-soft);
   color: var(--accent-text);
 }

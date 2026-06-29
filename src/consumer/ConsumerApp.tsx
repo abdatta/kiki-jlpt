@@ -504,7 +504,7 @@ function VocabStatsModal({
         <section className="wordStatSection">
           <header>
             <h3>New Words</h3>
-            <div className="newWordsControls">
+            <div className="hiddenWordsControls">
               <span>{analysis.newWords.length}</span>
               <button
                 aria-label={showNewWords ? 'Hide new words' : 'Show new words'}
@@ -769,19 +769,31 @@ function ConversationVocabularyModal({
   stats: StatsMap;
   onClose: () => void;
 }) {
+  const [showMasteredWords, setShowMasteredWords] = useState(false);
   const [selectedWord, setSelectedWord] = useState<VocabWordStat | VocabCard | null>(null);
-  const cardsByLevel = new Map<number, VocabCard[]>();
+  const unmasteredCardsByLevel = new Map<number, VocabCard[]>();
+  const masteredCardsByLevel = new Map<number, VocabCard[]>();
 
   for (const term of terms) {
     for (const card of term.variants) {
-      if (getBucket(getStats(stats, card.id)) === 'strong') continue;
+      const cardsByLevel = getBucket(getStats(stats, card.id)) === 'strong'
+        ? masteredCardsByLevel
+        : unmasteredCardsByLevel;
       cardsByLevel.set(card.level, [...(cardsByLevel.get(card.level) ?? []), card]);
     }
   }
 
-  const levelGroups = [...cardsByLevel.entries()]
+  const unmasteredLevelGroups = [...unmasteredCardsByLevel.entries()]
     .sort(([a], [b]) => a - b)
     .map(([setNumber, cards]) => [setNumber, sortUnmasteredVocabularyCards(cards, stats)] as const);
+  const masteredLevelGroups = [...masteredCardsByLevel.entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([setNumber, cards]) => [
+      setNumber,
+      [...cards].sort((a, b) => a.withinSetNumber - b.withinSetNumber || a.id.localeCompare(b.id))
+    ] as const);
+  const unmasteredTermCount = terms.filter((term) => !term.mastered).length;
+  const masteredCardCount = [...masteredCardsByLevel.values()].reduce((count, cards) => count + cards.length, 0);
 
   return (
     <div className="statsModal" role="dialog" aria-modal="true" aria-labelledby="conversation-vocabulary-title">
@@ -790,17 +802,17 @@ function ConversationVocabularyModal({
         <header className="statsModalHeader">
           <div>
             <p>{conversation.title}</p>
-            <h2 id="conversation-vocabulary-title">{unmasteredWordLabel(terms.length)}</h2>
+            <h2 id="conversation-vocabulary-title">{unmasteredWordLabel(unmasteredTermCount)}</h2>
           </div>
           <button className="modalCloseButton" aria-label="Close conversation vocabulary" onClick={onClose} type="button">
             <X size={18} />
           </button>
         </header>
 
-        {levelGroups.length === 0 ? (
+        {unmasteredLevelGroups.length === 0 ? (
           <p className="emptyStatText conversationVocabularyEmpty">Every tracked vocabulary word in this conversation is strong.</p>
         ) : (
-          levelGroups.map(([setNumber, cards]) => (
+          unmasteredLevelGroups.map(([setNumber, cards]) => (
             <WordStatSection title={`Set ${setNumber}`} count={cards.length} key={setNumber}>
               <div className="wordStatList">
                 {cards.map((card) => (
@@ -816,6 +828,46 @@ function ConversationVocabularyModal({
             </WordStatSection>
           ))
         )}
+
+        <section className="wordStatSection">
+          <header>
+            <h3>Mastered Words</h3>
+            <div className="hiddenWordsControls">
+              <span>{masteredCardCount}</span>
+              <button
+                aria-label={showMasteredWords ? 'Hide mastered words' : 'Show mastered words'}
+                aria-pressed={showMasteredWords}
+                className={showMasteredWords ? 'active' : ''}
+                onClick={() => setShowMasteredWords((value) => !value)}
+                type="button"
+              >
+                <Eye size={16} />
+              </button>
+            </div>
+          </header>
+          {showMasteredWords ? (
+            masteredLevelGroups.length === 0 ? (
+              <p className="emptyStatText">No mastered words yet.</p>
+            ) : (
+              masteredLevelGroups.map(([setNumber, cards]) => (
+                <WordStatSection title={`Set ${setNumber}`} count={cards.length} key={setNumber}>
+                  <div className="wordStatList">
+                    {cards.map((card) => (
+                      <WordTile
+                        card={card}
+                        key={card.id}
+                        label="Strong"
+                        onSelect={() => setSelectedWord(wordDetailSelection(card, stats))}
+                      />
+                    ))}
+                  </div>
+                </WordStatSection>
+              ))
+            )
+          ) : (
+            <p className="emptyStatText">Hidden by default.</p>
+          )}
+        </section>
 
         {selectedWord ? <WordDetailModal selected={selectedWord} onClose={() => setSelectedWord(null)} /> : null}
       </section>
@@ -1129,7 +1181,7 @@ function ConversationPractice({
       {isVocabularyModalOpen ? (
         <ConversationVocabularyModal
           conversation={conversation}
-          terms={unmasteredTerms}
+          terms={vocabularyTerms}
           stats={vocabStats}
           onClose={() => setIsVocabularyModalOpen(false)}
         />
