@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { PROMPT_PATH } from './paths.ts';
 import { formatVocabForPrompt } from './vocab.ts';
 import type { LibraryBalancePlan, LibraryBalanceWord, VocabItem } from '../shared/types.ts';
+import { formatLanguagePolicyForPrompt } from './languagePolicy.ts';
 
 export async function buildGenerationPrompt(setNumber: number, conversationCount: number, allowedVocabulary: VocabItem[]): Promise<string> {
   const template = await readFile(PROMPT_PATH, 'utf8');
@@ -10,7 +11,8 @@ export async function buildGenerationPrompt(setNumber: number, conversationCount
     .replaceAll('{{setNumber}}', String(setNumber))
     .replaceAll('{{conversationCount}}', String(conversationCount))
     .replaceAll('{{allowedVocabularyCount}}', String(allowedVocabulary.length))
-    .replaceAll('{{allowedVocabularyTable}}', formatVocabForPrompt(allowedVocabulary));
+    .replaceAll('{{allowedVocabularyTable}}', formatVocabForPrompt(allowedVocabulary))
+    .replaceAll('{{languagePolicy}}', formatLanguagePolicyForPrompt());
 }
 
 function formatBalanceWords(words: LibraryBalanceWord[]): string {
@@ -56,7 +58,7 @@ The current counts are conversation-level counts: a target word counts once for 
 Use repeated words naturally for listening practice, but do not rely on repeating a word many times in the same conversation to solve the balancing goal.
 
 Required zero-count words:
-Every word in this list must appear at least once somewhere in the returned batch, unless the list says None.
+Treat every word in this list as a strong coverage priority, unless the list says None. Cover as many as possible in meaningful contexts, but do not force an awkward use merely to clear the list.
 ${formatBalanceWords(balance.requiredZeroWords)}
 
 Other priority underused words:
@@ -67,34 +69,19 @@ Already overrepresented words:
 Avoid making these words topic anchors. They may appear only when they are necessary for natural, beginner-friendly Japanese.
 ${formatBalanceWords(balance.overrepresentedWords)}
 
-Allowed grammar/function whitelist:
-
-Particles:
-は, が, を, に, で, へ, と, も, の, か, ね, よ, から, まで, より, だけ
-
-Polite forms:
-です, でした, ではありません, じゃありません, ます, ません, ました, ませんでした
-
-Basic grammar:
-て-form, ください, ましょう, たいです, から, そして, でも, もう, まだ
-
-Question words:
-Question words are allowed only if they are in the allowed vocabulary table.
-
-Conjugations:
-Conjugations of learned verbs/adjectives are allowed and do not count as new words.
+${formatLanguagePolicyForPrompt()}
 
 Important rules:
-1. Every required zero-count word must appear in the overall returned batch so no tracked target word remains at zero after combining this batch with the library.
-2. Use the other priority underused words as often as natural, favoring words with the largest needed count.
-3. Keep the batch small and efficient: do not add filler conversations that do not improve coverage.
-4. Do not use Japanese content words outside the allowed vocabulary table.
-5. Common Japanese personal names are allowed and do not count as vocabulary.
-6. Do not introduce new words outside the vocabulary table unless necessary to keep a sentence natural.
-7. Keep the Japanese natural but beginner-friendly.
-8. Avoid advanced grammar.
-9. Speaker 1 is always female. If she is named or referred to by name, use a common Japanese female name.
-10. Speaker 2 is always male. If he is named or referred to by name, use a common Japanese male name.
+1. Prioritize zero-count and underused current-set words, but omit or redistribute a priority word if using it would make the dialogue unnatural or incoherent.
+2. Make selected priority words central and meaningful to their scenes rather than isolated mentions.
+3. Use the other priority underused words as often as natural, favoring words with the largest needed count.
+4. Keep the batch small and efficient: do not add filler conversations that do not improve useful coverage.
+5. Vary scenes and vocabulary combinations, and repeat focal words only where natural.
+6. Do not use Japanese content words outside the allowed vocabulary table.
+7. Do not introduce new words outside the vocabulary table unless necessary to keep a sentence natural.
+8. Keep the Japanese natural but beginner-friendly and avoid advanced grammar.
+9. Speaker 1 is always female. If she is named, use only an approved female name from the language policy.
+10. Speaker 2 is always male. If he is named, use only an approved male name from the language policy.
 
 Delivery tag rules:
 1. Every spoken line must include delivery tags.
@@ -152,8 +139,8 @@ Return only valid JSON with this exact top-level shape:
 }
 
 Final self-check before answering:
-1. Did every required zero-count word appear at least once in the Japanese dialogue?
-2. Did you prioritize low-count words and avoid overrepresented words where possible?
+1. Did you cover as many zero-count words as natural dialogue permits, without forcing awkward lines?
+2. Did you prioritize low-count words, make them meaningful to their scenes, and avoid overrepresented words where possible?
 3. Did every spoken line include delivery tags?
 4. Did every delivery tag list end with slow?
 5. Does every conversation have 6-10 spoken lines?

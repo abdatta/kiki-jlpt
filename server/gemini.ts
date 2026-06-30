@@ -145,15 +145,18 @@ function extractGeminiStats(response: unknown, model: string): unknown {
   });
 }
 
-export async function generateConversationJson(prompt: string): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
+export async function generateGeminiStructuredJson(
+  prompt: string,
+  model = process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash',
+  temperature = 0.2
+): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
   const ai = getAi();
-  const model = process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash';
 
   const response = await ai.models.generateContent({
     model,
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     config: {
-      temperature: 0.75,
+      temperature,
       responseMimeType: 'application/json'
     }
   } as never);
@@ -168,6 +171,10 @@ export async function generateConversationJson(prompt: string): Promise<{ parsed
     output: text,
     stats: extractGeminiStats(response, model)
   };
+}
+
+export async function generateConversationJson(prompt: string): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
+  return generateGeminiStructuredJson(prompt, process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash', 0.75);
 }
 
 function parseMimeType(mimeType: string): WavConversionOptions {

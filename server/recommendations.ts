@@ -2,6 +2,7 @@ import type { LibraryRecommendationCandidate, LibraryRecommendations, LibraryRec
 import { makeCuratedId, readCuratedSet } from './library.ts';
 import { listRuns } from './storage.ts';
 import { getAllowedVocabulary } from './vocab.ts';
+import { analyzeConversationsWithVocabulary } from './vocabAudit.ts';
 
 function uniqueWords(words: string[]): string[] {
   return [...new Set(words.map((word) => word.trim()).filter(Boolean))];
@@ -80,6 +81,9 @@ export async function recommendLibraryConversations(setNumber: number): Promise<
   const recommendations: LibraryRecommendationCandidate[] = [];
 
   for (const run of runs) {
+    const evidenceByConversationId = (
+      await analyzeConversationsWithVocabulary(setNumber, allowedVocabulary, run.conversations)
+    ).evidenceByConversationId;
     for (const conversation of run.conversations) {
       if (conversation.curatedId || curatedSourceIds.has(`${run.id}:${conversation.id}`)) continue;
       if (librarySet.conversations.some((curated) => curated.id === makeCuratedId(run.id, conversation.id))) continue;
@@ -107,6 +111,7 @@ export async function recommendLibraryConversations(setNumber: number): Promise<
         targetWordCount: words.length,
         uncoveredWordCount: words.filter((word) => word.libraryCount === 0).length,
         leastCoveredWords: words,
+        evidence: evidenceByConversationId[conversation.id],
         conversation
       });
     }

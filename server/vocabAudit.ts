@@ -1,8 +1,9 @@
 import path from 'node:path';
 import * as kuromojiModule from 'kuromoji';
 import type { IpadicFeatures, Tokenizer } from 'kuromoji';
-import type { PracticeConversation, VocabItem } from '../shared/types.ts';
+import type { ConversationCurationEvidence, ConversationCurationEvidenceMap, PracticeConversation, VocabItem } from '../shared/types.ts';
 import { ROOT_DIR } from './paths.ts';
+import { CURATION_EVIDENCE_VERSION, isAuditExemptForm } from './languagePolicy.ts';
 
 type JapaneseTokenizer = Tokenizer<IpadicFeatures>;
 
@@ -14,6 +15,12 @@ interface VocabPattern {
 interface MatchResult {
   usedWords: Set<string>;
   coveredTokenIndexes: Set<number>;
+  wordOccurrences: Map<string, number>;
+}
+
+export interface ConversationVocabularyAnalysis {
+  conversations: PracticeConversation[];
+  evidenceByConversationId: ConversationCurationEvidenceMap;
 }
 
 let tokenizerPromise: Promise<JapaneseTokenizer> | null = null;
@@ -109,6 +116,8 @@ function tokenMatchesForms(token: IpadicFeatures, allowedForms: string[]): boole
 function findVocabularyMatches(tokens: IpadicFeatures[], patterns: VocabPattern[]): MatchResult {
   const usedWords = new Set<string>();
   const coveredTokenIndexes = new Set<number>();
+  const wordOccurrences = new Map<string, number>();
+  const countedMatches = new Set<string>();
 
   for (const pattern of patterns) {
     const length = pattern.formsByToken.length;
@@ -117,41 +126,105 @@ function findVocabularyMatches(tokens: IpadicFeatures[], patterns: VocabPattern[
       if (!matches) continue;
 
       usedWords.add(pattern.item.japanese);
+      const matchKey = `${pattern.item.japanese}\u0000${start}\u0000${length}`;
+      if (!countedMatches.has(matchKey)) {
+        countedMatches.add(matchKey);
+        wordOccurrences.set(pattern.item.japanese, (wordOccurrences.get(pattern.item.japanese) ?? 0) + 1);
+      }
       for (let offset = 0; offset < length; offset += 1) {
         coveredTokenIndexes.add(start + offset);
       }
     }
   }
 
-  return { usedWords, coveredTokenIndexes };
+  return { usedWords, coveredTokenIndexes, wordOccurrences };
 }
 
 function buildAllowedFormSet(tokenizer: JapaneseTokenizer, allowedVocabulary: VocabItem[]): Set<string> {
   return new Set(allowedVocabulary.flatMap((item) => vocabCandidates(item).flatMap((candidate) => tokenizer.tokenize(candidate).flatMap(tokenForms))));
 }
 
+function uniqueVocabularyWords(vocabulary: VocabItem[]): string[] {
+  return uniqueSorted(vocabulary.map((item) => item.japanese));
+}
+
+function occurrenceRecord(counts: Map<string, number>): Record<string, number> {
+  return Object.fromEntries([...counts.entries()].sort(([a], [b]) => a.localeCompare(b, 'ja')));
+}
+
 function auditConversation(
   tokenizer: JapaneseTokenizer,
   patterns: VocabPattern[],
   allowedForms: Set<string>,
+  allowedVocabulary: VocabItem[],
+  setNumber: number,
   conversation: PracticeConversation
-): PracticeConversation {
+): { conversation: PracticeConversation; evidence: ConversationCurationEvidence } {
   const tokens = conversation.text.flatMap((line) => tokenizer.tokenize(line.japanese));
-  const { usedWords, coveredTokenIndexes } = findVocabularyMatches(tokens, patterns);
-  const outOfVocabulary = new Set<string>();
+  const { usedWords, coveredTokenIndexes, wordOccurrences } = findVocabularyMatches(tokens, patterns);
+  const outOfVocabularyOccurrences = new Map<string, number>();
 
   tokens.forEach((token, index) => {
     if (!isContentToken(token)) return;
     if (coveredTokenIndexes.has(index)) return;
     if (tokenForms(token).some((form) => allowedForms.has(form))) return;
-    outOfVocabulary.add(auditWordForToken(token));
+    if (isAuditExemptForm(tokenForms(token))) return;
+    const word = auditWordForToken(token);
+    outOfVocabularyOccurrences.set(word, (outOfVocabularyOccurrences.get(word) ?? 0) + 1);
   });
 
-  return {
+  const auditedConversation = {
     ...conversation,
     vocabularyUsed: uniqueSorted(usedWords),
-    outOfVocabularyAudit: uniqueSorted(outOfVocabulary),
+    outOfVocabularyAudit: uniqueSorted(outOfVocabularyOccurrences.keys()),
     simplerReplacementSuggestions: []
+  };
+
+  const currentSetWords = new Set(uniqueVocabularyWords(allowedVocabulary.filter((item) => item.set === setNumber)));
+  const allowedWords = uniqueVocabularyWords(allowedVocabulary);
+  const currentSetUniqueWords = uniqueSorted([...usedWords].filter((word) => currentSetWords.has(word)));
+  const allowedVocabUniqueWords = uniqueSorted([...usedWords].filter((word) => allowedWords.includes(word)));
+  const outOfVocabularyUniqueWords = uniqueSorted(outOfVocabularyOccurrences.keys());
+
+  return {
+    conversation: auditedConversation,
+    evidence: {
+      evidenceVersion: CURATION_EVIDENCE_VERSION,
+      setNumber,
+      currentSetTotal: currentSetWords.size,
+      currentSetUniqueCount: currentSetUniqueWords.length,
+      currentSetUniqueWords,
+      allowedVocabTotal: allowedWords.length,
+      allowedVocabUniqueCount: allowedVocabUniqueWords.length,
+      allowedVocabUniqueWords,
+      vocabularyOccurrences: occurrenceRecord(wordOccurrences),
+      outOfVocabularyUniqueCount: outOfVocabularyUniqueWords.length,
+      outOfVocabularyUniqueWords,
+      outOfVocabularyOccurrenceCount: [...outOfVocabularyOccurrences.values()].reduce((total, count) => total + count, 0)
+    }
+  };
+}
+
+export async function analyzeConversationsWithVocabulary(
+  setNumber: number,
+  allowedVocabulary: VocabItem[],
+  conversations: PracticeConversation[]
+): Promise<ConversationVocabularyAnalysis> {
+  const tokenizer = await getTokenizer();
+  const patterns = buildPatterns(tokenizer, allowedVocabulary);
+  const allowedForms = buildAllowedFormSet(tokenizer, allowedVocabulary);
+  const results = conversations.map((conversation) => auditConversation(
+    tokenizer,
+    patterns,
+    allowedForms,
+    allowedVocabulary,
+    setNumber,
+    conversation
+  ));
+
+  return {
+    conversations: results.map((result) => result.conversation),
+    evidenceByConversationId: Object.fromEntries(results.map((result) => [result.conversation.id, result.evidence]))
   };
 }
 
@@ -159,8 +232,6 @@ export async function auditConversationsWithVocabulary(
   allowedVocabulary: VocabItem[],
   conversations: PracticeConversation[]
 ): Promise<PracticeConversation[]> {
-  const tokenizer = await getTokenizer();
-  const patterns = buildPatterns(tokenizer, allowedVocabulary);
-  const allowedForms = buildAllowedFormSet(tokenizer, allowedVocabulary);
-  return conversations.map((conversation) => auditConversation(tokenizer, patterns, allowedForms, conversation));
+  const setNumber = Math.max(0, ...allowedVocabulary.map((item) => item.set));
+  return (await analyzeConversationsWithVocabulary(setNumber, allowedVocabulary, conversations)).conversations;
 }

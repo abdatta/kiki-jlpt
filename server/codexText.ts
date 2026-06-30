@@ -49,7 +49,11 @@ function stripJsonFences(text: string): string {
   return withoutFence;
 }
 
-export async function generateCodexConversationJson(prompt: string, model: string): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
+export async function generateCodexStructuredJson(
+  prompt: string,
+  model: string,
+  instructions = 'Return only valid JSON matching the requested shape, with no Markdown fences or explanatory text.'
+): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
   const response = await codexFetch(CODEX_API_URL, {
     method: 'POST',
     headers: { Accept: 'text/event-stream' },
@@ -57,7 +61,7 @@ export async function generateCodexConversationJson(prompt: string, model: strin
       model,
       store: false,
       stream: true,
-      instructions: CODEX_TEXT_INSTRUCTIONS,
+      instructions,
       input: [
         {
           type: 'message',
@@ -87,6 +91,10 @@ export async function generateCodexConversationJson(prompt: string, model: strin
     output: content,
     stats: parsedStream.stats ?? { requestedModel: model }
   };
+}
+
+export async function generateCodexConversationJson(prompt: string, model: string): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
+  return generateCodexStructuredJson(prompt, model, CODEX_TEXT_INSTRUCTIONS);
 }
 
 function contentText(content?: CodexContent): string {

@@ -13,35 +13,19 @@ Allowed vocabulary count: {{allowedVocabularyCount}}
 Allowed vocabulary table:
 {{allowedVocabularyTable}}
 
-Allowed grammar/function whitelist:
-
-Particles:
-は, が, を, に, で, へ, と, も, の, か, ね, よ, から, まで, より, だけ
-
-Polite forms:
-です, でした, ではありません, じゃありません, ます, ません, ました, ませんでした
-
-Basic grammar:
-て-form, ください, ましょう, たいです, から, そして, でも, もう, まだ
-
-Question words:
-Question words are allowed only if they are in the allowed vocabulary table.
-
-Conjugations:
-Conjugations of learned verbs/adjectives are allowed and do not count as new words.
+{{languagePolicy}}
 
 Important rules:
-1. All the words in current Set {{setNumber}} must have been used in the overall set of generated conversations.
-2. Also use words from earlier sets when possible.
-3. Do not use Japanese content words outside the allowed vocabulary table.
-4. Common Japanese personal names are allowed and do not count as vocabulary.
-5. Do not introduce new words outside the vocabulary table unless necessary to keep a sentence natural.
-6. Keep the Japanese natural but beginner-friendly.
-7. Avoid advanced grammar.
-8. Reuse vocabulary naturally across conversations for repeated listening exposure.
-9.  If the requested number of conversations is too small to cover all allowed words, maximize useful variety instead of forcing unnatural lines.
-10. Speaker 1 is always female. If she is named or referred to by name, use a common Japanese female name.
-11. Speaker 2 is always male. If he is named or referred to by name, use a common Japanese male name.
+1. Vocabulary from current Set {{setNumber}} is the primary learning focus. Make current-set words meaningful to each scene rather than isolated mentions.
+2. Aim to cover the current set across the batch, but never force a word into an unnatural line. If the requested batch is too small, prefer a smaller amount of strong, useful coverage.
+3. Use earlier-set vocabulary as natural supporting language, not as a substitute for meaningful current-set exposure.
+4. Give focal current-set words useful context and repeat them only where the repetition sounds natural.
+5. Vary situations and vocabulary combinations across conversations so the batch is not repetitive.
+6. Do not use Japanese content words outside the allowed vocabulary table.
+7. Do not introduce new words outside the vocabulary table unless necessary to keep a sentence natural.
+8. Keep the Japanese natural but beginner-friendly and avoid advanced grammar.
+9. Speaker 1 is always female. If she is named, use only an approved female name from the language policy.
+10. Speaker 2 is always male. If he is named, use only an approved male name from the language policy.
 
 
 Delivery tag rules:
@@ -106,3 +90,5 @@ Final self-check before answering:
 4. Does every conversation have 4-6 listening questions and matching answers?
 5. Are Speaker 1 names/references female and Speaker 2 names/references male?
 6. Are the conversations natural and suitable for beginner listening practice?
+7. Are current-set words meaningful to the scenes rather than inserted only for coverage?
+8. Did the batch vary situations and avoid awkward word stuffing?

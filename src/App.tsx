@@ -24,6 +24,10 @@ import {
 } from 'lucide-react';
 import type {
   ApiError,
+  AiCurationRecommendation,
+  AiCurationReview,
+  AiCurationReviewSummary,
+  ConversationCurationEvidenceMap,
   CuratedConversation,
   CuratedSet,
   LibraryBalancePlan,
@@ -42,18 +46,22 @@ import type {
   WorkflowStatusResponse
 } from '../shared/types.ts';
 import { BrandLogo } from './components/BrandLogo.tsx';
+import { AddAllProgressModal, type AddAllProgress, type AddAllProgressItem } from './components/AddAllProgressModal.tsx';
+import { AiRecommendationReason, CurationEvidencePanel } from './components/CurationEvidence.tsx';
 import { ConsumerApp } from './consumer/ConsumerApp.tsx';
 
 type ConversationAction = 'audio' | 'delete-audio';
-type BoardMode = 'runs' | 'library' | 'recommendations';
+type BoardMode = 'runs' | 'library' | 'recommendations' | 'ai-curation';
 type GenerateRunMode = 'workflow-max-audio' | 'workflow-audio' | 'workflow-text' | 'text-only';
 type StudioRoute =
   | { boardMode: 'runs'; runId?: string; auditOpen: boolean }
   | { boardMode: 'recommendations'; setNumber: number }
+  | { boardMode: 'ai-curation'; setNumber: number }
   | { boardMode: 'library'; setNumber: number };
 type BusyAction =
   | 'generate'
   | 'generate-complement'
+  | 'ai-curation'
   | 'workflow'
   | `audio-all:${string}`
   | `${ConversationAction}:${string}`
@@ -159,6 +167,10 @@ function studioQueueRoute(setNumber: number): string {
   return `#/studio/queue/set/${encodeURIComponent(setNumber)}`;
 }
 
+function studioAiCurationRoute(setNumber: number): string {
+  return `#/studio/ai-curation/set/${encodeURIComponent(setNumber)}`;
+}
+
 function studioLibraryRoute(setNumber: number): string {
   return `#/studio/library/set/${encodeURIComponent(setNumber)}`;
 }
@@ -186,6 +198,11 @@ function parseStudioRoute(hash = typeof window === 'undefined' ? '' : window.loc
   if (parts[1] === 'queue' && parts[2] === 'set' && parts.length === 4) {
     const setNumber = parsePositiveInt(parts[3]);
     return setNumber ? { boardMode: 'recommendations', setNumber } : { boardMode: 'runs', auditOpen: false };
+  }
+
+  if (parts[1] === 'ai-curation' && parts[2] === 'set' && parts.length === 4) {
+    const setNumber = parsePositiveInt(parts[3]);
+    return setNumber ? { boardMode: 'ai-curation', setNumber } : { boardMode: 'runs', auditOpen: false };
   }
 
   if (parts[1] === 'library' && parts[2] === 'set' && parts.length === 4) {
@@ -502,6 +519,28 @@ function formatRunHistoryTitle(value: string): string {
   }
 
   return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${time}`;
+}
+
+function aiCurationReviewSummary(review: AiCurationReview): AiCurationReviewSummary {
+  return {
+    id: review.id,
+    setNumber: review.setNumber,
+    targetConversationCount: review.targetConversationCount,
+    status: review.status,
+    stale: review.stale,
+    textModel: review.textModel,
+    candidateCount: review.snapshot.candidateCount,
+    recommendationCount: review.result?.recommendations.length ?? 0,
+    error: review.error,
+    createdAt: review.createdAt,
+    updatedAt: review.updatedAt
+  };
+}
+
+function aiCurationHistoryLabel(review: AiCurationReviewSummary, index: number): string {
+  const prefix = index === 0 ? 'Latest · ' : '';
+  const state = review.stale ? 'stale' : review.status;
+  return `${prefix}${formatRunHistoryTitle(review.createdAt)} · ${review.textModel.label} · ${review.targetConversationCount} picks · ${state}`;
 }
 
 function coverageCountClass(count: number): string {
@@ -1767,6 +1806,14 @@ function StudioApp() {
   const [librarySets, setLibrarySets] = useState<CuratedSet[]>([]);
   const [recommendations, setRecommendations] = useState<LibraryRecommendations | null>(null);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [aiCurationReview, setAiCurationReview] = useState<AiCurationReview | null>(null);
+  const [aiCurationHistory, setAiCurationHistory] = useState<AiCurationReviewSummary[]>([]);
+  const [aiCurationLoading, setAiCurationLoading] = useState(false);
+  const [aiCurationContextLoading, setAiCurationContextLoading] = useState(false);
+  const [aiCurationHistoryLoading, setAiCurationHistoryLoading] = useState(false);
+  const [aiCurationTargetCount, setAiCurationTargetCount] = useState('10');
+  const [currentRunEvidence, setCurrentRunEvidence] = useState<ConversationCurationEvidenceMap>({});
+  const [currentLibraryEvidence, setCurrentLibraryEvidence] = useState<ConversationCurationEvidenceMap>({});
   const [libraryBalance, setLibraryBalance] = useState<LibraryBalancePlan | null>(null);
   const [libraryBalanceLoading, setLibraryBalanceLoading] = useState(false);
   const [practicePublishStatus, setPracticePublishStatus] = useState<PracticeLibraryPublishStatus | null>(null);
@@ -1781,6 +1828,7 @@ function StudioApp() {
   const [edit, setEdit] = useState<EditState | null>(null);
   const [generationSession, setGenerationSession] = useState<GenerationSession | null>(null);
   const [generateModal, setGenerateModal] = useState<GenerateModalState | null>(null);
+  const [addAllProgress, setAddAllProgress] = useState<AddAllProgress | null>(null);
   const [workflowJob, setWorkflowJob] = useState<WorkflowJob | null>(null);
   const [selectedWorkflowNodeId, setSelectedWorkflowNodeId] = useState<string | undefined>();
   const [auditOpen, setAuditOpen] = useState(studioRoute.boardMode === 'runs' && studioRoute.auditOpen);
@@ -1802,10 +1850,15 @@ function StudioApp() {
   const filteredRuns = useMemo(() => runs.filter((run) => run.setNumber === setNumber), [runs, setNumber]);
   const currentCuratedLibrarySets = useMemo(() => currentLibrarySet && currentLibrarySet.conversations.length > 0 ? [currentLibrarySet] : [], [currentLibrarySet]);
   const currentRecommendations = recommendations?.setNumber === setNumber ? recommendations : null;
+  const currentAiCurationReview = aiCurationReview?.setNumber === setNumber ? aiCurationReview : null;
+  const aiCurationCandidateCount = currentRecommendations?.candidateCount ?? currentAiCurationReview?.snapshot.candidateCount ?? 0;
+  const latestAiCurationReviewId = aiCurationHistory[0]?.id;
+  const isHistoricalAiCurationReview = Boolean(currentAiCurationReview && latestAiCurationReviewId && currentAiCurationReview.id !== latestAiCurationReviewId);
   const leastCoveredWordSet = useMemo(() => new Set(currentRecommendations?.leastCoveredWords.map((word) => word.japanese) ?? []), [currentRecommendations]);
   const showRunContent = Boolean(boardMode === 'runs' && currentRun && currentRun.setNumber === setNumber && !generationSession && !workflowJob);
   const showLibraryContent = Boolean(boardMode === 'library' && !generationSession);
   const showRecommendationsContent = Boolean(boardMode === 'recommendations' && !generationSession);
+  const showAiCurationContent = Boolean(boardMode === 'ai-curation' && !generationSession);
   const currentExchanges = currentRun?.llmExchanges ?? [];
   const currentExchange = currentExchanges[0];
   const savedWorkflowJob = useMemo(() => workflowJobForRun(currentRun), [currentRun]);
@@ -1857,6 +1910,185 @@ function StudioApp() {
     } finally {
       setRecommendationsLoading(false);
     }
+  }
+
+  function applyAiCurationSettings(review: AiCurationReview) {
+    setTextModelId(review.textModel.id);
+    setAiCurationTargetCount(String(review.targetConversationCount ?? review.result?.recommendations.length ?? 1));
+  }
+
+  async function loadAiCurationHistory(targetSet = setNumber): Promise<AiCurationReview | null> {
+    const payload = await api<{ reviews: AiCurationReviewSummary[]; latestReview: AiCurationReview | null }>(
+      `/api/library/sets/${encodeURIComponent(targetSet)}/ai-curation/history`
+    );
+    setAiCurationHistory(payload.reviews);
+    setAiCurationReview(payload.latestReview);
+    if (payload.latestReview) applyAiCurationSettings(payload.latestReview);
+    return payload.latestReview;
+  }
+
+  async function openAiCurationHistoryReview(reviewId: string) {
+    if (currentAiCurationReview?.id === reviewId) return;
+    setAiCurationHistoryLoading(true);
+    setError(null);
+    try {
+      const payload = await api<{ review: AiCurationReview }>(
+        `/api/library/sets/${encodeURIComponent(setNumber)}/ai-curation/${encodeURIComponent(reviewId)}`
+      );
+      setAiCurationReview(payload.review);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setAiCurationHistoryLoading(false);
+    }
+  }
+
+  async function loadRunEvidence(runId: string) {
+    const payload = await api<{ run: PracticeRun; evidenceByConversationId: ConversationCurationEvidenceMap }>(`/api/runs/${encodeURIComponent(runId)}`);
+    if (currentRun?.id === runId) setCurrentRunEvidence(payload.evidenceByConversationId);
+  }
+
+  async function loadLibraryEvidence(targetSet = setNumber) {
+    const payload = await api<{ set: CuratedSet; evidenceByConversationId: ConversationCurationEvidenceMap }>(`/api/library/sets/${encodeURIComponent(targetSet)}`);
+    if (targetSet !== setNumber) return;
+    setCurrentLibraryEvidence(payload.evidenceByConversationId);
+    setLibrarySets((existing) => [payload.set, ...existing.filter((item) => item.setNumber !== targetSet)].sort((a, b) => a.setNumber - b.setNumber));
+  }
+
+  async function runAiCuration(retry = false) {
+    const targetConversationCount = Number(aiCurationTargetCount);
+    if (!Number.isInteger(targetConversationCount) || targetConversationCount < 1 || targetConversationCount > aiCurationCandidateCount) {
+      setError(`Portfolio size must be an integer from 1 through ${aiCurationCandidateCount}.`);
+      return;
+    }
+    setAiCurationLoading(true);
+    setError(null);
+    try {
+      const reviewPath = retry && currentAiCurationReview
+        ? `/api/library/sets/${encodeURIComponent(setNumber)}/ai-curation/${encodeURIComponent(currentAiCurationReview.id)}/retry`
+        : `/api/library/sets/${encodeURIComponent(setNumber)}/ai-curation`;
+      const payload = await api<{ review: AiCurationReview }>(reviewPath, {
+        method: 'POST',
+        body: JSON.stringify({ textModelId, targetConversationCount })
+      });
+      setAiCurationReview(payload.review);
+      setAiCurationHistory((previous) => [aiCurationReviewSummary(payload.review), ...previous.filter((review) => review.id !== payload.review.id)]);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+      await loadAiCurationHistory().catch(() => undefined);
+    } finally {
+      setAiCurationLoading(false);
+    }
+  }
+
+  function updateAddAllItem(candidateKey: string, patch: Partial<AddAllProgressItem>) {
+    setAddAllProgress((previous) => previous ? {
+      ...previous,
+      items: previous.items.map((item) => item.candidateKey === candidateKey ? { ...item, ...patch } : item)
+    } : previous);
+  }
+
+  async function addAllAiRecommendations() {
+    const review = currentAiCurationReview;
+    const recommendationsToAdd = review?.result?.recommendations ?? [];
+    const retryingFailedPortfolio = addAllProgress?.stage === 'failed';
+    if (!review || isHistoricalAiCurationReview || review.status !== 'complete' || (!retryingFailedPortfolio && review.stale) || recommendationsToAdd.length === 0) return;
+
+    setError(null);
+    setAddAllProgress({
+      stage: 'preparing',
+      items: recommendationsToAdd.map((recommendation) => ({
+        candidateKey: recommendation.candidateKey,
+        title: recommendation.conversation.title,
+        audioStatus: 'pending',
+        libraryStatus: 'pending'
+      }))
+    });
+
+    const currentRuns = new Map<string, PracticeRun>();
+    try {
+      for (const sourceRunId of new Set(recommendationsToAdd.map((recommendation) => recommendation.sourceRunId))) {
+        const payload = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(sourceRunId)}`);
+        currentRuns.set(sourceRunId, payload.run);
+      }
+
+      setAddAllProgress((previous) => previous ? { ...previous, stage: 'audio' } : previous);
+      let audioFailed = false;
+      for (const recommendation of recommendationsToAdd) {
+        const sourceRun = currentRuns.get(recommendation.sourceRunId);
+        const conversation = sourceRun?.conversations.find((item) => item.id === recommendation.sourceConversationId);
+        if (!sourceRun || !conversation) {
+          audioFailed = true;
+          updateAddAllItem(recommendation.candidateKey, { audioStatus: 'error', error: 'Source conversation no longer exists.' });
+          continue;
+        }
+        if (conversation.status === 'audio_ready' && conversation.audioFileName) {
+          updateAddAllItem(recommendation.candidateKey, { audioStatus: 'skipped' });
+          continue;
+        }
+
+        updateAddAllItem(recommendation.candidateKey, { audioStatus: 'processing', error: undefined });
+        try {
+          const payload = await api<{ run: PracticeRun }>(
+            `/api/runs/${encodeURIComponent(recommendation.sourceRunId)}/conversations/${encodeURIComponent(recommendation.sourceConversationId)}/audio`,
+            { method: 'POST' }
+          );
+          currentRuns.set(recommendation.sourceRunId, payload.run);
+          updateAddAllItem(recommendation.candidateKey, { audioStatus: 'done' });
+        } catch (caught) {
+          audioFailed = true;
+          updateAddAllItem(recommendation.candidateKey, {
+            audioStatus: 'error',
+            error: caught instanceof Error ? caught.message : String(caught)
+          });
+        }
+      }
+
+      if (audioFailed) {
+        setAddAllProgress((previous) => previous ? {
+          ...previous,
+          stage: 'failed',
+          error: 'Some audio could not be generated. Nothing new was added to Library; retry to continue.'
+        } : previous);
+        await loadInitial();
+        return;
+      }
+
+      setAddAllProgress((previous) => previous ? { ...previous, stage: 'library' } : previous);
+      let libraryFailed = false;
+      for (const recommendation of recommendationsToAdd) {
+        updateAddAllItem(recommendation.candidateKey, { libraryStatus: 'processing', error: undefined });
+        try {
+          const payload = await api<{ run: PracticeRun }>(
+            `/api/runs/${encodeURIComponent(recommendation.sourceRunId)}/conversations/${encodeURIComponent(recommendation.sourceConversationId)}/library`,
+            { method: 'POST' }
+          );
+          currentRuns.set(recommendation.sourceRunId, payload.run);
+          updateAddAllItem(recommendation.candidateKey, { libraryStatus: 'done' });
+        } catch (caught) {
+          libraryFailed = true;
+          updateAddAllItem(recommendation.candidateKey, {
+            libraryStatus: 'error',
+            error: caught instanceof Error ? caught.message : String(caught)
+          });
+        }
+      }
+
+      setAddAllProgress((previous) => previous ? {
+        ...previous,
+        stage: libraryFailed ? 'failed' : 'complete',
+        error: libraryFailed ? 'Some conversations could not be added. Retry to finish the portfolio.' : undefined
+      } : previous);
+      await Promise.all([loadInitial(), loadRecommendations(), loadAiCurationHistory(), loadPracticePublishStatus()]);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : String(caught);
+      setAddAllProgress((previous) => previous ? { ...previous, stage: 'failed', error: message } : previous);
+      setError(message);
+    }
+  }
+
+  function openAiCuration() {
+    navigateToStudioRoute(studioAiCurationRoute(setNumber));
   }
 
   async function loadLibraryBalance(targetSet = setNumber) {
@@ -1934,8 +2166,54 @@ function StudioApp() {
   useEffect(() => {
     if (boardMode === 'recommendations' && !generationSession) {
       loadRecommendations().catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
+      // Warm the AI curation snapshot in the background so opening AI Curate from the Queue
+      // is instant. Most operators reach AI Curate via the Queue, and the server caches the
+      // result, so this only does real work the first time or after candidates/library change.
+      void loadAiCurationHistory().catch(() => undefined);
     }
   }, [boardMode, generationSession, setNumber]);
+
+  useEffect(() => {
+    if (boardMode !== 'ai-curation' || generationSession) return;
+    // If a Queue-open prefetch already loaded this set's context, show it immediately and
+    // refresh quietly instead of blanking the page and blocking on a spinner.
+    const haveContextForSet = aiCurationReview?.setNumber === setNumber
+      || aiCurationHistory.some((review) => review.setNumber === setNumber);
+    if (!haveContextForSet) {
+      setAiCurationContextLoading(true);
+      setAiCurationHistory([]);
+      setAiCurationReview(null);
+    }
+    Promise.all([loadRecommendations(), loadAiCurationHistory()])
+      .then(() => setAiCurationContextLoading(false))
+      .catch((caught) => {
+        setAiCurationContextLoading(false);
+        setError(caught instanceof Error ? caught.message : String(caught));
+      });
+    // aiCurationReview/aiCurationHistory are intentionally read but not deps: this should run
+    // on navigation (boardMode/setNumber), not whenever a curation run updates those states.
+  }, [boardMode, generationSession, setNumber]);
+
+  useEffect(() => {
+    if (boardMode !== 'ai-curation' || !currentRecommendations) return;
+    setAiCurationTargetCount((previous) => {
+      const parsed = Number(previous);
+      if (Number.isInteger(parsed) && parsed >= 1 && parsed <= currentRecommendations.candidateCount) return previous;
+      return currentRecommendations.candidateCount > 0 ? String(Math.min(10, currentRecommendations.candidateCount)) : '';
+    });
+  }, [boardMode, currentRecommendations?.candidateCount, setNumber]);
+
+  useEffect(() => {
+    if (boardMode !== 'runs' || !currentRun) return;
+    setCurrentRunEvidence({});
+    loadRunEvidence(currentRun.id).catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
+  }, [boardMode, currentRun?.id]);
+
+  useEffect(() => {
+    if (boardMode !== 'library') return;
+    setCurrentLibraryEvidence({});
+    loadLibraryEvidence(setNumber).catch((caught) => setError(caught instanceof Error ? caught.message : String(caught)));
+  }, [boardMode, setNumber, currentLibrarySet?.updatedAt]);
 
   useEffect(() => {
     if (boardMode === 'library' && !generationSession) {
@@ -2040,7 +2318,9 @@ function StudioApp() {
 
   function handleSetNumberChange(nextSetNumber: number) {
     setSetNumber(nextSetNumber);
-    if (boardMode === 'recommendations') {
+    if (boardMode === 'ai-curation') {
+      navigateToStudioRoute(studioAiCurationRoute(nextSetNumber));
+    } else if (boardMode === 'recommendations') {
       navigateToStudioRoute(studioQueueRoute(nextSetNumber));
     } else if (boardMode === 'library') {
       navigateToStudioRoute(studioLibraryRoute(nextSetNumber));
@@ -2280,8 +2560,9 @@ function StudioApp() {
 
   async function refreshRun(runId = currentRun?.id) {
     if (!runId) return;
-    const payload = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(runId)}`);
+    const payload = await api<{ run: PracticeRun; evidenceByConversationId: ConversationCurationEvidenceMap }>(`/api/runs/${encodeURIComponent(runId)}`);
     setCurrentRun(payload.run);
+    setCurrentRunEvidence(payload.evidenceByConversationId);
     applyRunGeneratorDefaults(payload.run);
     setRuns((existing) => [payload.run, ...existing.filter((run) => run.id !== payload.run.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
   }
@@ -2321,8 +2602,9 @@ function StudioApp() {
     setBusy(marker);
     setError(null);
     try {
-      const payload = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(currentRun.id)}/reanalyze`, { method: 'POST' });
+      const payload = await api<{ run: PracticeRun; evidenceByConversationId: ConversationCurationEvidenceMap }>(`/api/runs/${encodeURIComponent(currentRun.id)}/reanalyze`, { method: 'POST' });
       setCurrentRun(payload.run);
+      setCurrentRunEvidence(payload.evidenceByConversationId);
       setRuns((existing) => [payload.run, ...existing.filter((run) => run.id !== payload.run.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -2336,8 +2618,9 @@ function StudioApp() {
     setBusy(marker);
     setError(null);
     try {
-      const payload = await api<{ set: CuratedSet }>(`/api/library/sets/${encodeURIComponent(setNumber)}/reanalyze`, { method: 'POST' });
+      const payload = await api<{ set: CuratedSet; evidenceByConversationId: ConversationCurationEvidenceMap }>(`/api/library/sets/${encodeURIComponent(setNumber)}/reanalyze`, { method: 'POST' });
       setLibrarySets((existing) => [payload.set, ...existing.filter((set) => set.setNumber !== payload.set.setNumber)].sort((a, b) => a.setNumber - b.setNumber));
+      setCurrentLibraryEvidence(payload.evidenceByConversationId);
       await loadLibraryBalance(payload.set.setNumber);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
@@ -2541,22 +2824,27 @@ function StudioApp() {
   function renderConversationCard(
     conversation: PracticeConversation | CuratedConversation,
     source: 'run' | 'library' | 'recommendation',
-    recommendation?: LibraryRecommendationCandidate
+    recommendation?: AiCurationRecommendation,
+    deterministicRecommendation?: LibraryRecommendationCandidate,
+    historicalReadonly = false
   ) {
-    const sourceRunId = recommendation?.sourceRunId ?? (source === 'run' ? currentRun?.id : undefined);
+    const sourceRunId = recommendation?.sourceRunId ?? deterministicRecommendation?.sourceRunId ?? (source === 'run' ? currentRun?.id : undefined);
     const itemKey = actionKey(sourceRunId, conversation.id);
     const isEditing = source === 'run' && edit?.conversationId === conversation.id;
     const isLibraryCard = source === 'library';
     const isRecommendationCard = source === 'recommendation';
-    const isReadonly = isLibraryCard || Boolean(conversation.curatedId);
+    const isReadonly = isLibraryCard || Boolean(conversation.curatedId) || historicalReadonly;
     const canAddToLibrary = source === 'run' && conversation.status === 'audio_ready' && Boolean(conversation.audioFileName);
     const canAddRecommendationToLibrary = isRecommendationCard && conversation.status === 'audio_ready' && Boolean(conversation.audioFileName);
     const isAudioBusy = busy === `audio:${itemKey}` || conversation.status === 'audio_generating';
     const isDeleteBusy = busy === `delete-audio:${itemKey}`;
     const currentAudioSrc = audioSrc(conversation);
     const hasAudio = Boolean(currentAudioSrc);
-    const recommendationWordIncreases = recommendation ? wordFrequency(conversation.vocabularyUsed) : new Map<string, number>();
-    const recommendationCoverageWords = recommendation?.leastCoveredWords.filter((word) => leastCoveredWordSet.has(word.japanese)) ?? [];
+    const evidence = recommendation?.evidence ?? deterministicRecommendation?.evidence
+      ?? (source === 'run' ? currentRunEvidence[conversation.id] : source === 'library' ? currentLibraryEvidence[conversation.id] : undefined);
+    const outOfVocabularyWords = evidence?.outOfVocabularyUniqueWords ?? conversation.outOfVocabularyAudit;
+    const deterministicCoverageWords = deterministicRecommendation?.leastCoveredWords.filter((word) => leastCoveredWordSet.has(word.japanese)) ?? [];
+    const deterministicWordIncreases = deterministicRecommendation ? wordFrequency(conversation.vocabularyUsed) : new Map<string, number>();
 
     return (
       <article className={isReadonly ? 'conversationCard readonly' : 'conversationCard'} key={itemKey}>
@@ -2565,25 +2853,35 @@ function StudioApp() {
             <span className="conversationNumber">Conversation {conversation.number}</span>
             <h3>{conversation.title}</h3>
           </div>
-          <span className={`statusPill ${conversation.status}`}>{isLibraryCard ? 'in library' : isRecommendationCard ? `score ${recommendation?.score ?? 0}` : statusLabel(conversation.status)}</span>
+          <span className={`statusPill ${conversation.status}`}>{isLibraryCard ? 'in library' : recommendation ? `AI pick ${recommendation.rank}` : deterministicRecommendation ? `score ${deterministicRecommendation.score}` : statusLabel(conversation.status)}</span>
         </div>
 
         {recommendation ? (
           <div className="recommendationMeta">
             <div>
-              <span>Uncovered</span>
-              <strong>{recommendation.uncoveredWordCount}</strong>
+              <span>New to Library</span>
+              <strong>{recommendation.contribution.uncoveredWords.length}</strong>
             </div>
             <div>
-              <span>Target Words</span>
-              <strong>{recommendation.targetWordCount}</strong>
+              <span>Set Words</span>
+              <strong>{recommendation.evidence.currentSetUniqueCount}</strong>
             </div>
             <div>
-              <span>Run</span>
-              <strong>{formatRunTime(recommendation.sourceRunCreatedAt)}</strong>
+              <span>OOV</span>
+              <strong>{recommendation.evidence.outOfVocabularyUniqueCount}</strong>
             </div>
           </div>
         ) : null}
+
+        {deterministicRecommendation ? (
+          <div className="recommendationMeta">
+            <div><span>Uncovered</span><strong>{deterministicRecommendation.uncoveredWordCount}</strong></div>
+            <div><span>Target Words</span><strong>{deterministicRecommendation.targetWordCount}</strong></div>
+            <div><span>Score</span><strong>{deterministicRecommendation.score}</strong></div>
+          </div>
+        ) : null}
+
+        {recommendation ? <AiRecommendationReason recommendation={recommendation} /> : null}
 
         {isEditing && edit ? (
           <div className="editForm">
@@ -2688,19 +2986,25 @@ function StudioApp() {
               </div>
             </div>
 
+            <CurationEvidencePanel evidence={evidence} />
+
             <div className="vocabChips warning">
-              {conversation.outOfVocabularyAudit.length === 0 ? <span>None</span> : null}
-              {conversation.outOfVocabularyAudit.map((word) => (
+              {outOfVocabularyWords.length === 0 ? <span>None</span> : null}
+              {outOfVocabularyWords.map((word) => (
                 <span key={word}>{word}</span>
               ))}
             </div>
 
             {recommendation ? (
               <div className="vocabChips coverage">
-                {recommendationCoverageWords.slice(0, 12).map((word) => (
+                {recommendation.contribution.uncoveredWords.map((word) => <span className="coverageCount0" key={`new-${word}`}>{word}<b>new</b></span>)}
+                {recommendation.contribution.underexposedWords.map((word) => <span className="coverageCount1" key={`low-${word}`}>{word}<b>low</b></span>)}
+              </div>
+            ) : deterministicRecommendation ? (
+              <div className="vocabChips coverage">
+                {deterministicCoverageWords.slice(0, 12).map((word) => (
                   <span className={coverageCountClass(word.libraryCount)} key={word.japanese}>
-                    {word.japanese}
-                    <b>{recommendationWordIncreases.get(word.japanese) ?? 1}</b>
+                    {word.japanese}<b>{deterministicWordIncreases.get(word.japanese) ?? 1}</b>
                   </span>
                 ))}
               </div>
@@ -2742,7 +3046,7 @@ function StudioApp() {
                     className="primaryButton compact"
                     onClick={() => runAction(conversation.id, 'audio', sourceRunId)}
                     disabled={isReadonly || isAudioBusy}
-                    title={isReadonly ? 'Remove it from Library before regenerating audio.' : 'Regenerate audio'}
+                    title={historicalReadonly ? 'Historical reviews are read-only.' : isReadonly ? 'Remove it from Library before regenerating audio.' : 'Regenerate audio'}
                   >
                     {isAudioBusy ? <RefreshCw className="spin" size={17} /> : <RefreshCw size={17} />}
                     {isAudioBusy ? 'Generating' : 'Regenerate'}
@@ -2766,8 +3070,8 @@ function StudioApp() {
                       <button
                         className="secondaryButton positive"
                         onClick={() => addToLibrary(conversation.id, sourceRunId)}
-                        disabled={!(canAddToLibrary || canAddRecommendationToLibrary) || busy === `library-add:${itemKey}`}
-                        title={canAddToLibrary || canAddRecommendationToLibrary ? 'Add to Library' : 'Generate audio before adding to Library'}
+                        disabled={historicalReadonly || !(canAddToLibrary || canAddRecommendationToLibrary) || busy === `library-add:${itemKey}`}
+                        title={historicalReadonly ? 'Historical reviews are read-only.' : canAddToLibrary || canAddRecommendationToLibrary ? 'Add to Library' : 'Generate audio before adding to Library'}
                       >
                         {busy === `library-add:${itemKey}` ? <RefreshCw className="spin" size={17} /> : <Plus size={17} />}
                         Library
@@ -2786,6 +3090,7 @@ function StudioApp() {
                     className="primaryButton compact"
                     onClick={() => runAction(conversation.id, 'audio', sourceRunId)}
                     disabled={isReadonly || isAudioBusy}
+                    title={historicalReadonly ? 'Historical reviews are read-only.' : 'Generate audio'}
                   >
                     {isAudioBusy ? <RefreshCw className="spin" size={17} /> : <Headphones size={17} />}
                     {isAudioBusy ? 'Generating' : 'Generate'}
@@ -2837,6 +3142,13 @@ function StudioApp() {
           onSubmit={submitGenerateModal}
         />
       ) : null}
+      {addAllProgress ? (
+        <AddAllProgressModal
+          progress={addAllProgress}
+          onClose={() => setAddAllProgress(null)}
+          onRetry={addAllAiRecommendations}
+        />
+      ) : null}
       <aside className="sideBar">
         <div className="brand">
           <BrandLogo className="brandLogo" title="Kiki JLPT" />
@@ -2878,7 +3190,7 @@ function StudioApp() {
             <ListMusic size={16} />
             Runs
           </a>
-          <a className={boardMode === 'recommendations' ? 'active' : ''} href={studioQueueRoute(setNumber)}>
+          <a className={boardMode === 'recommendations' || boardMode === 'ai-curation' ? 'active' : ''} href={studioQueueRoute(setNumber)}>
             <Target size={16} />
             Queue
           </a>
@@ -2943,7 +3255,7 @@ function StudioApp() {
       <section className="workspace">
         <header className="topBar">
           <div>
-            <p className="eyebrow">{workflowJob ? 'Live pipeline audit' : visibleWorkflowJob ? 'Saved pipeline audit' : generationSession ? 'Generate, inspect, review' : boardMode === 'library' ? 'Curated listening shelf' : boardMode === 'recommendations' ? 'Coverage recommendation queue' : 'Generate, edit, synthesize'}</p>
+            <p className="eyebrow">{workflowJob ? 'Live pipeline audit' : visibleWorkflowJob ? 'Saved pipeline audit' : generationSession ? 'Generate, inspect, review' : boardMode === 'library' ? 'Curated listening shelf' : boardMode === 'ai-curation' ? 'AI portfolio review' : boardMode === 'recommendations' ? 'Coverage recommendation queue' : 'Generate, edit, synthesize'}</p>
             <h2>
               {visibleWorkflowJob
                 ? `Set ${visibleWorkflowJob.setNumber} workflow`
@@ -2951,6 +3263,8 @@ function StudioApp() {
                 ? `Set ${generationSession.setNumber} generation`
                 : boardMode === 'library'
                   ? `Set ${setNumber} Library`
+                  : boardMode === 'ai-curation'
+                    ? `Set ${setNumber} AI Curation`
                   : boardMode === 'recommendations'
                     ? `Set ${setNumber} Recommendations`
                   : currentRun
@@ -3006,10 +3320,80 @@ function StudioApp() {
             <div className="runStats">
               <span>{currentRecommendations?.libraryConversationCount ?? currentLibrarySet?.conversations.length ?? 0} curated</span>
               <span>{currentRecommendations?.candidateCount ?? 0} candidates</span>
+              <button className="auditToggle" onClick={openAiCuration}>
+                <Sparkles size={15} />
+                AI Curate
+              </button>
               <button className="auditToggle" onClick={() => loadRecommendations()} disabled={recommendationsLoading}>
                 {recommendationsLoading ? <RefreshCw className="spin" size={15} /> : <RefreshCw size={15} />}
                 Refresh
               </button>
+            </div>
+          ) : boardMode === 'ai-curation' ? (
+            <div className="runStats">
+              <span>{currentAiCurationReview?.snapshot.library.conversationCount ?? currentLibrarySet?.conversations.length ?? 0} curated</span>
+              <span>{aiCurationCandidateCount} candidates</span>
+              {isHistoricalAiCurationReview ? <span className="historicalReviewBadge">Historical · read only</span> : null}
+              <select
+                aria-label="Curation history"
+                className="curationHistorySelect"
+                disabled={aiCurationContextLoading || aiCurationHistoryLoading || aiCurationHistory.length === 0}
+                onChange={(event) => void openAiCurationHistoryReview(event.target.value)}
+                value={currentAiCurationReview?.id ?? ''}
+              >
+                {aiCurationHistory.length === 0 ? <option value="">No saved reviews</option> : null}
+                {aiCurationHistory.map((review, index) => (
+                  <option key={review.id} value={review.id}>{aiCurationHistoryLabel(review, index)}</option>
+                ))}
+              </select>
+              {isHistoricalAiCurationReview && currentAiCurationReview ? (
+                <button className="auditToggle" onClick={() => applyAiCurationSettings(currentAiCurationReview)} type="button">
+                  Use Settings
+                </button>
+              ) : null}
+              <form
+                className="aiCurationControls"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void runAiCuration(!isHistoricalAiCurationReview && currentAiCurationReview?.status === 'failed');
+                }}
+              >
+                <select
+                  aria-label="AI curator model"
+                  className="curationModelSelect"
+                  disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading}
+                  onChange={(event) => setTextModelId(event.target.value)}
+                  required
+                  value={textModels.some((model) => model.id === textModelId) ? textModelId : 'gemini'}
+                >
+                  {textModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
+                </select>
+                <label className="curationCountField">
+                  <span>Exact size</span>
+                  <input
+                    aria-label="Exact portfolio size"
+                    disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading || aiCurationCandidateCount === 0}
+                    max={aiCurationCandidateCount || undefined}
+                    min={1}
+                    onChange={(event) => setAiCurationTargetCount(event.target.value)}
+                    required
+                    step={1}
+                    type="number"
+                    value={aiCurationTargetCount}
+                  />
+                </label>
+                <button className="auditToggle" type="submit" disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading || aiCurationCandidateCount === 0}>
+                  {aiCurationLoading || aiCurationContextLoading ? <RefreshCw className="spin" size={15} /> : <Sparkles size={15} />}
+                  {aiCurationContextLoading || aiCurationHistoryLoading ? 'Loading' : aiCurationLoading ? 'Curating' : isHistoricalAiCurationReview ? 'Start new' : currentAiCurationReview?.status === 'failed' ? 'Retry AI' : currentAiCurationReview ? 'Re-curate' : 'Start Curation'}
+                </button>
+              </form>
+              {currentAiCurationReview?.status === 'complete' && !currentAiCurationReview.stale && !isHistoricalAiCurationReview && currentAiCurationReview.result?.recommendations.length ? (
+                <button className="auditToggle positive" onClick={addAllAiRecommendations} disabled={Boolean(addAllProgress)}>
+                  <Plus size={15} />
+                  Add All
+                </button>
+              ) : null}
+              <a className="auditToggle" href={studioQueueRoute(setNumber)}>Back to Queue</a>
             </div>
           ) : currentRun ? (
             <div className="runStats">
@@ -3100,7 +3484,7 @@ function StudioApp() {
               <RefreshCw className="spin" size={42} />
               <h3>Loading recommendations</h3>
             </div>
-          ) : currentRecommendations && currentRecommendations.recommendations.length > 0 ? (
+          ) : currentRecommendations ? (
             <>
               <section className="recommendationSummary" aria-label="Recommendation summary">
                 <div>
@@ -3121,7 +3505,7 @@ function StudioApp() {
                 </div>
               </section>
               <div className="conversationGrid">
-                {currentRecommendations.recommendations.map((recommendation) => renderConversationCard(recommendation.conversation, 'recommendation', recommendation))}
+                {currentRecommendations.recommendations.map((recommendation) => renderConversationCard(recommendation.conversation, 'recommendation', undefined, recommendation))}
               </div>
             </>
           ) : (
@@ -3130,6 +3514,102 @@ function StudioApp() {
               <h3>No Recommendations for Set {setNumber}</h3>
               <p>Generate more Set {setNumber} runs or remove already curated conversations from Library.</p>
             </div>
+          )
+        ) : null}
+
+        {showAiCurationContent ? (
+          aiCurationContextLoading || aiCurationHistoryLoading || (recommendationsLoading && !currentRecommendations) ? (
+            <div className="blankState"><RefreshCw className="spin" size={42} /><h3>Loading curation context</h3></div>
+          ) : aiCurationLoading ? (
+            <div className="blankState">
+              <RefreshCw className="spin" size={42} />
+              <h3>AI is curating the portfolio</h3>
+              <p>Reviewing every eligible conversation against the current Set {setNumber} library.</p>
+            </div>
+          ) : !currentAiCurationReview ? (
+            <div className="blankState">
+              <Sparkles size={42} />
+              <h3>Ready for AI Curation</h3>
+              <p>Choose a model and an exact portfolio size above, then start curation across all {aiCurationCandidateCount} eligible conversations.</p>
+            </div>
+          ) : currentAiCurationReview.status === 'failed' ? (
+            <>
+              <div className="errorBanner">
+                <CircleAlert size={18} />
+                <span>{currentAiCurationReview.error ?? 'AI curation failed.'}</span>
+                {!isHistoricalAiCurationReview ? <button className="secondaryButton" onClick={() => runAiCuration(true)}>Retry</button> : null}
+              </div>
+              {currentAiCurationReview.llmExchanges.map((exchange) => <AuditLog exchange={exchange} key={exchange.id} />)}
+            </>
+          ) : currentAiCurationReview.stale && !isHistoricalAiCurationReview ? (
+            <div className="blankState staleCuration">
+              <CircleAlert size={42} />
+              <h3>Saved curation is out of date</h3>
+              <p>A candidate's learning content or the Set {setNumber} library changed. Re-run AI curation before using this portfolio.</p>
+              <button className="primaryButton compact" onClick={() => runAiCuration()}><Sparkles size={17} />Re-curate</button>
+            </div>
+          ) : (
+            <>
+              {isHistoricalAiCurationReview ? (
+                <div className="historicalReviewNotice">
+                  <Eye size={18} />
+                  <span>This is a read-only historical snapshot{currentAiCurationReview.stale ? ' and its candidate or library context is now stale' : ''}. Use Settings to prepare a new review with the same model and size.</span>
+                </div>
+              ) : null}
+              <section className="aiCurationSummary" aria-label="AI curation summary">
+                <div>
+                  <div className="aiCurationSummaryHeader">
+                    <span>Portfolio rationale</span>
+                    <span className="aiCurationProvenance" title="AI curation provenance">
+                      <Bot size={14} />
+                      {currentAiCurationReview.textModel.label} · exactly {currentAiCurationReview.targetConversationCount} of {currentAiCurationReview.snapshot.candidateCount} · evidence v{currentAiCurationReview.snapshot.evidenceVersion}
+                    </span>
+                  </div>
+                  <p>{currentAiCurationReview.result?.summary}</p>
+                </div>
+              </section>
+              <section className="recommendationSummary projectedCoverageSummary" aria-label="Projected portfolio coverage">
+                <div>
+                  <span>Current Least Covered</span>
+                  <div className="miniChips coverage">
+                    {currentRecommendations?.leastCoveredWords.slice(0, 24).map((word) => (
+                      <span className={coverageCountClass(word.libraryCount)} key={word.japanese}>{word.japanese}<b>{word.libraryCount}</b></span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <span>After Add All</span>
+                  <div className="miniChips coverage">
+                    {currentAiCurationReview.result?.projectedLeastCoveredWords?.slice(0, 24).map((word) => (
+                      <span className={coverageCountClass(word.projectedLibraryCount)} key={word.japanese}>{word.japanese}<b>{word.projectedLibraryCount}</b></span>
+                    ))}
+                  </div>
+                </div>
+              </section>
+              {currentAiCurationReview.llmExchanges.map((exchange) => <AuditLog exchange={exchange} key={exchange.id} />)}
+              {currentAiCurationReview.result?.recommendations.length ? (
+                <div className="conversationGrid">
+                  {currentAiCurationReview.result.recommendations.map((recommendation) => {
+                    const liveCandidate = currentRecommendations?.recommendations.find((candidate) => (
+                      candidate.sourceRunId === recommendation.sourceRunId
+                      && candidate.conversation.id === recommendation.sourceConversationId
+                    ));
+                    const sourceConversation = liveCandidate?.conversation
+                      ?? runs.find((run) => run.id === recommendation.sourceRunId)?.conversations.find((conversation) => conversation.id === recommendation.sourceConversationId)
+                      ?? { ...recommendation.conversation, status: 'draft' as const };
+                    return renderConversationCard(
+                      sourceConversation,
+                      'recommendation',
+                      recommendation,
+                      undefined,
+                      isHistoricalAiCurationReview
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="blankState"><Target size={42} /><h3>No conversations recommended</h3><p>The curator did not find a strong next addition.</p></div>
+              )}
+            </>
           )
         ) : null}
 

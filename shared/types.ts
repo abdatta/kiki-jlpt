@@ -78,6 +78,23 @@ export interface PracticeConversation {
   updatedAt: string;
 }
 
+export interface ConversationCurationEvidence {
+  evidenceVersion: string;
+  setNumber: number;
+  currentSetTotal: number;
+  currentSetUniqueCount: number;
+  currentSetUniqueWords: string[];
+  allowedVocabTotal: number;
+  allowedVocabUniqueCount: number;
+  allowedVocabUniqueWords: string[];
+  vocabularyOccurrences: Record<string, number>;
+  outOfVocabularyUniqueCount: number;
+  outOfVocabularyUniqueWords: string[];
+  outOfVocabularyOccurrenceCount: number;
+}
+
+export type ConversationCurationEvidenceMap = Record<string, ConversationCurationEvidence>;
+
 export interface CuratedConversation extends Omit<PracticeConversation, 'id' | 'audioFileName' | 'audioUrl'> {
   id: string;
   sourceRunId: string;
@@ -112,6 +129,7 @@ export interface LibraryRecommendationCandidate {
   targetWordCount: number;
   uncoveredWordCount: number;
   leastCoveredWords: LibraryRecommendationWord[];
+  evidence: ConversationCurationEvidence;
   conversation: PracticeConversation;
 }
 
@@ -122,6 +140,114 @@ export interface LibraryRecommendations {
   candidateCount: number;
   leastCoveredWords: LibraryRecommendationWord[];
   recommendations: LibraryRecommendationCandidate[];
+}
+
+export interface AiCurationWordContribution {
+  uncoveredWords: string[];
+  underexposedWords: string[];
+  currentSetWords: string[];
+}
+
+export type AiCurationConversation = Omit<
+  PracticeConversation,
+  'status' | 'audioFileName' | 'audioUrl' | 'error'
+>;
+
+export interface AiCurationLibraryConversation extends AiCurationConversation {
+  sourceRunId: string;
+  sourceConversationId: string;
+  setNumber: number;
+}
+
+export interface AiCurationCandidateSnapshot {
+  candidateKey: string;
+  sourceRunId: string;
+  sourceConversationId: string;
+  sourceRunCreatedAt: string;
+  updatedAt: string;
+  conversation: AiCurationConversation;
+  evidence: ConversationCurationEvidence;
+  contribution: AiCurationWordContribution;
+}
+
+export interface AiCurationProjectedWord {
+  japanese: string;
+  currentLibraryCount: number;
+  projectedLibraryCount: number;
+}
+
+export interface AiCurationLibrarySnapshot {
+  setNumber: number;
+  updatedAt: string;
+  conversationCount: number;
+  conversationIds: string[];
+  wordExposure: Record<string, number>;
+  conversations: AiCurationLibraryConversation[];
+}
+
+export interface AiCurationSnapshot {
+  fingerprint: string;
+  evidenceVersion: string;
+  setNumber: number;
+  candidateCount: number;
+  candidateKeys: string[];
+  candidates: AiCurationCandidateSnapshot[];
+  library: AiCurationLibrarySnapshot;
+}
+
+export interface AiCurationRecommendation {
+  rank: number;
+  candidateKey: string;
+  sourceRunId: string;
+  sourceConversationId: string;
+  rationale: string;
+  strengths: string[];
+  concerns: string[];
+  contribution: AiCurationWordContribution;
+  evidence: ConversationCurationEvidence;
+  conversation: AiCurationConversation;
+}
+
+export interface AiCurationResult {
+  summary: string;
+  recommendations: AiCurationRecommendation[];
+  projectedLeastCoveredWords: AiCurationProjectedWord[];
+}
+
+export type AiCurationReviewStatus = 'complete' | 'failed';
+
+export interface AiCurationReview {
+  id: string;
+  setNumber: number;
+  targetConversationCount: number;
+  status: AiCurationReviewStatus;
+  stale: boolean;
+  textModel: TextModelInfo;
+  snapshot: AiCurationSnapshot;
+  llmExchanges: LlmExchange[];
+  result?: AiCurationResult;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiCurationReviewSummary {
+  id: string;
+  setNumber: number;
+  targetConversationCount: number;
+  status: AiCurationReviewStatus;
+  stale: boolean;
+  textModel: TextModelInfo;
+  candidateCount: number;
+  recommendationCount: number;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiCurationRequest {
+  textModelId?: string;
+  targetConversationCount?: number;
 }
 
 export interface LibraryBalanceWord {

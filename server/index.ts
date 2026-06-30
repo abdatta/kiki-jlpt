@@ -3,7 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import path from 'node:path';
 import { mkdir, readFile, unlink } from 'node:fs/promises';
-import type { GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, RunAudioGenerateRequest, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRunAudit } from '../shared/types.ts';
+import type { AiCurationRequest, GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, RunAudioGenerateRequest, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRunAudit } from '../shared/types.ts';
 import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR } from './paths.ts';
 import { buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
 import { buildTtsPrompt, generateConversationAudio, generateConversationJson } from './gemini.ts';
@@ -18,6 +18,8 @@ import { addConversationToLibrary, listCuratedSets, readCuratedSet, reanalyzeCur
 import { recommendLibraryConversations } from './recommendations.ts';
 import { buildGeneratedRunBalancePlan, buildLibraryBalancePlan } from './libraryBalance.ts';
 import { getPracticeLibraryPublishStatus, publishPracticeLibrary } from './practiceLibrary.ts';
+import { getConversationCurationEvidence } from './curationEvidence.ts';
+import { AiCurationExecutionError, AiCurationInputError, createAiCurationReview, getAiCurationReview, getAiCurationReviewHistory, getLatestAiCurationReview } from './aiCuration.ts';
 
 const app = express();
 const port = Number.parseInt(process.env.API_PORT || '8787', 10);
@@ -807,7 +809,11 @@ app.get('/api/runs', asyncHandler(async (_req, res) => {
 }));
 
 app.get('/api/runs/:runId', asyncHandler(async (req, res) => {
-  res.json({ run: await readRun(routeParam(req.params.runId)) });
+  const run = await readRun(routeParam(req.params.runId));
+  res.json({
+    run,
+    evidenceByConversationId: await getConversationCurationEvidence(run.setNumber, run.conversations)
+  });
 }));
 
 app.delete('/api/runs/:runId', asyncHandler(async (req, res) => {
@@ -817,7 +823,11 @@ app.delete('/api/runs/:runId', asyncHandler(async (req, res) => {
 }));
 
 app.post('/api/runs/:runId/reanalyze', asyncHandler(async (req, res) => {
-  res.json({ run: await reanalyzeRun(routeParam(req.params.runId)) });
+  const run = await reanalyzeRun(routeParam(req.params.runId));
+  res.json({
+    run,
+    evidenceByConversationId: await getConversationCurationEvidence(run.setNumber, run.conversations)
+  });
 }));
 
 app.get('/api/library', asyncHandler(async (_req, res) => {
@@ -859,7 +869,11 @@ app.get('/api/library/sets/:setNumber', asyncHandler(async (req, res) => {
     res.status(400).json({ error: 'Set number must be a positive integer.' });
     return;
   }
-  res.json({ set: await readCuratedSet(setNumber) });
+  const set = await readCuratedSet(setNumber);
+  res.json({
+    set,
+    evidenceByConversationId: await getConversationCurationEvidence(setNumber, set.conversations)
+  });
 }));
 
 app.post('/api/library/sets/:setNumber/reanalyze', asyncHandler(async (req, res) => {
@@ -868,7 +882,11 @@ app.post('/api/library/sets/:setNumber/reanalyze', asyncHandler(async (req, res)
     res.status(400).json({ error: 'Set number must be a positive integer.' });
     return;
   }
-  res.json({ set: await reanalyzeCuratedSet(setNumber) });
+  const set = await reanalyzeCuratedSet(setNumber);
+  res.json({
+    set,
+    evidenceByConversationId: await getConversationCurationEvidence(setNumber, set.conversations)
+  });
 }));
 
 app.get('/api/library/sets/:setNumber/recommendations', asyncHandler(async (req, res) => {
@@ -878,6 +896,82 @@ app.get('/api/library/sets/:setNumber/recommendations', asyncHandler(async (req,
     return;
   }
   res.json({ recommendations: await recommendLibraryConversations(validated.setNumber) });
+}));
+
+app.get('/api/library/sets/:setNumber/ai-curation', asyncHandler(async (req, res) => {
+  const validated = validateSetNumber(routeParam(req.params.setNumber));
+  if ('error' in validated) {
+    res.status(validated.status).json({ error: validated.error });
+    return;
+  }
+  res.json({ review: await getLatestAiCurationReview(validated.setNumber) });
+}));
+
+app.post('/api/library/sets/:setNumber/ai-curation', asyncHandler(async (req: express.Request<{ setNumber: string }, unknown, AiCurationRequest>, res) => {
+  const validated = validateSetNumber(routeParam(req.params.setNumber));
+  if ('error' in validated) {
+    res.status(validated.status).json({ error: validated.error });
+    return;
+  }
+  const textModel = await resolveTextModel(req.body?.textModelId);
+  try {
+    res.json({ review: await createAiCurationReview(validated.setNumber, textModel, {
+      targetConversationCount: req.body?.targetConversationCount ?? Number.NaN
+    }) });
+  } catch (error) {
+    if (error instanceof AiCurationInputError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    if (error instanceof AiCurationExecutionError) {
+      res.status(502).json({ error: 'AI curation failed.', detail: error.message, review: error.review });
+      return;
+    }
+    throw error;
+  }
+}));
+
+app.get('/api/library/sets/:setNumber/ai-curation/history', asyncHandler(async (req, res) => {
+  const validated = validateSetNumber(routeParam(req.params.setNumber));
+  if ('error' in validated) {
+    res.status(validated.status).json({ error: validated.error });
+    return;
+  }
+  res.json(await getAiCurationReviewHistory(validated.setNumber));
+}));
+
+app.get('/api/library/sets/:setNumber/ai-curation/:reviewId', asyncHandler(async (req, res) => {
+  const validated = validateSetNumber(routeParam(req.params.setNumber));
+  if ('error' in validated) {
+    res.status(validated.status).json({ error: validated.error });
+    return;
+  }
+  res.json({ review: await getAiCurationReview(validated.setNumber, routeParam(req.params.reviewId)) });
+}));
+
+app.post('/api/library/sets/:setNumber/ai-curation/:reviewId/retry', asyncHandler(async (req: express.Request<{ setNumber: string; reviewId: string }, unknown, AiCurationRequest>, res) => {
+  const validated = validateSetNumber(routeParam(req.params.setNumber));
+  if ('error' in validated) {
+    res.status(validated.status).json({ error: validated.error });
+    return;
+  }
+  const previous = await getAiCurationReview(validated.setNumber, routeParam(req.params.reviewId));
+  const textModel = await resolveTextModel(req.body?.textModelId ?? previous.textModel.id);
+  try {
+    res.json({ review: await createAiCurationReview(validated.setNumber, textModel, {
+      targetConversationCount: req.body?.targetConversationCount ?? previous.targetConversationCount
+    }) });
+  } catch (error) {
+    if (error instanceof AiCurationInputError) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    if (error instanceof AiCurationExecutionError) {
+      res.status(502).json({ error: 'AI curation retry failed.', detail: error.message, review: error.review });
+      return;
+    }
+    throw error;
+  }
 }));
 
 app.get('/api/library/sets/:setNumber/balance', asyncHandler(async (req, res) => {
