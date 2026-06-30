@@ -396,7 +396,7 @@ textarea:focus {
 
 .topBar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
 }
@@ -409,10 +409,53 @@ textarea:focus {
   font-size: 30px;
 }
 
+/* =============================================================================
+ * WORKSPACE HEADER CONTROLS — conventions for the `.topBar` right-side cluster
+ * (`.runStats`). Follow these when adding controls to any board-mode header so
+ * the headers stay consistent. Shared layout: `.stackedHeader` /
+ * `.stackedHeaderRow`. Inline segmented run group: `.aiCurationControls`
+ * (AI Curation). When a flow needs more than a couple of options, prefer a
+ * modal over inline controls (e.g. Library Balance uses `BalanceModal`, like
+ * `GenerateModal`) — keep the header to a single action button.
+ *
+ * 1. SHAPE & SIZE. Every control is a 34px-min pill: 999px radius,
+ *    `--studio-border-soft` border, `--studio-surface` background, 13px / 800.
+ *    Reuse `.auditToggle` (buttons/links), `.runStats span` (info chips),
+ *    `.curationModelSelect`/`.curationHistorySelect` (selects), and
+ *    `.curationCountField` (labelled number input). Do NOT introduce new
+ *    radii, raised surfaces, or font sizes for header controls. Model pickers
+ *    use the `AutoWidthSelect` component (App.tsx) so the select sizes to the
+ *    SELECTED option; keep `max-width: none` on those so the inline width wins.
+ *
+ * 2. INFO vs ACTION. Light chips (`.runStats span`) and status badges
+ *    (e.g. `.publishBadge`) stay neutral. Primary ACTION buttons are brown:
+ *    `--studio-accent` bg + `--studio-on-accent` text, `--studio-accent-strong`
+ *    on hover. Scope brown to the header (`.libraryHeader .auditToggle`), never
+ *    globally on `.auditToggle`.
+ *
+ * 3. CONFIGURE-AND-RUN GROUP. A few controls that configure one action plus the
+ *    button that runs it belong in ONE connected segmented pill: a flex
+ *    container with a single outer border + `overflow: hidden`, children
+ *    flattened (`border: 0; border-radius: 0`) and separated by
+ *    `border-right` dividers, with the run button as the brown end segment.
+ *    See `.aiCurationControls`. For richer configuration, use a modal instead.
+ *
+ * 4. WRAPPING. Default `.runStats` wraps between items. When a row must stay
+ *    on one line, set `flex-wrap: nowrap` AND make every child
+ *    `flex-shrink: 0; white-space: nowrap` EXCEPT one shrinkable element
+ *    (a select with `min-width: 0`) that truncates to absorb tight space — so
+ *    chips/buttons never wrap their text. See `.stackedHeaderRowPrimary`.
+ *    Re-enable wrapping in the mobile breakpoint.
+ *
+ * 5. CROWDED HEADERS. When there are too many controls for one line, split
+ *    into stacked right-aligned rows (column flex, `align-items: flex-end`)
+ *    rather than letting them wrap arbitrarily. See `.stackedHeader`.
+ * ============================================================================= */
 .runStats {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
 }
 
@@ -476,6 +519,23 @@ textarea:focus {
 .auditToggle:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+/* Library action buttons (Balance, Reanalyze) read as brown buttons. */
+.libraryHeader .auditToggle {
+  background: var(--studio-accent);
+  border-color: var(--studio-accent);
+  color: var(--studio-on-accent);
+}
+
+.libraryHeader .auditToggle:hover:not(:disabled) {
+  background: var(--studio-accent-strong);
+  border-color: var(--studio-accent-strong);
+}
+
+.auditRevealBlock summary {
+  cursor: pointer;
+  font-weight: 800;
 }
 
 .auditToggle.danger {
@@ -1680,17 +1740,21 @@ textarea:focus {
 
 .curationModelSelect,
 .curationHistorySelect {
-  max-width: 220px;
+  max-width: 240px;
   min-height: 34px;
   border: 1px solid var(--studio-border-soft);
-  border-radius: 7px;
-  background: var(--studio-surface-raised);
+  border-radius: 999px;
+  background: var(--studio-surface);
   color: var(--studio-text-soft);
-  padding: 5px 8px;
+  padding: 0 32px 0 14px;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .curationHistorySelect {
-  max-width: 320px;
+  max-width: 200px;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 
 .runStats .historicalReviewBadge {
@@ -1712,11 +1776,87 @@ textarea:focus {
   font-weight: 700;
 }
 
-.aiCurationControls {
+/* Two stacked rows: chips + history + Add All on top, the curation runner below. */
+.stackedHeader {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.stackedHeaderRow {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 10px;
+}
+
+/* Keep the top row (chips · history · Add All · Queue) on one line; the
+   shrinkable history dropdown truncates to absorb tight space instead of
+   squeezing the chips/buttons (which would wrap their text onto two lines). */
+.stackedHeaderRowPrimary {
+  flex-wrap: nowrap;
+}
+
+.stackedHeaderRowPrimary > * {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.stackedHeaderRowPrimary > .curationHistorySelect {
+  flex-shrink: 1;
+}
+
+/* The action buttons on the top row read as brown buttons like Re-curate. */
+.stackedHeaderRowPrimary .auditToggle {
+  background: var(--studio-accent);
+  border-color: var(--studio-accent);
+  color: var(--studio-on-accent);
+}
+
+.stackedHeaderRowPrimary .auditToggle:hover:not(:disabled) {
+  background: var(--studio-accent-strong);
+  border-color: var(--studio-accent-strong);
+}
+
+/* The model, exact-size, and Re-curate controls configure and run one curation,
+   so bind them into a single connected segmented group instead of loose pills. */
+.aiCurationControls {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid var(--studio-border-soft);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--studio-surface);
+}
+
+.aiCurationControls > .curationModelSelect {
+  max-width: none;
+  border: 0;
+  border-right: 1px solid var(--studio-border-soft);
+  border-radius: 0;
+  background: transparent;
+}
+
+.aiCurationControls > .curationCountField {
+  border: 0;
+  border-right: 1px solid var(--studio-border-soft);
+  border-radius: 0;
+  background: transparent;
+}
+
+.aiCurationControls > .auditToggle {
+  border: 0;
+  border-radius: 0;
+  background: var(--studio-accent);
+  color: var(--studio-on-accent);
+}
+
+.aiCurationControls > .auditToggle:hover:not(:disabled) {
+  background: var(--studio-accent-strong);
 }
 
 .curationCountField {
@@ -1725,15 +1865,15 @@ textarea:focus {
   align-items: center;
   overflow: hidden;
   border: 1px solid var(--studio-border-soft);
-  border-radius: 7px;
-  background: var(--studio-surface-raised);
+  border-radius: 999px;
+  background: var(--studio-surface);
 }
 
 .runStats .curationCountField > span {
   border: 0;
   border-radius: 0;
   background: transparent;
-  padding: 0 8px;
+  padding: 0 4px 0 14px;
   color: var(--studio-text-muted);
   font-size: 11px;
   letter-spacing: 0.04em;
@@ -1741,15 +1881,26 @@ textarea:focus {
 }
 
 .curationCountField input {
-  width: 62px;
+  width: fit-content;
   align-self: stretch;
   border: 0;
-  border-left: 1px solid var(--studio-border-soft);
-  background: var(--studio-surface);
+  background: transparent;
   color: var(--studio-text);
-  padding: 4px 7px;
+  padding: 4px;
   font: inherit;
   font-weight: 800;
+}
+
+/* Drop the native number spinner — it overlaps the value in this compact field. */
+.curationCountField input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.curationCountField input[type='number']::-webkit-outer-spin-button,
+.curationCountField input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .curationCountField input:focus {
@@ -2177,6 +2328,14 @@ audio {
   grid-column: 1 / -1;
 }
 
+.modalFieldHint {
+  color: var(--studio-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .generateModes {
   display: grid;
   gap: 9px;
@@ -2269,9 +2428,20 @@ audio {
 
   .topBar {
     flex-direction: column;
+    align-items: flex-start;
   }
 
   .runStats {
+    justify-content: flex-start;
+  }
+
+  .stackedHeader {
+    align-items: flex-start;
+  }
+
+  /* On narrow stacked layouts let the top row wrap rather than overflow. */
+  .stackedHeaderRowPrimary {
+    flex-wrap: wrap;
     justify-content: flex-start;
   }
 

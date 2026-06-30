@@ -5,7 +5,7 @@ import path from 'node:path';
 import { mkdir, readFile, unlink } from 'node:fs/promises';
 import type { AiCurationRequest, GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, RunAudioGenerateRequest, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRunAudit } from '../shared/types.ts';
 import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR } from './paths.ts';
-import { buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
+import { buildAiLibraryBalancePrompt, buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
 import { buildTtsPrompt, generateConversationAudio, generateConversationJson } from './gemini.ts';
 import { CODEX_TEXT_INSTRUCTIONS, generateCodexConversationJson } from './codexText.ts';
 import { getAllowedVocabulary, getSetSummaries } from './vocab.ts';
@@ -19,7 +19,8 @@ import { recommendLibraryConversations } from './recommendations.ts';
 import { buildGeneratedRunBalancePlan, buildLibraryBalancePlan } from './libraryBalance.ts';
 import { getPracticeLibraryPublishStatus, publishPracticeLibrary } from './practiceLibrary.ts';
 import { getConversationCurationEvidence } from './curationEvidence.ts';
-import { AiCurationExecutionError, AiCurationInputError, createAiCurationReview, getAiCurationReview, getAiCurationReviewHistory, getLatestAiCurationReview } from './aiCuration.ts';
+import { AiCurationExecutionError, AiCurationInputError, buildAiCurationSnapshot, createAiCurationReview, getAiCurationReview, getAiCurationReviewHistory, getLatestAiCurationReview, libraryContext } from './aiCuration.ts';
+import type { AiCurationLibraryContext } from './aiCuration.ts';
 
 const app = express();
 const port = Number.parseInt(process.env.API_PORT || '8787', 10);
@@ -178,7 +179,7 @@ async function getLibraryComplementContext(
   setNumberValue: unknown,
   body: LibraryComplementGenerateRequest | undefined
 ): Promise<
-  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string; balance: Awaited<ReturnType<typeof buildLibraryBalancePlan>> }
+  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string; balance: Awaited<ReturnType<typeof buildLibraryBalancePlan>>; balanceMode: 'stats' | 'ai'; librarySnapshotContext?: AiCurationLibraryContext }
   | { error: string; status: number }
 > {
   const validated = validateSetNumber(setNumberValue);
@@ -189,16 +190,44 @@ async function getLibraryComplementContext(
     return { status: 404, error: `No vocabulary found for Set ${validated.setNumber}.` };
   }
 
+  const balanceMode = body?.balanceMode === 'ai' ? 'ai' : 'stats';
   const textModel = await resolveTextModel(body?.textModelId);
-  const balance = await buildLibraryBalancePlan(validated.setNumber);
-  const prompt = buildLibraryComplementPrompt(validated.setNumber, allowedVocabulary, balance);
+  const planned = await buildLibraryBalancePlan(validated.setNumber);
+
+  // The plan suggests a count; the operator may override it before generating.
+  let conversationCount = planned.suggestedConversationCount;
+  if (body?.conversationCount !== undefined) {
+    const requested = Number(body.conversationCount);
+    if (!Number.isInteger(requested) || requested < 1 || requested > 30) {
+      return { status: 400, error: 'Conversation count must be an integer between 1 and 30.' };
+    }
+    conversationCount = requested;
+  }
+  const balance = { ...planned, suggestedConversationCount: conversationCount };
+
+  if (balanceMode === 'ai') {
+    const snapshot = await buildAiCurationSnapshot(validated.setNumber);
+    const librarySnapshotContext = libraryContext(snapshot);
+    return {
+      setNumber: validated.setNumber,
+      conversationCount,
+      allowedVocabulary,
+      textModel,
+      prompt: buildAiLibraryBalancePrompt(validated.setNumber, allowedVocabulary, balance, librarySnapshotContext),
+      balance,
+      balanceMode,
+      librarySnapshotContext
+    };
+  }
+
   return {
     setNumber: validated.setNumber,
-    conversationCount: balance.suggestedConversationCount,
+    conversationCount,
     allowedVocabulary,
     textModel,
-    prompt,
-    balance
+    prompt: buildLibraryComplementPrompt(validated.setNumber, allowedVocabulary, balance),
+    balance,
+    balanceMode
   };
 }
 
@@ -1226,7 +1255,17 @@ app.post('/api/library/sets/:setNumber/complement', asyncHandler(async (req: exp
         output: generation.output,
         stats: {
           ...(generation.stats && typeof generation.stats === 'object' ? generation.stats : { rawStats: generation.stats }),
-          libraryBalance: context.balance
+          libraryBalance: context.balance,
+          libraryBalanceMode: context.balanceMode,
+          ...(context.balanceMode === 'ai' && context.librarySnapshotContext
+            ? {
+                libraryBalanceContext: {
+                  mode: 'ai',
+                  libraryConversationCount: context.librarySnapshotContext.conversationCount,
+                  wordExposure: context.librarySnapshotContext.wordExposure
+                }
+              }
+            : {})
         },
         receivedAt: timestamp,
         status: 'complete'

@@ -335,7 +335,7 @@ function conversationContent(candidate: AiCurationCandidateSnapshot) {
   };
 }
 
-function libraryContext(snapshot: AiCurationSnapshot) {
+export function libraryContext(snapshot: AiCurationSnapshot) {
   return {
     conversationCount: snapshot.library.conversationCount,
     wordExposure: snapshot.library.wordExposure,
@@ -348,6 +348,10 @@ function libraryContext(snapshot: AiCurationSnapshot) {
     }))
   };
 }
+
+// Trimmed, model-facing view of a curated set shared by AI curation and AI-balanced
+// complement generation so both prompts ground on the same library shape.
+export type AiCurationLibraryContext = ReturnType<typeof libraryContext>;
 
 export function buildAiCurationPrompt(snapshot: AiCurationSnapshot, targetConversationCount: number): string {
   return `You are curating a portfolio of JLPT N5 listening conversations for Set ${snapshot.setNumber}.

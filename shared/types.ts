@@ -316,6 +316,8 @@ export interface RunAudioGenerateRequest {
 
 export interface LibraryComplementGenerateRequest {
   textModelId?: string;
+  balanceMode?: 'stats' | 'ai';
+  conversationCount?: number;
 }
 
 export type WorkflowAudioMode = 'fixed' | 'max';

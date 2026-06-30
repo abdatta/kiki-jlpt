@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowLeft,
   Bot,
   BookOpen,
   Check,
@@ -31,6 +32,7 @@ import type {
   CuratedConversation,
   CuratedSet,
   LibraryBalancePlan,
+  LibraryComplementGenerateRequest,
   LibraryRecommendationCandidate,
   LibraryRecommendations,
   LlmExchange,
@@ -106,6 +108,14 @@ interface GenerateModalState {
   runMode: GenerateRunMode;
 }
 
+type BalanceStrategy = 'stats' | 'ai';
+
+interface BalanceModalState {
+  textModelId: string;
+  strategy: BalanceStrategy;
+  conversationCount: string;
+}
+
 interface GenerateRunConfig {
   setNumber: number;
   conversationCount: number;
@@ -140,6 +150,19 @@ const GENERATE_RUN_MODES: Array<{ id: GenerateRunMode; label: string; descriptio
     id: 'text-only',
     label: 'Draft text pass',
     description: 'Generate only the initial conversation batch without balancing or audio.'
+  }
+];
+
+const BALANCE_STRATEGIES: Array<{ id: BalanceStrategy; label: string; description: string }> = [
+  {
+    id: 'stats',
+    label: 'Stats only',
+    description: 'Target missing and underused current-set words from deterministic coverage stats. The chosen model writes the conversations but is not shown your existing library.'
+  },
+  {
+    id: 'ai',
+    label: 'Stats + library context',
+    description: 'Also give the model your curated conversations and per-word exposure, so it fills the same gaps while avoiding repeated scenes and adding meaningful variety.'
   }
 ];
 
@@ -539,8 +562,58 @@ function aiCurationReviewSummary(review: AiCurationReview): AiCurationReviewSumm
 
 function aiCurationHistoryLabel(review: AiCurationReviewSummary, index: number): string {
   const prefix = index === 0 ? 'Latest · ' : '';
-  const state = review.stale ? 'stale' : review.status;
-  return `${prefix}${formatRunHistoryTitle(review.createdAt)} · ${review.textModel.label} · ${review.targetConversationCount} picks · ${state}`;
+  return `${prefix}${formatRunHistoryTitle(review.createdAt)}`;
+}
+
+let selectMeasureCanvas: HTMLCanvasElement | null = null;
+
+function measureSelectLabelWidth(text: string): number {
+  if (typeof document === 'undefined') return text.length * 8;
+  selectMeasureCanvas = selectMeasureCanvas ?? document.createElement('canvas');
+  const context = selectMeasureCanvas.getContext('2d');
+  if (!context) return text.length * 8;
+  context.font = '800 13px Inter, ui-sans-serif, system-ui, sans-serif';
+  return context.measureText(text).width;
+}
+
+// Native selects size to their widest option; this sizes to the SELECTED option so the
+// picker expands/contracts as the choice changes (CSS field-sizing isn't universally supported).
+function AutoWidthSelect({
+  options,
+  value,
+  onChange,
+  className,
+  disabled,
+  required,
+  ariaLabel,
+  title
+}: {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+  disabled?: boolean;
+  required?: boolean;
+  ariaLabel?: string;
+  title?: string;
+}) {
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? '';
+  // measured text + left padding (14) + arrow room (32) + small buffer
+  const width = useMemo(() => Math.ceil(measureSelectLabelWidth(selectedLabel)) + 50, [selectedLabel]);
+  return (
+    <select
+      aria-label={ariaLabel}
+      className={className}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+      required={required}
+      style={{ width: `${width}px` }}
+      title={title}
+      value={value}
+    >
+      {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+    </select>
+  );
 }
 
 function coverageCountClass(count: number): string {
@@ -1523,6 +1596,32 @@ function WorkflowAuditFlow({
   );
 }
 
+function AuditStats({ stats }: { stats: unknown }) {
+  const record = stats && typeof stats === 'object' ? stats as Record<string, unknown> : null;
+  const balanceContext = record?.libraryBalanceContext;
+  const rest = record
+    ? Object.fromEntries(Object.entries(record).filter(([key]) => key !== 'libraryBalanceContext'))
+    : null;
+  const hasRest = rest ? Object.keys(rest).length > 0 : false;
+
+  return (
+    <>
+      {!record || hasRest ? (
+        <div className="auditBlock">
+          <span>Stats</span>
+          <pre>{JSON.stringify(record ? rest : stats, null, 2)}</pre>
+        </div>
+      ) : null}
+      {balanceContext ? (
+        <details className="auditBlock auditRevealBlock">
+          <summary>Show library exposure context</summary>
+          <pre>{JSON.stringify(balanceContext, null, 2)}</pre>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
 function AuditLog({ exchange, fallbackLabel }: { exchange?: LlmExchange; fallbackLabel?: string }) {
   const output = formatAuditOutput(exchange?.output);
   const outputError = exchange?.status === 'failed' ? exchange.error : undefined;
@@ -1577,12 +1676,7 @@ function AuditLog({ exchange, fallbackLabel }: { exchange?: LlmExchange; fallbac
         )}
       </div>
 
-      {exchange?.stats ? (
-        <div className="auditBlock">
-          <span>Stats</span>
-          <pre>{JSON.stringify(exchange.stats, null, 2)}</pre>
-        </div>
-      ) : null}
+      {exchange?.stats ? <AuditStats stats={exchange.stats} /> : null}
     </details>
   );
 }
@@ -1762,6 +1856,108 @@ function GenerateModal({
   );
 }
 
+function BalanceModal({
+  state,
+  setNumber,
+  textModels,
+  busy,
+  suggestedCount,
+  onChange,
+  onClose,
+  onSubmit
+}: {
+  state: BalanceModalState;
+  setNumber: number;
+  textModels: TextModelInfo[];
+  busy: BusyAction;
+  suggestedCount?: number;
+  onChange: (state: BalanceModalState) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  const trimmedCount = state.conversationCount.trim();
+  const parsedCount = trimmedCount ? Number(trimmedCount) : undefined;
+  const countValid = parsedCount === undefined
+    || (Number.isInteger(parsedCount) && parsedCount >= 1 && parsedCount <= 30);
+  const canSubmit = busy === null && state.textModelId.length > 0 && countValid;
+
+  return (
+    <div className="modalOverlay" role="presentation" onMouseDown={(event) => {
+      if (event.target === event.currentTarget && busy === null) {
+        onClose();
+      }
+    }}>
+      <section className="generateModal" role="dialog" aria-modal="true" aria-labelledby="balance-modal-title">
+        <div className="modalHeader">
+          <div>
+            <p className="eyebrow">Library balancing</p>
+            <h2 id="balance-modal-title">Balance Set {setNumber}</h2>
+          </div>
+          <button className="iconButton" onClick={onClose} disabled={busy !== null} title="Close" type="button">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="modalFormGrid">
+          <label className="modalWideField">
+            <span>Model</span>
+            <select value={state.textModelId} onChange={(event) => onChange({ ...state, textModelId: event.target.value })}>
+              <option value="" disabled>Select a model</option>
+              {textModels.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="modalWideField">
+            <span>Conversations</span>
+            <input
+              min={1}
+              max={30}
+              placeholder={suggestedCount ? `Suggested ${suggestedCount}` : 'Auto'}
+              type="number"
+              value={state.conversationCount}
+              onChange={(event) => onChange({ ...state, conversationCount: event.target.value })}
+            />
+            <small className="modalFieldHint">Leave blank to use the suggested count from the balance plan.</small>
+          </label>
+        </div>
+
+        <fieldset className="generateModes">
+          <legend>Balancing strategy</legend>
+          {BALANCE_STRATEGIES.map((strategy) => (
+            <label className={state.strategy === strategy.id ? 'generateModeOption active' : 'generateModeOption'} key={strategy.id}>
+              <input
+                checked={state.strategy === strategy.id}
+                name="balance-strategy"
+                onChange={() => onChange({ ...state, strategy: strategy.id })}
+                type="radio"
+                value={strategy.id}
+              />
+              <span>
+                <strong>{strategy.label}</strong>
+                <small>{strategy.description}</small>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        <div className="modalActions">
+          <button className="secondaryButton" onClick={onClose} disabled={busy !== null} type="button">
+            Cancel
+          </button>
+          <button className="primaryButton" onClick={onSubmit} disabled={!canSubmit} type="button">
+            {busy === 'generate-complement' ? <RefreshCw className="spin" size={18} /> : <Sparkles size={18} />}
+            Balance
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function AnalyticsPanel({ analytics, setNumber, label }: { analytics: PracticeRun['analytics']; setNumber: number; label: string }) {
   return (
     <section className="analyticsPanel" aria-label={label}>
@@ -1816,6 +2012,7 @@ function StudioApp() {
   const [currentLibraryEvidence, setCurrentLibraryEvidence] = useState<ConversationCurationEvidenceMap>({});
   const [libraryBalance, setLibraryBalance] = useState<LibraryBalancePlan | null>(null);
   const [libraryBalanceLoading, setLibraryBalanceLoading] = useState(false);
+  const [balanceModal, setBalanceModal] = useState<BalanceModalState | null>(null);
   const [practicePublishStatus, setPracticePublishStatus] = useState<PracticeLibraryPublishStatus | null>(null);
   const [currentRun, setCurrentRun] = useState<PracticeRun | null>(null);
   const [boardMode, setBoardMode] = useState<BoardMode>(studioRoute.boardMode);
@@ -2348,6 +2545,15 @@ function StudioApp() {
     setGenerateModal(initialGenerateModalState(setNumber));
   }
 
+  function openBalanceModal() {
+    setError(null);
+    setBalanceModal({
+      textModelId: textModels.some((model) => model.id === textModelId) ? textModelId : (textModels[0]?.id ?? ''),
+      strategy: 'stats',
+      conversationCount: ''
+    });
+  }
+
   async function submitGenerateModal() {
     if (!generateModal) return;
     const nextConversationCount = Number(generateModal.conversationCount);
@@ -2494,10 +2700,30 @@ function StudioApp() {
     }
   }
 
-  async function generateLibraryComplement() {
+  async function submitBalanceModal() {
+    if (!balanceModal) return;
+    const { textModelId: modelId, strategy, conversationCount } = balanceModal;
+    if (!modelId) {
+      setError('Select a model for balancing.');
+      return;
+    }
+    const trimmedCount = conversationCount.trim();
+    const overrideCount = trimmedCount ? Number(trimmedCount) : undefined;
+    if (overrideCount !== undefined && (!Number.isInteger(overrideCount) || overrideCount < 1 || overrideCount > 30)) {
+      setError('Conversations to generate must be an integer between 1 and 30.');
+      return;
+    }
     const sessionId = makeSessionId();
-    const modelLabel = currentTextModel?.label ?? (textModelId === 'gemini' ? 'Gemini' : textModelId);
-    const requestBody = { textModelId };
+    const isAiBalance = strategy === 'ai';
+    const selectedBalanceModel = textModels.find((model) => model.id === modelId);
+    const modelLabel = selectedBalanceModel?.label ?? modelId;
+    const requestBody: LibraryComplementGenerateRequest = {
+      textModelId: modelId,
+      balanceMode: strategy,
+      ...(overrideCount !== undefined ? { conversationCount: overrideCount } : {})
+    };
+    const modeLabel = isAiBalance ? 'library-aware' : 'stats-only';
+    setBalanceModal(null);
     setBusy('generate-complement');
     setError(null);
     setEdit(null);
@@ -2509,9 +2735,9 @@ function StudioApp() {
     setGenerationSession({
       id: sessionId,
       title: 'Generating a library balance batch',
-      detail: `Set ${setNumber} - choosing a small complementary batch - ${modelLabel}`,
+      detail: `Set ${setNumber} - ${modeLabel} complementary batch - ${modelLabel}`,
       setNumber,
-      conversationCount: currentLibraryBalance?.suggestedConversationCount ?? 0,
+      conversationCount: overrideCount ?? currentLibraryBalance?.suggestedConversationCount ?? 0,
       textModelLabel: modelLabel,
       startedAt: new Date().toISOString(),
       status: 'running'
@@ -3142,6 +3368,18 @@ function StudioApp() {
           onSubmit={submitGenerateModal}
         />
       ) : null}
+      {balanceModal ? (
+        <BalanceModal
+          state={balanceModal}
+          setNumber={setNumber}
+          textModels={textModels}
+          busy={busy}
+          suggestedCount={currentLibraryBalance?.suggestedConversationCount}
+          onChange={setBalanceModal}
+          onClose={() => setBalanceModal(null)}
+          onSubmit={submitBalanceModal}
+        />
+      ) : null}
       {addAllProgress ? (
         <AddAllProgressModal
           progress={addAllProgress}
@@ -3283,7 +3521,7 @@ function StudioApp() {
               <span>{generationSession.status}</span>
             </div>
           ) : boardMode === 'library' ? (
-            <div className="runStats">
+            <div className="runStats libraryHeader">
               <span>{currentLibrarySet?.conversations.length ?? 0} curated</span>
               <span>{currentLibraryBalance ? `${currentLibraryBalance.suggestedConversationCount} suggested` : `Set ${setNumber}`}</span>
               <button
@@ -3307,7 +3545,7 @@ function StudioApp() {
                       ? 'Published'
                       : 'Checking'}
               </button>
-              <button className="auditToggle" onClick={generateLibraryComplement} disabled={busy === 'generate-complement' || libraryBalanceLoading}>
+              <button className="auditToggle" onClick={openBalanceModal} disabled={busy === 'generate-complement' || libraryBalanceLoading}>
                 {busy === 'generate-complement' || libraryBalanceLoading ? <RefreshCw className="spin" size={15} /> : <Sparkles size={15} />}
                 Balance
               </button>
@@ -3330,70 +3568,76 @@ function StudioApp() {
               </button>
             </div>
           ) : boardMode === 'ai-curation' ? (
-            <div className="runStats">
-              <span>{currentAiCurationReview?.snapshot.library.conversationCount ?? currentLibrarySet?.conversations.length ?? 0} curated</span>
-              <span>{aiCurationCandidateCount} candidates</span>
-              {isHistoricalAiCurationReview ? <span className="historicalReviewBadge">Historical · read only</span> : null}
-              <select
-                aria-label="Curation history"
-                className="curationHistorySelect"
-                disabled={aiCurationContextLoading || aiCurationHistoryLoading || aiCurationHistory.length === 0}
-                onChange={(event) => void openAiCurationHistoryReview(event.target.value)}
-                value={currentAiCurationReview?.id ?? ''}
-              >
-                {aiCurationHistory.length === 0 ? <option value="">No saved reviews</option> : null}
-                {aiCurationHistory.map((review, index) => (
-                  <option key={review.id} value={review.id}>{aiCurationHistoryLabel(review, index)}</option>
-                ))}
-              </select>
-              {isHistoricalAiCurationReview && currentAiCurationReview ? (
-                <button className="auditToggle" onClick={() => applyAiCurationSettings(currentAiCurationReview)} type="button">
-                  Use Settings
-                </button>
-              ) : null}
-              <form
-                className="aiCurationControls"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void runAiCuration(!isHistoricalAiCurationReview && currentAiCurationReview?.status === 'failed');
-                }}
-              >
+            <div className="runStats stackedHeader">
+              <div className="stackedHeaderRow stackedHeaderRowPrimary">
+                <span>{currentAiCurationReview?.snapshot.library.conversationCount ?? currentLibrarySet?.conversations.length ?? 0} curated</span>
+                <span>{aiCurationCandidateCount} candidates</span>
+                {isHistoricalAiCurationReview ? <span className="historicalReviewBadge">Historical · read only</span> : null}
                 <select
-                  aria-label="AI curator model"
-                  className="curationModelSelect"
-                  disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading}
-                  onChange={(event) => setTextModelId(event.target.value)}
-                  required
-                  value={textModels.some((model) => model.id === textModelId) ? textModelId : 'gemini'}
+                  aria-label="Curation history"
+                  className="curationHistorySelect"
+                  disabled={aiCurationContextLoading || aiCurationHistoryLoading || aiCurationHistory.length === 0}
+                  onChange={(event) => void openAiCurationHistoryReview(event.target.value)}
+                  value={currentAiCurationReview?.id ?? ''}
                 >
-                  {textModels.map((model) => <option key={model.id} value={model.id}>{model.label}</option>)}
+                  {aiCurationHistory.length === 0 ? <option value="">No saved reviews</option> : null}
+                  {aiCurationHistory.map((review, index) => (
+                    <option key={review.id} value={review.id}>{aiCurationHistoryLabel(review, index)}</option>
+                  ))}
                 </select>
-                <label className="curationCountField">
-                  <span>Exact size</span>
-                  <input
-                    aria-label="Exact portfolio size"
-                    disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading || aiCurationCandidateCount === 0}
-                    max={aiCurationCandidateCount || undefined}
-                    min={1}
-                    onChange={(event) => setAiCurationTargetCount(event.target.value)}
+                {currentAiCurationReview?.status === 'complete' && !currentAiCurationReview.stale && !isHistoricalAiCurationReview && currentAiCurationReview.result?.recommendations.length ? (
+                  <button className="auditToggle positive" onClick={addAllAiRecommendations} disabled={Boolean(addAllProgress)}>
+                    <Plus size={15} />
+                    Add All
+                  </button>
+                ) : null}
+                <a className="auditToggle" href={studioQueueRoute(setNumber)}>
+                  <ArrowLeft size={15} />
+                  Queue
+                </a>
+              </div>
+              <div className="stackedHeaderRow">
+                {isHistoricalAiCurationReview && currentAiCurationReview ? (
+                  <button className="auditToggle" onClick={() => applyAiCurationSettings(currentAiCurationReview)} type="button">
+                    Use Settings
+                  </button>
+                ) : null}
+                <form
+                  className="aiCurationControls"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void runAiCuration(!isHistoricalAiCurationReview && currentAiCurationReview?.status === 'failed');
+                  }}
+                >
+                  <AutoWidthSelect
+                    ariaLabel="AI curator model"
+                    className="curationModelSelect"
+                    disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading}
+                    onChange={setTextModelId}
                     required
-                    step={1}
-                    type="number"
-                    value={aiCurationTargetCount}
+                    value={textModels.some((model) => model.id === textModelId) ? textModelId : 'gemini'}
+                    options={textModels.map((model) => ({ value: model.id, label: model.label }))}
                   />
-                </label>
-                <button className="auditToggle" type="submit" disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading || aiCurationCandidateCount === 0}>
-                  {aiCurationLoading || aiCurationContextLoading ? <RefreshCw className="spin" size={15} /> : <Sparkles size={15} />}
-                  {aiCurationContextLoading || aiCurationHistoryLoading ? 'Loading' : aiCurationLoading ? 'Curating' : isHistoricalAiCurationReview ? 'Start new' : currentAiCurationReview?.status === 'failed' ? 'Retry AI' : currentAiCurationReview ? 'Re-curate' : 'Start Curation'}
-                </button>
-              </form>
-              {currentAiCurationReview?.status === 'complete' && !currentAiCurationReview.stale && !isHistoricalAiCurationReview && currentAiCurationReview.result?.recommendations.length ? (
-                <button className="auditToggle positive" onClick={addAllAiRecommendations} disabled={Boolean(addAllProgress)}>
-                  <Plus size={15} />
-                  Add All
-                </button>
-              ) : null}
-              <a className="auditToggle" href={studioQueueRoute(setNumber)}>Back to Queue</a>
+                  <label className="curationCountField">
+                    <span>Size</span>
+                    <input
+                      aria-label="Exact portfolio size"
+                      disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading || aiCurationCandidateCount === 0}
+                      max={aiCurationCandidateCount || undefined}
+                      min={1}
+                      onChange={(event) => setAiCurationTargetCount(event.target.value)}
+                      required
+                      step={1}
+                      type="number"
+                      value={aiCurationTargetCount}
+                    />
+                  </label>
+                  <button className="auditToggle" type="submit" disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading || aiCurationCandidateCount === 0}>
+                    {aiCurationLoading || aiCurationContextLoading ? <RefreshCw className="spin" size={15} /> : <Sparkles size={15} />}
+                    {aiCurationContextLoading || aiCurationHistoryLoading ? 'Loading' : aiCurationLoading ? 'Curating' : isHistoricalAiCurationReview ? 'Start new' : currentAiCurationReview?.status === 'failed' ? 'Retry AI' : currentAiCurationReview ? 'Re-curate' : 'Start Curation'}
+                  </button>
+                </form>
+              </div>
             </div>
           ) : currentRun ? (
             <div className="runStats">
