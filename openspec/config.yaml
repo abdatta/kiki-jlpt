@@ -1,0 +1,27 @@
+schema: spec-driven
+
+context: |
+  JLPT Listener is a TypeScript application for producing and consuming
+  Japanese listening practice, currently focused on JLPT N5 vocabulary.
+
+  The project has two user surfaces:
+  - A React/Vite content studio backed by an Express API. It generates,
+    audits, edits, voices, curates, and publishes practice conversations.
+  - A static React/Vite learner application. It provides vocabulary review,
+    listening practice, level progression, and browser-local progress.
+
+  Shared domain types live in shared/types.ts. Curated source content is
+  stored in curated/, and the published learner manifest is generated under
+  public/library/. External text and speech generation uses configured Gemini
+  and Codex providers. Requirements should describe observable behavior and
+  domain constraints rather than React components, routes, or file layout.
+
+rules:
+  proposal:
+    - Identify whether a change affects the studio, learner application, or both.
+    - Call out changes to curated or published content formats.
+  specs:
+    - Express requirements as observable user or system behavior.
+    - Include failure and recovery scenarios when external model or audio services are involved.
+  tasks:
+    - Include relevant unit, build, and library publication checks.
