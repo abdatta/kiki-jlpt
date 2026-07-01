@@ -49,8 +49,10 @@ import type {
 } from '../shared/types.ts';
 import { BrandLogo } from './components/BrandLogo.tsx';
 import { AddAllProgressModal, type AddAllProgress, type AddAllProgressItem } from './components/AddAllProgressModal.tsx';
+import { AudioProgressStage } from './components/AudioProgressStage.tsx';
 import { AiRecommendationReason, CurationEvidencePanel } from './components/CurationEvidence.tsx';
 import { ConsumerApp } from './consumer/ConsumerApp.tsx';
+import { planAddAllRecommendations, runStopOnFailureQueue } from './addAllAudio.ts';
 
 type ConversationAction = 'audio' | 'delete-audio';
 type BoardMode = 'runs' | 'library' | 'recommendations' | 'ai-curation';
@@ -1350,92 +1352,25 @@ function WorkflowAudioStage({
   onRegenerateAudio?: () => void;
   regenerateDisabled?: boolean;
 }) {
-  const activeCount = nodes.filter((node) => node.status === 'processing').length;
   const doneCount = nodes.filter((node) => node.status === 'done').length;
-  const failedCount = nodes.filter((node) => node.status === 'error').length;
-  const skippedCount = nodes.filter((node) => node.status === 'skipped').length;
-  const pendingCount = nodes.filter((node) => node.status === 'pending').length;
   const regenerateLabel = doneCount === nodes.length ? 'Regenerate all' : 'Generate missing';
-  const audioListRef = useRef<HTMLDivElement | null>(null);
-  const activeNodeIds = nodes.filter((node) => node.status === 'processing').map((node) => node.id).join('|');
-  const audioStageTitle = activeCount > 0
-    ? 'Generating Audio'
-    : failedCount > 0
-      ? 'Audio Generation Failed'
-      : nodes.length > 0 && doneCount === nodes.length
-        ? 'Generated Audio'
-        : skippedCount > 0
-          ? 'Audio Generation Stopped'
-          : pendingCount > 0 && jobStatus !== 'running'
-            ? 'Audio Generation Incomplete'
-            : 'Generating Audio';
-
-  useEffect(() => {
-    const list = audioListRef.current;
-    if (!activeNodeIds || !list) return;
-    const activeNodeIdList = activeNodeIds.split('|');
-    const lastActiveNodeId = activeNodeIdList[activeNodeIdList.length - 1];
-    const activeItems = activeNodeIdList
-      .map((nodeId) => list.querySelector<HTMLElement>(`[data-node-id="${nodeId}"]`))
-      .filter((item): item is HTMLElement => Boolean(item));
-    const lastActiveItem = activeItems[activeItems.length - 1];
-    if (!lastActiveItem) return;
-
-    requestAnimationFrame(() => {
-      const listRect = list.getBoundingClientRect();
-      const lastRect = lastActiveItem.getBoundingClientRect();
-      const bottomOverflow = lastRect.bottom - listRect.bottom;
-      if (bottomOverflow > 0) {
-        list.scrollTo({
-          top: Math.min(list.scrollHeight - list.clientHeight, list.scrollTop + bottomOverflow) + 5,
-          behavior: 'smooth'
-        });
-      }
-    });
-  }, [activeNodeIds]);
-
   return (
-    <section className="workflowAudioStage" aria-label={audioStageTitle}>
-      <div className="workflowAudioStageHeader">
-        <span className="workflowNodeIcon">
-          {activeCount > 0 ? <LoaderCircle className="spin" size={18} /> : <Headphones size={18} />}
-        </span>
-        <div>
-          <strong>{audioStageTitle}</strong>
-          <small>{doneCount} of {nodes.length} audio conversations done</small>
-        </div>
-        {onRegenerateAudio ? (
-          <button className="workflowAudioRefreshButton" disabled={regenerateDisabled} onClick={onRegenerateAudio} type="button">
-            {regenerateDisabled ? <RefreshCw className="spin" size={14} /> : <RefreshCw size={14} />}
-            {regenerateLabel}
-          </button>
-        ) : null}
-      </div>
-      {nodes.length > 0 ? (
-        <div className="workflowAudioList" ref={audioListRef}>
-          {nodes.map((node, index) => (
-            <button
-              className={`workflowAudioItem ${node.status} ${selectedNodeId === node.id ? 'selected' : ''}`}
-              data-node-id={node.id}
-              key={node.id}
-              onClick={() => onSelectNode(node.id)}
-              type="button"
-            >
-              <span className="workflowAudioItemNumber">{index + 1}</span>
-              <span className="workflowAudioItemText">
-                <strong>{workflowNodeTitle(node)}</strong>
-                <small>{workflowNodeDetail(node)}</small>
-              </span>
-              <span className="workflowAudioItemIcon" aria-hidden="true">
-                <WorkflowStatusIcon node={node} size={15} />
-              </span>
-            </button>
-          ))}
-        </div>
-      ) : (
-        <div className="workflowAudioListEmpty">Audio skipped</div>
-      )}
-    </section>
+    <AudioProgressStage
+      items={nodes.map((node) => ({
+        id: node.id,
+        title: workflowNodeTitle(node),
+        detail: workflowNodeDetail(node),
+        status: node.status
+      }))}
+      state={jobStatus === 'running' ? 'running' : 'idle'}
+      selectedItemId={selectedNodeId}
+      onSelectItem={onSelectNode}
+      action={onRegenerateAudio ? {
+        label: regenerateLabel,
+        loading: regenerateDisabled,
+        onClick: onRegenerateAudio
+      } : undefined}
+    />
   );
 }
 
@@ -2033,6 +1968,7 @@ function StudioApp() {
   const [revealedTranslations, setRevealedTranslations] = useState<Record<string, boolean>>({});
   const [audioStates, setAudioStates] = useState<Record<string, AudioPlaybackState>>({});
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
+  const addAllPauseRequestedRef = useRef(false);
 
   const currentSet = useMemo(() => sets.find((item) => item.set === setNumber), [sets, setNumber]);
   const textModelOptions = useMemo(() => {
@@ -2185,13 +2121,45 @@ function StudioApp() {
     } : previous);
   }
 
-  async function addAllAiRecommendations() {
+  async function loadAddAllSourceRuns(recommendations: AiCurationRecommendation[]) {
+    const runsById = new Map<string, PracticeRun>();
+    const unavailableRunIds = new Set<string>();
+    await Promise.all(Array.from(new Set(recommendations.map((recommendation) => recommendation.sourceRunId))).map(async (sourceRunId) => {
+      try {
+        const payload = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(sourceRunId)}`);
+        runsById.set(sourceRunId, payload.run);
+      } catch {
+        unavailableRunIds.add(sourceRunId);
+      }
+    }));
+    return { runsById, unavailableRunIds };
+  }
+
+  function addAllProgressItems(
+    recommendations: AiCurationRecommendation[],
+    plan: ReturnType<typeof planAddAllRecommendations>
+  ): AddAllProgressItem[] {
+    return recommendations.map((recommendation) => {
+      const item = plan.find((planItem) => planItem.candidateKey === recommendation.candidateKey);
+      return {
+        candidateKey: recommendation.candidateKey,
+        title: recommendation.conversation.title,
+        audioStatus: item?.sourceError ? 'error' : item?.audioReady ? 'done' : 'pending',
+        libraryStatus: item?.libraryReady ? 'done' : 'pending',
+        audioDetail: item?.audioReady ? 'Already generated' : undefined,
+        libraryDetail: item?.libraryReady ? 'Already added' : undefined,
+        error: item?.sourceError
+      };
+    });
+  }
+
+  async function openAddAllAiRecommendations() {
     const review = currentAiCurationReview;
     const recommendationsToAdd = review?.result?.recommendations ?? [];
-    const retryingFailedPortfolio = addAllProgress?.stage === 'failed';
-    if (!review || isHistoricalAiCurationReview || review.status !== 'complete' || (!retryingFailedPortfolio && review.stale) || recommendationsToAdd.length === 0) return;
+    if (!review || isHistoricalAiCurationReview || review.status !== 'complete' || review.stale || recommendationsToAdd.length === 0) return;
 
     setError(null);
+    addAllPauseRequestedRef.current = false;
     setAddAllProgress({
       stage: 'preparing',
       items: recommendationsToAdd.map((recommendation) => ({
@@ -2202,70 +2170,179 @@ function StudioApp() {
       }))
     });
 
-    const currentRuns = new Map<string, PracticeRun>();
     try {
-      for (const sourceRunId of new Set(recommendationsToAdd.map((recommendation) => recommendation.sourceRunId))) {
-        const payload = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(sourceRunId)}`);
-        currentRuns.set(sourceRunId, payload.run);
-      }
+      const initialSources = await loadAddAllSourceRuns(recommendationsToAdd);
+      const initialPlan = planAddAllRecommendations(recommendationsToAdd, initialSources.runsById, initialSources.unavailableRunIds);
+      setAddAllProgress({
+        stage: initialPlan.some((item) => item.sourceError) ? 'failed' : 'ready',
+        error: initialPlan.some((item) => item.sourceError) ? 'Some source conversations could not be loaded. Nothing was added to Library; retry to recheck.' : undefined,
+        items: addAllProgressItems(recommendationsToAdd, initialPlan)
+      });
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : String(caught);
+      setAddAllProgress((previous) => previous ? { ...previous, stage: 'failed', error: message } : previous);
+      setError(message);
+    }
+  }
 
-      setAddAllProgress((previous) => previous ? { ...previous, stage: 'audio' } : previous);
-      let audioFailed = false;
-      for (const recommendation of recommendationsToAdd) {
-        const sourceRun = currentRuns.get(recommendation.sourceRunId);
-        const conversation = sourceRun?.conversations.find((item) => item.id === recommendation.sourceConversationId);
-        if (!sourceRun || !conversation) {
-          audioFailed = true;
-          updateAddAllItem(recommendation.candidateKey, { audioStatus: 'error', error: 'Source conversation no longer exists.' });
-          continue;
-        }
-        if (conversation.status === 'audio_ready' && conversation.audioFileName) {
-          updateAddAllItem(recommendation.candidateKey, { audioStatus: 'skipped' });
-          continue;
-        }
+  function pauseAddAllAiRecommendations() {
+    if (addAllProgress?.stage !== 'audio') return;
+    addAllPauseRequestedRef.current = true;
+    setAddAllProgress((previous) => previous?.stage === 'audio' ? { ...previous, stage: 'pausing' } : previous);
+  }
 
-        updateAddAllItem(recommendation.candidateKey, { audioStatus: 'processing', error: undefined });
-        try {
-          const payload = await api<{ run: PracticeRun }>(
-            `/api/runs/${encodeURIComponent(recommendation.sourceRunId)}/conversations/${encodeURIComponent(recommendation.sourceConversationId)}/audio`,
-            { method: 'POST' }
-          );
-          currentRuns.set(recommendation.sourceRunId, payload.run);
-          updateAddAllItem(recommendation.candidateKey, { audioStatus: 'done' });
-        } catch (caught) {
-          audioFailed = true;
-          updateAddAllItem(recommendation.candidateKey, {
-            audioStatus: 'error',
-            error: caught instanceof Error ? caught.message : String(caught)
-          });
-        }
-      }
+  async function runAddAllAiRecommendations() {
+    const review = currentAiCurationReview;
+    const recommendationsToAdd = review?.result?.recommendations ?? [];
+    const runnableStage = addAllProgress?.stage === 'ready' || addAllProgress?.stage === 'paused' || addAllProgress?.stage === 'failed';
+    if (!review || !runnableStage || isHistoricalAiCurationReview || review.status !== 'complete' || recommendationsToAdd.length === 0) return;
 
-      if (audioFailed) {
+    setError(null);
+    addAllPauseRequestedRef.current = false;
+    setAddAllProgress((previous) => previous ? {
+      ...previous,
+      stage: 'audio',
+      error: undefined,
+      items: previous.items.map((item) => item.audioStatus === 'done' ? item : {
+        ...item,
+        audioStatus: 'pending',
+        audioDetail: undefined,
+        error: undefined
+      })
+    } : previous);
+
+    try {
+      const initialSources = await loadAddAllSourceRuns(recommendationsToAdd);
+      const initialPlan = planAddAllRecommendations(recommendationsToAdd, initialSources.runsById, initialSources.unavailableRunIds);
+      setAddAllProgress((previous) => previous ? {
+        ...previous,
+        stage: initialPlan.some((item) => item.sourceError) ? 'failed' : 'audio',
+        error: initialPlan.some((item) => item.sourceError) ? 'Some source conversations could not be loaded. Nothing was added to Library; retry to recheck.' : undefined,
+        items: addAllProgressItems(recommendationsToAdd, initialPlan)
+      } : previous);
+
+      if (initialPlan.some((item) => item.sourceError)) return;
+
+      const queuedRecommendations = recommendationsToAdd.filter((recommendation) => {
+        const item = initialPlan.find((planItem) => planItem.candidateKey === recommendation.candidateKey);
+        return item && !item.audioReady;
+      });
+      const audioResults = await runStopOnFailureQueue(queuedRecommendations, {
+        concurrency: 3,
+        shouldPause: () => addAllPauseRequestedRef.current,
+        onStart: (recommendation) => updateAddAllItem(recommendation.candidateKey, {
+          audioStatus: 'processing',
+          audioDetail: 'Generating audio',
+          error: undefined
+        }),
+        run: async (recommendation) => api<{ run: PracticeRun }>(
+          `/api/runs/${encodeURIComponent(recommendation.sourceRunId)}/conversations/${encodeURIComponent(recommendation.sourceConversationId)}/audio`,
+          { method: 'POST' }
+        ),
+        onSettled: (recommendation, result) => {
+          if (result.status === 'done') {
+            updateAddAllItem(recommendation.candidateKey, {
+              audioStatus: 'done',
+              audioDetail: 'Audio ready',
+              error: undefined
+            });
+          } else if (result.status === 'error') {
+            updateAddAllItem(recommendation.candidateKey, {
+              audioStatus: 'error',
+              audioDetail: 'Audio failed',
+              error: result.error instanceof Error ? result.error.message : String(result.error)
+            });
+          } else if (result.status === 'paused') {
+            updateAddAllItem(recommendation.candidateKey, {
+              audioStatus: 'paused',
+              audioDetail: 'Paused',
+              error: undefined
+            });
+          } else {
+            updateAddAllItem(recommendation.candidateKey, {
+              audioStatus: 'skipped',
+              audioDetail: 'Skipped after failure',
+              error: undefined
+            });
+          }
+        }
+      });
+
+      if (audioResults.some((result) => result.status === 'error' || result.status === 'skipped')) {
         setAddAllProgress((previous) => previous ? {
           ...previous,
           stage: 'failed',
-          error: 'Some audio could not be generated. Nothing new was added to Library; retry to continue.'
+          error: 'Audio generation stopped after a failure. Nothing new was added to Library; retry to resume missing audio.'
         } : previous);
         await loadInitial();
         return;
       }
 
-      setAddAllProgress((previous) => previous ? { ...previous, stage: 'library' } : previous);
+      if (addAllPauseRequestedRef.current || audioResults.some((result) => result.status === 'paused')) {
+        addAllPauseRequestedRef.current = false;
+        setAddAllProgress((previous) => previous ? {
+          ...previous,
+          stage: 'paused',
+          error: undefined
+        } : previous);
+        await loadInitial();
+        return;
+      }
+
+      const reconciledSources = await loadAddAllSourceRuns(recommendationsToAdd);
+      const reconciledPlan = planAddAllRecommendations(recommendationsToAdd, reconciledSources.runsById, reconciledSources.unavailableRunIds);
+      const audioIncomplete = reconciledPlan.some((item) => item.sourceError || !item.audioReady);
+      if (audioIncomplete) {
+        setAddAllProgress((previous) => previous ? {
+          ...previous,
+          stage: 'failed',
+          error: 'Audio readiness could not be confirmed for the complete portfolio. Nothing was added to Library; retry to recheck.',
+          items: previous.items.map((progressItem) => {
+            const item = reconciledPlan.find((planItem) => planItem.candidateKey === progressItem.candidateKey);
+            if (!item) return progressItem;
+            return {
+              ...progressItem,
+              audioStatus: item.sourceError ? 'error' : item.audioReady ? 'done' : 'skipped',
+              audioDetail: item.audioReady ? progressItem.audioDetail ?? 'Already generated' : item.sourceError ? 'Source unavailable' : 'Audio not ready',
+              error: item.sourceError
+            };
+          })
+        } : previous);
+        return;
+      }
+
+      setAddAllProgress((previous) => previous ? {
+        ...previous,
+        stage: 'library',
+        error: undefined,
+        items: previous.items.map((progressItem) => {
+          const item = reconciledPlan.find((planItem) => planItem.candidateKey === progressItem.candidateKey);
+          return item ? {
+            ...progressItem,
+            audioStatus: 'done',
+            audioDetail: progressItem.audioDetail ?? 'Already generated',
+            libraryStatus: item.libraryReady ? 'done' : 'pending',
+            libraryDetail: item.libraryReady ? 'Already added' : undefined,
+            error: undefined
+          } : progressItem;
+        })
+      } : previous);
       let libraryFailed = false;
       for (const recommendation of recommendationsToAdd) {
-        updateAddAllItem(recommendation.candidateKey, { libraryStatus: 'processing', error: undefined });
+        const planItem = reconciledPlan.find((item) => item.candidateKey === recommendation.candidateKey);
+        if (planItem?.libraryReady) continue;
+        updateAddAllItem(recommendation.candidateKey, { libraryStatus: 'processing', libraryDetail: 'Adding', error: undefined });
         try {
-          const payload = await api<{ run: PracticeRun }>(
+          await api<{ run: PracticeRun }>(
             `/api/runs/${encodeURIComponent(recommendation.sourceRunId)}/conversations/${encodeURIComponent(recommendation.sourceConversationId)}/library`,
             { method: 'POST' }
           );
-          currentRuns.set(recommendation.sourceRunId, payload.run);
-          updateAddAllItem(recommendation.candidateKey, { libraryStatus: 'done' });
+          updateAddAllItem(recommendation.candidateKey, { libraryStatus: 'done', libraryDetail: 'Added', error: undefined });
         } catch (caught) {
           libraryFailed = true;
           updateAddAllItem(recommendation.candidateKey, {
             libraryStatus: 'error',
+            libraryDetail: 'Failed',
             error: caught instanceof Error ? caught.message : String(caught)
           });
         }
@@ -2276,7 +2353,7 @@ function StudioApp() {
         stage: libraryFailed ? 'failed' : 'complete',
         error: libraryFailed ? 'Some conversations could not be added. Retry to finish the portfolio.' : undefined
       } : previous);
-      await Promise.all([loadInitial(), loadRecommendations(), loadAiCurationHistory(), loadPracticePublishStatus()]);
+      await Promise.all([loadInitial(), loadRecommendations(), loadAiCurationHistory(), loadLibraryBalance(), loadPracticePublishStatus()]);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
       setAddAllProgress((previous) => previous ? { ...previous, stage: 'failed', error: message } : previous);
@@ -3384,7 +3461,8 @@ function StudioApp() {
         <AddAllProgressModal
           progress={addAllProgress}
           onClose={() => setAddAllProgress(null)}
-          onRetry={addAllAiRecommendations}
+          onRun={runAddAllAiRecommendations}
+          onPause={pauseAddAllAiRecommendations}
         />
       ) : null}
       <aside className="sideBar">
@@ -3586,7 +3664,7 @@ function StudioApp() {
                   ))}
                 </select>
                 {currentAiCurationReview?.status === 'complete' && !currentAiCurationReview.stale && !isHistoricalAiCurationReview && currentAiCurationReview.result?.recommendations.length ? (
-                  <button className="auditToggle positive" onClick={addAllAiRecommendations} disabled={Boolean(addAllProgress)}>
+                  <button className="auditToggle positive" onClick={openAddAllAiRecommendations} disabled={Boolean(addAllProgress)}>
                     <Plus size={15} />
                     Add All
                   </button>

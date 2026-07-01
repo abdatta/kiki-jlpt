@@ -1111,6 +1111,12 @@ textarea:focus {
   color: var(--studio-text-muted);
 }
 
+.workflowAudioItem.paused {
+  background: #f4f2ed;
+  border-color: #beb7a9;
+  color: var(--studio-text-muted);
+}
+
 .workflowAudioListEmpty {
   margin: 10px;
   border: 1px dashed var(--studio-border-muted);
@@ -2260,26 +2266,55 @@ audio {
   color: var(--studio-text-muted);
 }
 
+.addAllStage.error {
+  border: 1px solid var(--studio-danger-border);
+  border-radius: 8px;
+  background: var(--studio-danger-soft);
+  color: var(--studio-danger);
+  padding: 10px 12px;
+}
+
+.addAllLibraryStage {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--studio-border-soft);
+  border-radius: 8px;
+  background: var(--studio-surface);
+}
+
+.addAllLibraryHeader {
+  padding: 12px;
+  border-bottom: 1px solid var(--studio-border-muted);
+  background: var(--studio-surface-raised);
+}
+
+.addAllLibraryHeader strong,
+.addAllLibraryHeader small {
+  display: block;
+}
+
+.addAllLibraryHeader small {
+  margin-top: 3px;
+  color: var(--studio-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .addAllProgressList {
   display: grid;
   gap: 6px;
+  max-height: 276px;
+  overflow-y: auto;
+  padding: 10px;
 }
 
-.addAllProgressHeader,
 .addAllProgressRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 110px 110px;
+  grid-template-columns: auto minmax(0, 1fr) 110px;
   align-items: center;
   gap: 10px;
   padding: 9px 10px;
-}
-
-.addAllProgressHeader {
-  color: var(--studio-text-subtle);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
 }
 
 .addAllProgressRow {
@@ -2289,7 +2324,7 @@ audio {
   font-size: 13px;
 }
 
-.addAllProgressRow > span:first-child {
+.addAllProgressRow > span:nth-child(2) {
   display: grid;
   gap: 3px;
   min-width: 0;
@@ -2467,9 +2502,8 @@ audio {
     white-space: normal;
   }
 
-  .addAllProgressHeader,
   .addAllProgressRow {
-    grid-template-columns: minmax(0, 1fr) 82px 82px;
+    grid-template-columns: auto minmax(0, 1fr) 82px;
   }
 
   .workflowHeader {
@@ -2573,6 +2607,3 @@ audio {
     flex-direction: column-reverse;
   }
 }
-
-
-

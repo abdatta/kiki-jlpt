@@ -11,6 +11,22 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+const runUpdateQueues = new Map<string, Promise<void>>();
+
+async function withRunUpdateQueue<T>(runId: string, operation: () => Promise<T>): Promise<T> {
+  const previous = runUpdateQueues.get(runId) ?? Promise.resolve();
+  const current = previous.catch(() => undefined).then(operation);
+  const tail = current.then(() => undefined, () => undefined);
+  runUpdateQueues.set(runId, tail);
+  try {
+    return await current;
+  } finally {
+    if (runUpdateQueues.get(runId) === tail) {
+      runUpdateQueues.delete(runId);
+    }
+  }
+}
+
 export function makeRunId(setNumber: number): string {
   const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
   const suffix = Math.random().toString(36).slice(2, 8);
@@ -88,19 +104,21 @@ export async function updateConversation(
   conversationId: string,
   updater: (conversation: PracticeConversation, run: PracticeRun) => PracticeConversation
 ): Promise<PracticeRun> {
-  const run = await readRun(runId);
-  const index = run.conversations.findIndex((conversation) => conversation.id === conversationId);
-  if (index === -1) {
-    throw new Error(`Conversation not found: ${conversationId}`);
-  }
+  return withRunUpdateQueue(runId, async () => {
+    const run = await readRun(runId);
+    const index = run.conversations.findIndex((conversation) => conversation.id === conversationId);
+    if (index === -1) {
+      throw new Error(`Conversation not found: ${conversationId}`);
+    }
 
-  const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
-  run.conversations[index] = updater(run.conversations[index], run);
-  run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations);
-  run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
-  run.updatedAt = nowIso();
-  run.status = run.conversations.every((conversation) => conversation.status === 'audio_ready') ? 'complete' : run.conversations.some((conversation) => conversation.audioFileName) ? 'partial_audio' : 'generated';
-  return saveRun(run);
+    const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
+    run.conversations[index] = updater(run.conversations[index], run);
+    run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations);
+    run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
+    run.updatedAt = nowIso();
+    run.status = run.conversations.every((conversation) => conversation.status === 'audio_ready') ? 'complete' : run.conversations.some((conversation) => conversation.audioFileName) ? 'partial_audio' : 'generated';
+    return saveRun(run);
+  });
 }
 
 export async function unlockCuratedSource(runId: string, conversationId: string, curatedId: string): Promise<PracticeRun | null> {

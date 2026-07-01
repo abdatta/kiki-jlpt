@@ -3,6 +3,7 @@ import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { AiCurationRecommendation, ConversationCurationEvidence, PracticeConversation } from '../shared/types.ts';
 import { AddAllProgressModal } from './components/AddAllProgressModal.tsx';
+import { AudioProgressStage } from './components/AudioProgressStage.tsx';
 import { AiRecommendationReason, CurationEvidencePanel } from './components/CurationEvidence.tsx';
 
 const evidence: ConversationCurationEvidence = {
@@ -69,27 +70,156 @@ test('Studio AI recommendation renders rationale, strengths, and concerns', () =
   assert.match(html, /One question is vague/);
 });
 
-test('Studio bulk-add modal renders audio and library progress separately', () => {
+test('Studio bulk-add modal uses LLM Audit audio failure and stopped states', () => {
   const html = renderToStaticMarkup(<AddAllProgressModal
     progress={{
       stage: 'failed',
       error: 'Some audio could not be generated.',
-      items: [{
-        candidateKey: 'run-1:convo-01',
-        title: 'Test conversation',
-        audioStatus: 'error',
-        libraryStatus: 'pending',
-        error: 'Audio provider unavailable.'
-      }]
+      items: [
+        {
+          candidateKey: 'run-1:convo-01',
+          title: 'Ready conversation',
+          audioStatus: 'done',
+          audioDetail: 'Already generated',
+          libraryStatus: 'pending'
+        },
+        {
+          candidateKey: 'run-1:convo-02',
+          title: 'Failed conversation',
+          audioStatus: 'error',
+          libraryStatus: 'pending',
+          error: 'Audio provider unavailable.'
+        },
+        {
+          candidateKey: 'run-1:convo-03',
+          title: 'Stopped conversation',
+          audioStatus: 'skipped',
+          libraryStatus: 'pending'
+        }
+      ]
     }}
     onClose={() => undefined}
-    onRetry={() => undefined}
+    onRun={() => undefined}
+    onPause={() => undefined}
   />);
 
   assert.match(html, /Add all recommendations/);
   assert.match(html, /Some audio could not be generated/);
+  assert.match(html, /Audio Generation Failed/);
+  assert.match(html, /1 of 3 audio conversations done/);
+  assert.match(html, /Already generated/);
   assert.match(html, /Audio provider unavailable/);
-  assert.match(html, /Failed/);
-  assert.match(html, /Waiting/);
+  assert.match(html, /Skipped after failure/);
   assert.match(html, /Retry/);
+  assert.doesNotMatch(html, /Adding to Library/);
+});
+
+test('Studio bulk-add modal transitions from shared audio progress to separate Library progress', () => {
+  const html = renderToStaticMarkup(<AddAllProgressModal
+    progress={{
+      stage: 'library',
+      items: [
+        {
+          candidateKey: 'run-1:convo-01',
+          title: 'Existing conversation',
+          audioStatus: 'done',
+          audioDetail: 'Already generated',
+          libraryStatus: 'done',
+          libraryDetail: 'Already added'
+        },
+        {
+          candidateKey: 'run-1:convo-02',
+          title: 'New conversation',
+          audioStatus: 'done',
+          audioDetail: 'Audio ready',
+          libraryStatus: 'processing',
+          libraryDetail: 'Adding'
+        }
+      ]
+    }}
+    onClose={() => undefined}
+    onRun={() => undefined}
+    onPause={() => undefined}
+  />);
+
+  assert.match(html, /Generated Audio/);
+  assert.match(html, /2 of 2 audio conversations done/);
+  assert.match(html, /Adding to Library/);
+  assert.match(html, /1 of 2 conversations added/);
+  assert.match(html, /Already added/);
+  assert.match(html, />Adding</);
+});
+
+test('shared LLM Audit audio stage renders the same stopped status used by Add All', () => {
+  const items = [
+    { id: 'one', title: 'Ready', detail: 'Audio ready', status: 'done' as const },
+    { id: 'two', title: 'Stopped', detail: 'Skipped after failure', status: 'skipped' as const }
+  ];
+  const auditHtml = renderToStaticMarkup(<AudioProgressStage items={items} state="idle" />);
+  const addAllHtml = renderToStaticMarkup(<AddAllProgressModal
+    progress={{
+      stage: 'failed',
+      error: 'Audio generation stopped.',
+      items: items.map((item) => ({
+        candidateKey: item.id,
+        title: item.title,
+        audioStatus: item.status,
+        audioDetail: item.detail,
+        libraryStatus: 'pending'
+      }))
+    }}
+    onClose={() => undefined}
+    onRun={() => undefined}
+    onPause={() => undefined}
+  />);
+
+  assert.match(auditHtml, /Audio Generation Stopped/);
+  assert.match(addAllHtml, /Audio Generation Stopped/);
+  assert.match(auditHtml, /1 of 2 audio conversations done/);
+  assert.match(addAllHtml, /1 of 2 audio conversations done/);
+});
+
+test('Studio bulk-add modal requires start and exposes the pause lifecycle', () => {
+  const baseItem = {
+    candidateKey: 'run-1:convo-01',
+    title: 'Test conversation',
+    libraryStatus: 'pending' as const
+  };
+  const handlers = {
+    onClose: () => undefined,
+    onRun: () => undefined,
+    onPause: () => undefined
+  };
+  const readyHtml = renderToStaticMarkup(<AddAllProgressModal
+    progress={{ stage: 'ready', items: [{ ...baseItem, audioStatus: 'pending' }] }}
+    {...handlers}
+  />);
+  const runningHtml = renderToStaticMarkup(<AddAllProgressModal
+    progress={{ stage: 'audio', items: [{ ...baseItem, audioStatus: 'processing' }] }}
+    {...handlers}
+  />);
+  const pausingHtml = renderToStaticMarkup(<AddAllProgressModal
+    progress={{ stage: 'pausing', items: [{ ...baseItem, audioStatus: 'processing' }] }}
+    {...handlers}
+  />);
+  const pausedHtml = renderToStaticMarkup(<AddAllProgressModal
+    progress={{ stage: 'paused', items: [{ ...baseItem, audioStatus: 'paused' }] }}
+    {...handlers}
+  />);
+  const allReadyHtml = renderToStaticMarkup(<AddAllProgressModal
+    progress={{ stage: 'ready', items: [{ ...baseItem, audioStatus: 'done', audioDetail: 'Already generated' }] }}
+    {...handlers}
+  />);
+
+  assert.match(readyHtml, /Ready to Generate Audio/);
+  assert.match(readyHtml, /Start generation/);
+  assert.doesNotMatch(readyHtml, />Pause</);
+  assert.match(runningHtml, /Generating Audio/);
+  assert.match(runningHtml, />Pause</);
+  assert.match(pausingHtml, /Pausing Audio/);
+  assert.match(pausingHtml, /Pausing\.\.\./);
+  assert.match(pausedHtml, /Audio Generation Paused/);
+  assert.match(pausedHtml, /Resume/);
+  assert.match(allReadyHtml, /Generated Audio/);
+  assert.match(allReadyHtml, /Add to Library/);
 });

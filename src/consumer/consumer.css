@@ -1429,7 +1429,13 @@
   font-size: 12px;
 }
 
-.lineTranslationButton {
+.transcriptLineActions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.lineActionButton {
   width: 30px;
   height: 30px;
   flex: 0 0 auto;
@@ -1439,9 +1445,10 @@
   color: var(--muted-strong);
   display: grid;
   place-items: center;
+  text-decoration: none;
 }
 
-.lineTranslationButton.active {
+.lineActionButton.active {
   border-color: var(--border-strong);
   background: var(--accent-soft);
   color: var(--accent-text);
