@@ -308,16 +308,19 @@ export interface GenerateRequest {
   setNumber: number;
   conversationCount: number;
   textModelId?: string;
+  idempotencyKey?: string;
 }
 
 export interface RunAudioGenerateRequest {
   mode?: 'replace' | 'resume';
+  idempotencyKey?: string;
 }
 
 export interface LibraryComplementGenerateRequest {
   textModelId?: string;
   balanceMode?: 'stats' | 'ai';
   conversationCount?: number;
+  idempotencyKey?: string;
 }
 
 export type WorkflowAudioMode = 'fixed' | 'max';
@@ -394,6 +397,117 @@ export interface WorkflowStartResponse {
 
 export interface WorkflowStatusResponse {
   job: WorkflowJob;
+}
+
+export type StudioJobKind =
+  | 'run-generation'
+  | 'workflow-generation'
+  | 'library-complement'
+  | 'audio-single'
+  | 'audio-batch'
+  | 'add-all-audio'
+  | 'audio-child';
+
+export type StudioJobStatus =
+  | 'queued'
+  | 'running'
+  | 'pausing'
+  | 'paused'
+  | 'interrupted'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled';
+
+export type StudioJobStageStatus = 'pending' | 'running' | 'succeeded' | 'failed' | 'skipped' | 'interrupted';
+
+export interface StudioJobStage {
+  id: string;
+  label: string;
+  status: StudioJobStageStatus;
+  startedAt?: string;
+  completedAt?: string;
+  error?: string;
+}
+
+export interface StudioJobProgress {
+  completed: number;
+  total: number;
+  queued?: number;
+  running?: number;
+  failed?: number;
+}
+
+export interface StudioJob {
+  id: string;
+  idempotencyKey: string;
+  kind: StudioJobKind;
+  status: StudioJobStatus;
+  title: string;
+  detail: string;
+  stageLabel: string;
+  setNumber?: number;
+  runId?: string;
+  conversationId?: string;
+  parentJobId?: string;
+  dependentParentJobIds?: string[];
+  deduplicationKey?: string;
+  stopOnFailure?: boolean;
+  revision: number;
+  progress: StudioJobProgress;
+  stages: StudioJobStage[];
+  request?: unknown;
+  checkpoint?: unknown;
+  workflow?: WorkflowJob;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export interface StudioRunShellSummary {
+  kind: 'job';
+  id: string;
+  jobId: string;
+  setNumber: number;
+  title: string;
+  modelLabel: string;
+  requestedConversationCount: number;
+  status: StudioJobStatus;
+  stageLabel: string;
+  progress: StudioJobProgress;
+  createdAt: string;
+  updatedAt: string;
+  resumable: boolean;
+}
+
+export interface StudioCompletedRunSummary {
+  kind: 'run';
+  id: string;
+  run: PracticeRun;
+}
+
+export type StudioRunSummary = StudioRunShellSummary | StudioCompletedRunSummary;
+
+export interface StudioSnapshot {
+  generatedAt: string;
+  revision: number;
+  runs: PracticeRun[];
+  runSummaries: StudioRunSummary[];
+  jobs: StudioJob[];
+}
+
+export interface StudioEvent {
+  id: string;
+  type: 'job' | 'run' | 'snapshot';
+  revision: number;
+  emittedAt: string;
+  job?: StudioJob;
+  run?: PracticeRun;
+}
+
+export interface StudioJobCommandResponse {
+  job: StudioJob;
+  attached?: boolean;
 }
 
 export interface ApiError {

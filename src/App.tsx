@@ -5,6 +5,7 @@ import {
   BookOpen,
   Check,
   CircleAlert,
+  Clock,
   Disc3,
   Eye,
   Headphones,
@@ -41,18 +42,22 @@ import type {
   RunAnalytics,
   RunAudioGenerateRequest,
   SetSummary,
+  StudioEvent,
+  StudioJob,
+  StudioRunShellSummary,
+  StudioSnapshot,
   TextModelInfo,
   WorkflowAuditNode,
   WorkflowJob,
-  WorkflowStartResponse,
-  WorkflowStatusResponse
+  WorkflowStartResponse
 } from '../shared/types.ts';
 import { BrandLogo } from './components/BrandLogo.tsx';
 import { AddAllProgressModal, type AddAllProgress, type AddAllProgressItem } from './components/AddAllProgressModal.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
+import { StudioBackgroundJobs, type StudioToast } from './components/StudioBackgroundJobs.tsx';
 import { AiRecommendationReason, CurationEvidencePanel } from './components/CurationEvidence.tsx';
 import { ConsumerApp } from './consumer/ConsumerApp.tsx';
-import { planAddAllRecommendations, runStopOnFailureQueue } from './addAllAudio.ts';
+import { planAddAllRecommendations } from './addAllAudio.ts';
 
 type ConversationAction = 'audio' | 'delete-audio';
 type BoardMode = 'runs' | 'library' | 'recommendations' | 'ai-curation';
@@ -236,6 +241,10 @@ function parseStudioRoute(hash = typeof window === 'undefined' ? '' : window.loc
   }
 
   return { boardMode: 'runs', auditOpen: false };
+}
+
+function isTopLevelStudioJob(job: StudioJob): boolean {
+  return !job.parentJobId && !job.dependentParentJobIds?.length;
 }
 
 function navigateToStudioRoute(route: string) {
@@ -1934,6 +1943,10 @@ function StudioApp() {
   const [studioRoute, setStudioRoute] = useState(parseStudioRoute);
   const [sets, setSets] = useState<SetSummary[]>([]);
   const [runs, setRuns] = useState<PracticeRun[]>([]);
+  const [studioJobs, setStudioJobs] = useState<StudioJob[]>([]);
+  const [runShells, setRunShells] = useState<StudioRunShellSummary[]>([]);
+  const [studioToasts, setStudioToasts] = useState<StudioToast[]>([]);
+  const [studioRealtimeConnected, setStudioRealtimeConnected] = useState(false);
   const [librarySets, setLibrarySets] = useState<CuratedSet[]>([]);
   const [recommendations, setRecommendations] = useState<LibraryRecommendations | null>(null);
   const [recommendationsLoading, setRecommendationsLoading] = useState(false);
@@ -1962,6 +1975,7 @@ function StudioApp() {
   const [generateModal, setGenerateModal] = useState<GenerateModalState | null>(null);
   const [addAllProgress, setAddAllProgress] = useState<AddAllProgress | null>(null);
   const [workflowJob, setWorkflowJob] = useState<WorkflowJob | null>(null);
+  const [focusedShellJobId, setFocusedShellJobId] = useState<string | null>(null);
   const [selectedWorkflowNodeId, setSelectedWorkflowNodeId] = useState<string | undefined>();
   const [auditOpen, setAuditOpen] = useState(studioRoute.boardMode === 'runs' && studioRoute.auditOpen);
   const [revealedAnswers, setRevealedAnswers] = useState<Record<string, boolean>>({});
@@ -1969,6 +1983,12 @@ function StudioApp() {
   const [audioStates, setAudioStates] = useState<Record<string, AudioPlaybackState>>({});
   const audioRefs = useRef<Record<string, HTMLAudioElement | null>>({});
   const addAllPauseRequestedRef = useRef(false);
+  const addAllJobIdRef = useRef<string | undefined>(undefined);
+  const addAllCandidateBySourceRef = useRef(new Map<string, string>());
+  const pendingJobFocusRef = useRef<StudioJob | null>(null);
+  const seenStudioEventIds = useRef(new Set<string>());
+  const studioJobWaiters = useRef(new Map<string, (job: StudioJob) => void>());
+  const initialStudioHydrationComplete = useRef(false);
 
   const currentSet = useMemo(() => sets.find((item) => item.set === setNumber), [sets, setNumber]);
   const textModelOptions = useMemo(() => {
@@ -1981,6 +2001,10 @@ function StudioApp() {
   const currentLibrarySet = useMemo(() => librarySets.find((item) => item.setNumber === setNumber), [librarySets, setNumber]);
   const currentLibraryBalance = libraryBalance?.setNumber === setNumber ? libraryBalance : null;
   const filteredRuns = useMemo(() => runs.filter((run) => run.setNumber === setNumber), [runs, setNumber]);
+  const filteredRunShells = useMemo(() => runShells.filter((run) => run.setNumber === setNumber), [runShells, setNumber]);
+  const activeShellJobId = workflowJob?.id ?? focusedShellJobId;
+  const activeShellVisible = Boolean(activeShellJobId && filteredRunShells.some((shell) => shell.jobId === activeShellJobId));
+  const activeStudioJobs = useMemo(() => studioJobs.filter((job) => ['queued', 'running', 'pausing'].includes(job.status)), [studioJobs]);
   const currentCuratedLibrarySets = useMemo(() => currentLibrarySet && currentLibrarySet.conversations.length > 0 ? [currentLibrarySet] : [], [currentLibrarySet]);
   const currentRecommendations = recommendations?.setNumber === setNumber ? recommendations : null;
   const currentAiCurationReview = aiCurationReview?.setNumber === setNumber ? aiCurationReview : null;
@@ -2002,15 +2026,121 @@ function StudioApp() {
     setTextModelId(run.textModel.id);
   }
 
+  async function refreshStudioSnapshot() {
+    const payload = await api<{ snapshot: StudioSnapshot }>('/api/studio/snapshot');
+    setRuns((current) => payload.snapshot.runs.map((run) => {
+      const existing = current.find((item) => item.id === run.id);
+      return existing && existing.updatedAt > run.updatedAt ? existing : run;
+    }));
+    setStudioJobs((current) => payload.snapshot.jobs.map((job) => {
+      const existing = current.find((item) => item.id === job.id);
+      return existing && existing.revision > job.revision ? existing : job;
+    }));
+    setRunShells(payload.snapshot.runSummaries.filter((summary): summary is StudioRunShellSummary => summary.kind === 'job'));
+    setCurrentRun((previous) => previous
+      ? payload.snapshot.runs.find((run) => run.id === previous.id) ?? previous
+      : previous);
+  }
+
+  function dismissStudioToast(id: string) {
+    setStudioToasts((current) => current.filter((toast) => toast.id !== id));
+  }
+
+  // Keeps the run-shell list live from job updates instead of depending solely on
+  // snapshot refreshes, which can silently miss a beat on transient fetch failures.
+  function applyJobToRunShells(job: StudioJob) {
+    if (!['run-generation', 'workflow-generation', 'library-complement'].includes(job.kind)) return;
+    setRunShells((current) => {
+      if (job.status === 'cancelled' || job.status === 'succeeded') return current.filter((shell) => shell.jobId !== job.id);
+      return current.map((shell) => shell.jobId === job.id && shell.updatedAt <= job.updatedAt
+        ? {
+            ...shell,
+            status: job.status,
+            stageLabel: job.stageLabel,
+            progress: job.progress,
+            updatedAt: job.updatedAt,
+            resumable: job.status === 'paused' || job.status === 'interrupted' || job.status === 'failed'
+          }
+        : shell);
+    });
+  }
+
+  async function commandStudioJob(jobId: string, command: 'pause' | 'resume' | 'cancel') {
+    try {
+      const payload = await api<{ job: StudioJob }>(`/api/studio/jobs/${encodeURIComponent(jobId)}/${command}`, { method: 'POST' });
+      setStudioJobs((current) => [payload.job, ...current.filter((job) => job.id !== payload.job.id)]);
+      applyJobToRunShells(payload.job);
+      await refreshStudioSnapshot();
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : String(caught);
+      const toastId = `job-command:${jobId}:${command}:${Date.now()}`;
+      setStudioToasts((current) => [...current, {
+        id: toastId,
+        tone: 'error',
+        title: command === 'pause' ? 'Pause failed' : command === 'resume' ? 'Resume failed' : 'Discard failed',
+        detail: message
+      }]);
+      window.setTimeout(() => dismissStudioToast(toastId), 7000);
+    }
+  }
+
+  function focusStudioJob(job: StudioJob) {
+    pendingJobFocusRef.current = job;
+    if (job.kind === 'add-all-audio') {
+      navigateToStudioRoute(studioAiCurationRoute(job.setNumber ?? setNumber));
+      return;
+    }
+    // A generation job carries its future runId before run.json exists; only
+    // deep-link once the run is real, otherwise show its shell on the runs board.
+    const runExists = Boolean(job.runId && runs.some((run) => run.id === job.runId));
+    setFocusedShellJobId(runExists ? null : job.id);
+    if (!runExists && job.setNumber) setSetNumber(job.setNumber);
+    navigateToStudioRoute(studioRunsRoute(runExists ? job.runId : undefined));
+  }
+
+  function focusRunShell(shell: StudioRunShellSummary) {
+    const job = studioJobs.find((item) => item.id === shell.jobId);
+    if (job) {
+      focusStudioJob(job);
+      return;
+    }
+    setFocusedShellJobId(shell.jobId);
+    navigateToStudioRoute(studioRunsRoute());
+  }
+
+  async function waitForStudioJobClient(jobId: string): Promise<StudioJob> {
+    const current = await api<{ job: StudioJob }>(`/api/studio/jobs/${encodeURIComponent(jobId)}`);
+    if (['succeeded', 'failed', 'paused', 'interrupted', 'cancelled'].includes(current.job.status)) return current.job;
+    return new Promise((resolve) => studioJobWaiters.current.set(jobId, resolve));
+  }
+
   async function loadInitial() {
-    const [setPayload, runPayload, modelPayload, libraryPayload] = await Promise.all([
+    const [setPayload, snapshotPayload, modelPayload, libraryPayload] = await Promise.all([
       api<{ sets: SetSummary[] }>('/api/sets'),
-      api<{ runs: PracticeRun[] }>('/api/runs'),
+      api<{ snapshot: StudioSnapshot }>('/api/studio/snapshot'),
       api<{ models: TextModelInfo[] }>('/api/text-models'),
       api<{ sets: CuratedSet[] }>('/api/library')
     ]);
+    const runPayload = { runs: snapshotPayload.snapshot.runs };
     setSets(setPayload.sets);
     setRuns(runPayload.runs);
+    setStudioJobs(snapshotPayload.snapshot.jobs);
+    setRunShells(snapshotPayload.snapshot.runSummaries.filter((summary): summary is StudioRunShellSummary => summary.kind === 'job'));
+    if (!initialStudioHydrationComplete.current) {
+      const activeBeforeReload = new Set<string>(JSON.parse(sessionStorage.getItem('kiki-jlpt.studio.activeJobs') ?? '[]') as string[]);
+      for (const job of snapshotPayload.snapshot.jobs.filter((item) => activeBeforeReload.has(item.id) && ['succeeded', 'failed', 'interrupted'].includes(item.status) && isTopLevelStudioJob(item))) {
+        const toastId = `job:${job.id}:${job.status}`;
+        const tone = job.status === 'succeeded' ? 'success' : job.status === 'failed' ? 'error' : 'warning';
+        setStudioToasts((current) => current.some((toast) => toast.id === toastId) ? current : [...current, {
+          id: toastId,
+          tone,
+          title: job.title,
+          detail: job.stageLabel
+        }]);
+        window.setTimeout(() => dismissStudioToast(toastId), 7000);
+      }
+      initialStudioHydrationComplete.current = true;
+    }
     setTextModels(modelPayload.models);
     setLibrarySets(libraryPayload.sets);
     const routedRun = studioRoute.boardMode === 'runs' && studioRoute.runId
@@ -2189,6 +2319,7 @@ function StudioApp() {
     if (addAllProgress?.stage !== 'audio') return;
     addAllPauseRequestedRef.current = true;
     setAddAllProgress((previous) => previous?.stage === 'audio' ? { ...previous, stage: 'pausing' } : previous);
+    if (addAllJobIdRef.current) void commandStudioJob(addAllJobIdRef.current, 'pause');
   }
 
   async function runAddAllAiRecommendations() {
@@ -2227,48 +2358,40 @@ function StudioApp() {
         const item = initialPlan.find((planItem) => planItem.candidateKey === recommendation.candidateKey);
         return item && !item.audioReady;
       });
-      const audioResults = await runStopOnFailureQueue(queuedRecommendations, {
-        concurrency: 3,
-        shouldPause: () => addAllPauseRequestedRef.current,
-        onStart: (recommendation) => updateAddAllItem(recommendation.candidateKey, {
-          audioStatus: 'processing',
-          audioDetail: 'Generating audio',
-          error: undefined
-        }),
-        run: async (recommendation) => api<{ run: PracticeRun }>(
-          `/api/runs/${encodeURIComponent(recommendation.sourceRunId)}/conversations/${encodeURIComponent(recommendation.sourceConversationId)}/audio`,
-          { method: 'POST' }
-        ),
-        onSettled: (recommendation, result) => {
-          if (result.status === 'done') {
-            updateAddAllItem(recommendation.candidateKey, {
-              audioStatus: 'done',
-              audioDetail: 'Audio ready',
-              error: undefined
-            });
-          } else if (result.status === 'error') {
-            updateAddAllItem(recommendation.candidateKey, {
-              audioStatus: 'error',
-              audioDetail: 'Audio failed',
-              error: result.error instanceof Error ? result.error.message : String(result.error)
-            });
-          } else if (result.status === 'paused') {
-            updateAddAllItem(recommendation.candidateKey, {
-              audioStatus: 'paused',
-              audioDetail: 'Paused',
-              error: undefined
-            });
-          } else {
-            updateAddAllItem(recommendation.candidateKey, {
-              audioStatus: 'skipped',
-              audioDetail: 'Skipped after failure',
-              error: undefined
-            });
-          }
+      let audioJob: StudioJob | undefined;
+      if (queuedRecommendations.length > 0) {
+        addAllCandidateBySourceRef.current = new Map(queuedRecommendations.map((recommendation) => [
+          `${recommendation.sourceRunId}:${recommendation.sourceConversationId}`,
+          recommendation.candidateKey
+        ]));
+        for (const recommendation of queuedRecommendations) {
+          updateAddAllItem(recommendation.candidateKey, {
+            audioStatus: 'pending',
+            audioDetail: 'Queued',
+            error: undefined
+          });
         }
-      });
+        const started = await api<{ job: StudioJob }>('/api/studio/audio-batches', {
+          method: 'POST',
+          body: JSON.stringify({
+            idempotencyKey: makeSessionId(),
+            setNumber,
+            title: `Add All audio for Set ${setNumber}`,
+            items: queuedRecommendations.map((recommendation) => ({
+              runId: recommendation.sourceRunId,
+              conversationId: recommendation.sourceConversationId
+            }))
+          })
+        });
+        audioJob = started.job;
+        addAllJobIdRef.current = audioJob.id;
+        setStudioJobs((current) => [audioJob!, ...current.filter((job) => job.id !== audioJob!.id)]);
+        audioJob = await waitForStudioJobClient(audioJob.id);
+        addAllJobIdRef.current = undefined;
+        addAllCandidateBySourceRef.current.clear();
+      }
 
-      if (audioResults.some((result) => result.status === 'error' || result.status === 'skipped')) {
+      if (audioJob?.status === 'failed') {
         setAddAllProgress((previous) => previous ? {
           ...previous,
           stage: 'failed',
@@ -2278,7 +2401,7 @@ function StudioApp() {
         return;
       }
 
-      if (addAllPauseRequestedRef.current || audioResults.some((result) => result.status === 'paused')) {
+      if (addAllPauseRequestedRef.current || audioJob?.status === 'paused' || audioJob?.status === 'interrupted') {
         addAllPauseRequestedRef.current = false;
         setAddAllProgress((previous) => previous ? {
           ...previous,
@@ -2391,6 +2514,86 @@ function StudioApp() {
   }, []);
 
   useEffect(() => {
+    if (!initialStudioHydrationComplete.current) return;
+    sessionStorage.setItem('kiki-jlpt.studio.activeJobs', JSON.stringify(activeStudioJobs.map((job) => job.id)));
+  }, [activeStudioJobs]);
+
+  useEffect(() => {
+    const events = new EventSource('/api/studio/events');
+    events.onopen = () => setStudioRealtimeConnected(true);
+    events.onerror = () => {
+      setStudioRealtimeConnected(false);
+      void refreshStudioSnapshot().catch(() => undefined);
+    };
+    const onJob = (message: MessageEvent<string>) => {
+      const event = JSON.parse(message.data) as StudioEvent;
+      if (!event.job || seenStudioEventIds.current.has(event.id)) return;
+      seenStudioEventIds.current.add(event.id);
+      const job = event.job;
+      if (job.kind === 'audio-child' && job.runId && job.conversationId) {
+        const candidateKey = addAllCandidateBySourceRef.current.get(`${job.runId}:${job.conversationId}`);
+        if (candidateKey) {
+          updateAddAllItem(candidateKey, job.status === 'succeeded'
+            ? { audioStatus: 'done', audioDetail: 'Audio ready', error: undefined }
+            : job.status === 'failed'
+              ? { audioStatus: 'error', audioDetail: 'Audio failed', error: job.error }
+              : job.status === 'paused' || job.status === 'interrupted'
+                ? { audioStatus: 'paused', audioDetail: 'Paused', error: undefined }
+                : job.status === 'cancelled'
+                  ? { audioStatus: 'skipped', audioDetail: 'Discarded', error: undefined }
+                  : job.status === 'running'
+                    ? { audioStatus: 'processing', audioDetail: 'Generating audio', error: undefined }
+                    : { audioStatus: 'pending', audioDetail: 'Queued', error: undefined });
+        }
+      }
+      if (['succeeded', 'failed', 'paused', 'interrupted', 'cancelled'].includes(job.status)) {
+        studioJobWaiters.current.get(job.id)?.(job);
+        studioJobWaiters.current.delete(job.id);
+      }
+      setStudioJobs((current) => {
+        const existing = current.find((item) => item.id === job.id);
+        return existing && existing.revision >= job.revision
+          ? current
+          : [job, ...current.filter((item) => item.id !== job.id)];
+      });
+      applyJobToRunShells(job);
+      if (job.workflow) {
+        setWorkflowJob((current) => current?.id === job.id || job.status === 'running' ? job.workflow ?? current : current);
+      }
+      if (isTopLevelStudioJob(job) && (job.status === 'succeeded' || job.status === 'failed' || job.status === 'interrupted' || job.status === 'cancelled')) {
+        const tone = job.status === 'succeeded' ? 'success' : job.status === 'failed' ? 'error' : 'warning';
+        const toastId = `job:${job.id}:${job.status}`;
+        setStudioToasts((current) => current.some((toast) => toast.id === toastId) ? current : [
+          ...current,
+          { id: toastId, tone, title: job.title, detail: job.stageLabel }
+        ]);
+        window.setTimeout(() => dismissStudioToast(toastId), 7000);
+      }
+      void refreshStudioSnapshot().catch(() => undefined);
+    };
+    const onRun = (message: MessageEvent<string>) => {
+      const event = JSON.parse(message.data) as StudioEvent;
+      if (!event.run || seenStudioEventIds.current.has(event.id)) return;
+      seenStudioEventIds.current.add(event.id);
+      const run = event.run;
+      setRuns((current) => {
+        const existing = current.find((item) => item.id === run.id);
+        return existing && existing.updatedAt >= run.updatedAt
+          ? current
+          : [run, ...current.filter((item) => item.id !== run.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      });
+      setCurrentRun((current) => current?.id === run.id && current.updatedAt < run.updatedAt ? run : current);
+    };
+    events.addEventListener('job', onJob as EventListener);
+    events.addEventListener('run', onRun as EventListener);
+    return () => {
+      events.removeEventListener('job', onJob as EventListener);
+      events.removeEventListener('run', onRun as EventListener);
+      events.close();
+    };
+  }, []);
+
+  useEffect(() => {
     const handleHashChange = () => setStudioRoute(parseStudioRoute());
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
@@ -2402,6 +2605,7 @@ function StudioApp() {
     setWorkflowJob(null);
     setSelectedWorkflowNodeId(undefined);
     setEdit(null);
+    if (studioRoute.boardMode !== 'runs' || studioRoute.runId) setFocusedShellJobId(null);
 
     if (studioRoute.boardMode === 'runs') {
       setAuditOpen(studioRoute.auditOpen);
@@ -2411,6 +2615,28 @@ function StudioApp() {
     setAuditOpen(false);
     setSetNumber(studioRoute.setNumber);
   }, [studioRoute]);
+
+  useEffect(() => {
+    // Restores the foreground UI for a background job clicked in the tray, after the
+    // route change above has settled (it resets workflowJob/session state on navigation).
+    const job = pendingJobFocusRef.current;
+    if (!job) return;
+    if (job.kind === 'add-all-audio') {
+      if (boardMode !== 'ai-curation') return;
+      if (addAllProgress) {
+        pendingJobFocusRef.current = null;
+        return;
+      }
+      const review = currentAiCurationReview;
+      if (!review) return;
+      pendingJobFocusRef.current = null;
+      if (review.status === 'complete') void openAddAllAiRecommendations();
+      return;
+    }
+    if (boardMode !== 'runs') return;
+    pendingJobFocusRef.current = null;
+    if (job.kind === 'workflow-generation' && job.workflow) setWorkflowJob(job.workflow);
+  }, [boardMode, addAllProgress, currentAiCurationReview, studioRoute]);
 
   useEffect(() => {
     if (studioRoute.boardMode !== 'runs') return;
@@ -2667,7 +2893,7 @@ function StudioApp() {
     const sessionId = makeSessionId();
     const requestModel = textModelOptions.find((model) => model.id === config.textModelId);
     const modelLabel = requestModel?.label ?? config.textModelId;
-    const requestBody = config;
+    const requestBody = { ...config, idempotencyKey: makeSessionId() };
     setBusy('generate');
     setError(null);
     setEdit(null);
@@ -2693,15 +2919,13 @@ function StudioApp() {
       });
       setGenerationSession((previous) => previous?.id === sessionId ? { ...previous, exchange: preview.exchange } : previous);
 
-      const payload = await api<{ run: PracticeRun }>('/api/generate', {
+      await api<{ job: StudioJob }>('/api/generate/start', {
         method: 'POST',
         body: JSON.stringify(requestBody)
       });
-      setCurrentRun(payload.run);
       setBoardMode('runs');
       setGenerationSession(null);
-      await loadInitial();
-      navigateToRun(payload.run.id);
+      await refreshStudioSnapshot();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
       setError(message);
@@ -2720,7 +2944,7 @@ function StudioApp() {
   }
 
   async function generateWorkflow(config: GenerateRunConfig, audioCount: number, audioMode: 'fixed' | 'max' = 'fixed') {
-    const requestBody = { ...config, audioCount, audioMode };
+    const requestBody = { ...config, audioCount, audioMode, idempotencyKey: makeSessionId() };
     setBusy('workflow');
     setError(null);
     setEdit(null);
@@ -2741,25 +2965,7 @@ function StudioApp() {
       setWorkflowJob(started.job);
       setSelectedWorkflowNodeId(undefined);
 
-      let latest = started.job;
-      while (latest.status === 'running') {
-        await new Promise((resolve) => setTimeout(resolve, 700));
-        const payload = await api<WorkflowStatusResponse>(`/api/workflow/jobs/${encodeURIComponent(started.job.id)}`);
-        latest = payload.job;
-        setWorkflowJob(latest);
-      }
-
-      if (latest.run) {
-        setCurrentRun(latest.run);
-        await loadInitial();
-        await refreshRun(latest.run.id).catch(() => undefined);
-        navigateToRun(latest.run.id);
-      }
-      if (latest.audioErrors.length > 0) {
-        setError(`Pipeline finished, but ${latest.audioErrors.length} audio file${latest.audioErrors.length === 1 ? '' : 's'} failed to generate.`);
-      } else if (latest.status === 'failed') {
-        setError(latest.error ?? 'Pipeline failed.');
-      }
+      await refreshStudioSnapshot();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
       setError(message);
@@ -2797,6 +3003,7 @@ function StudioApp() {
     const requestBody: LibraryComplementGenerateRequest = {
       textModelId: modelId,
       balanceMode: strategy,
+      idempotencyKey: makeSessionId(),
       ...(overrideCount !== undefined ? { conversationCount: overrideCount } : {})
     };
     const modeLabel = isAiBalance ? 'library-aware' : 'stats-only';
@@ -2834,16 +3041,14 @@ function StudioApp() {
           }
         : previous);
 
-      const payload = await api<{ run: PracticeRun; balance: LibraryBalancePlan }>(`/api/library/sets/${encodeURIComponent(setNumber)}/complement`, {
+      const payload = await api<{ job: StudioJob; balance: LibraryBalancePlan }>(`/api/library/sets/${encodeURIComponent(setNumber)}/complement/start`, {
         method: 'POST',
         body: JSON.stringify(requestBody)
       });
       setLibraryBalance(payload.balance);
-      setCurrentRun(payload.run);
       setBoardMode('runs');
       setGenerationSession(null);
-      await loadInitial();
-      navigateToRun(payload.run.id);
+      await refreshStudioSnapshot();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
       setError(message);
@@ -2950,7 +3155,10 @@ function StudioApp() {
       const routeAction = action === 'delete-audio' ? 'audio' : action;
       const payload = await api<{ run: PracticeRun }>(
         `/api/runs/${encodeURIComponent(sourceRunId)}/conversations/${encodeURIComponent(conversationId)}/${routeAction}`,
-        { method: action === 'delete-audio' ? 'DELETE' : 'POST' }
+        {
+          method: action === 'delete-audio' ? 'DELETE' : 'POST',
+          ...(action === 'audio' ? { body: JSON.stringify({ idempotencyKey: makeSessionId() }) } : {})
+        }
       );
       if (currentRun?.id === sourceRunId) {
         setCurrentRun(payload.run);
@@ -2990,38 +3198,21 @@ function StudioApp() {
     setRuns((existing) => [optimisticRun, ...existing.filter((run) => run.id !== optimisticRun.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
     setWorkflowJob(null);
     setAuditOpen(true);
-    let audioRequestSettled = false;
     const applyLatestRun = (latestRun: PracticeRun) => {
       setCurrentRun((previous) => previous?.id === latestRun.id ? latestRun : previous);
       setRuns((existing) => [latestRun, ...existing.filter((run) => run.id !== latestRun.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
       setWorkflowJob(null);
       setAuditOpen(true);
     };
-    const pollRunWhileGenerating = async () => {
-      while (!audioRequestSettled) {
-        await delay(700);
-        if (audioRequestSettled) return;
-        try {
-          const latest = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(runId)}`);
-          applyLatestRun(latest.run);
-        } catch {
-          // The final request handles user-visible errors; transient polling failures can be ignored.
-        }
-      }
-    };
-    const polling = pollRunWhileGenerating();
     try {
-      const payload = await api<{ run: PracticeRun }>(`/api/runs/${encodeURIComponent(runId)}/audio`, {
+      const payload = await api<{ run: PracticeRun; job: StudioJob }>(`/api/runs/${encodeURIComponent(runId)}/audio`, {
         method: 'POST',
-        body: JSON.stringify({ mode } satisfies RunAudioGenerateRequest)
-      }).finally(() => {
-        audioRequestSettled = true;
+        body: JSON.stringify({ mode, idempotencyKey: makeSessionId() } satisfies RunAudioGenerateRequest)
       });
-      await polling;
       applyLatestRun(payload.run);
+      setStudioJobs((current) => [payload.job, ...current.filter((job) => job.id !== payload.job.id)]);
+      await refreshStudioSnapshot();
     } catch (caught) {
-      audioRequestSettled = true;
-      await polling;
       setError(caught instanceof Error ? caught.message : String(caught));
       await refreshRun(runId).catch(() => undefined);
     } finally {
@@ -3139,7 +3330,8 @@ function StudioApp() {
     const isReadonly = isLibraryCard || Boolean(conversation.curatedId) || historicalReadonly;
     const canAddToLibrary = source === 'run' && conversation.status === 'audio_ready' && Boolean(conversation.audioFileName);
     const canAddRecommendationToLibrary = isRecommendationCard && conversation.status === 'audio_ready' && Boolean(conversation.audioFileName);
-    const isAudioBusy = busy === `audio:${itemKey}` || conversation.status === 'audio_generating';
+    const isAudioBusy = busy === `audio:${itemKey}` || conversation.status === 'audio_generating'
+      || studioJobs.some((job) => job.runId === sourceRunId && job.conversationId === conversation.id && ['queued', 'running', 'pausing', 'paused', 'interrupted'].includes(job.status));
     const isDeleteBusy = busy === `delete-audio:${itemKey}`;
     const currentAudioSrc = audioSrc(conversation);
     const hasAudio = Boolean(currentAudioSrc);
@@ -3434,6 +3626,16 @@ function StudioApp() {
 
   return (
     <main className="appShell">
+      <StudioBackgroundJobs
+        jobs={studioJobs}
+        connected={studioRealtimeConnected}
+        toasts={studioToasts}
+        onPause={(jobId) => commandStudioJob(jobId, 'pause')}
+        onResume={(jobId) => commandStudioJob(jobId, 'resume')}
+        onCancel={(jobId) => commandStudioJob(jobId, 'cancel')}
+        onFocus={focusStudioJob}
+        onDismissToast={dismissStudioToast}
+      />
       {generateModal ? (
         <GenerateModal
           state={generateModal}
@@ -3528,20 +3730,64 @@ function StudioApp() {
               <RefreshCw size={17} />
             </button>
           </div>
-          {filteredRuns.length === 0 ? <p className="emptyText">No generated runs for Set {setNumber}.</p> : null}
-          {filteredRuns.map((run) => (
-            <a
-              key={run.id}
-              className={`runButton ${boardMode === 'runs' && currentRun?.id === run.id ? 'active' : ''}`}
-              href={studioRunsRoute(run.id)}
+          {filteredRuns.length === 0 && filteredRunShells.length === 0 ? <p className="emptyText">No generated runs for Set {setNumber}.</p> : null}
+          {filteredRunShells.map((shell) => (
+            <div
+              className={`runButton runJobShell ${shell.status} ${shell.jobId === activeShellJobId ? 'active' : ''}`}
+              key={shell.jobId}
+              onClick={() => focusRunShell(shell)}
+              onKeyDown={(event) => {
+                if (event.key !== 'Enter' && event.key !== ' ') return;
+                event.preventDefault();
+                focusRunShell(shell);
+              }}
+              role="button"
+              tabIndex={0}
             >
               <span className="runButtonHeader">
-                <span>{formatRunHistoryTitle(run.createdAt)}</span>
-                <time dateTime={run.createdAt}>{shortModelLabel(run.textModel)}</time>
+                <span className="runJobTitle">
+                  {['running', 'pausing'].includes(shell.status) ? <RefreshCw className="spin" size={14} />
+                    : shell.status === 'queued' ? <Clock size={14} />
+                    : shell.status === 'paused' ? <Pause size={14} />
+                    : <CircleAlert size={14} />}
+                  {formatRunHistoryTitle(shell.createdAt)}
+                </span>
+                <time dateTime={shell.createdAt}>{shell.modelLabel}</time>
               </span>
-              <small>{runHistorySummary(run)}</small>
-            </a>
+              <small>{shell.stageLabel}</small>
+              {shell.resumable ? (
+                <button
+                  className="runJobResume"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void commandStudioJob(shell.jobId, 'resume');
+                  }}
+                  type="button"
+                >
+                  <Play size={13} /> Resume
+                </button>
+              ) : null}
+            </div>
           ))}
+          {filteredRuns.map((run) => {
+            const liveJob = studioJobs.find((job) => job.runId === run.id && job.kind !== 'audio-child' && ['queued', 'running', 'pausing', 'paused', 'interrupted'].includes(job.status));
+            return (
+              <a
+                key={run.id}
+                className={`runButton ${boardMode === 'runs' && currentRun?.id === run.id && !activeShellVisible ? 'active' : ''}`}
+                href={studioRunsRoute(run.id)}
+              >
+                <span className="runButtonHeader">
+                  <span className="runJobTitle">
+                    {liveJob && ['queued', 'running', 'pausing'].includes(liveJob.status) ? <RefreshCw className="spin" size={14} /> : null}
+                    {formatRunHistoryTitle(run.createdAt)}
+                  </span>
+                  <time dateTime={run.createdAt}>{shortModelLabel(run.textModel)}</time>
+                </span>
+                <small>{liveJob?.stageLabel ?? runHistorySummary(run)}</small>
+              </a>
+            );
+          })}
         </section>
 
         <section className="runList" aria-label="Library sets">

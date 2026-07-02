@@ -1,4 +1,4 @@
-import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { RUNS_DIR } from './paths.ts';
 import type { PracticeConversation, PracticeRun } from '../shared/types.ts';
@@ -6,12 +6,15 @@ import { getAllowedVocabulary } from './vocab.ts';
 import { calculateRunAnalytics } from './analytics.ts';
 import { legacyTextModel } from './textModels.ts';
 import { auditConversationsWithVocabulary } from './vocabAudit.ts';
+import { atomicWriteFile, retryTransientFs } from './atomic.ts';
+import { publishStudioRunEvent } from './studioJobs.ts';
 
 function nowIso(): string {
   return new Date().toISOString();
 }
 
 const runUpdateQueues = new Map<string, Promise<void>>();
+let runsRoot = RUNS_DIR;
 
 async function withRunUpdateQueue<T>(runId: string, operation: () => Promise<T>): Promise<T> {
   const previous = runUpdateQueues.get(runId) ?? Promise.resolve();
@@ -34,7 +37,7 @@ export function makeRunId(setNumber: number): string {
 }
 
 export function runDir(runId: string): string {
-  return path.join(RUNS_DIR, runId);
+  return path.join(runsRoot, runId);
 }
 
 export function runJsonPath(runId: string): string {
@@ -45,14 +48,23 @@ export function runAudioDir(runId: string): string {
   return path.join(runDir(runId), 'audio');
 }
 
-export async function saveRun(run: PracticeRun): Promise<PracticeRun> {
+async function writeRun(run: PracticeRun): Promise<PracticeRun> {
   await mkdir(runDir(run.id), { recursive: true });
-  await writeFile(runJsonPath(run.id), `${JSON.stringify(run, null, 2)}\n`, 'utf8');
+  await atomicWriteFile(runJsonPath(run.id), `${JSON.stringify(run, null, 2)}\n`);
+  publishStudioRunEvent(run);
   return run;
 }
 
+export async function saveRun(run: PracticeRun): Promise<PracticeRun> {
+  return withRunUpdateQueue(run.id, () => writeRun(run));
+}
+
+export async function mutateRun(runId: string, updater: (run: PracticeRun) => PracticeRun | Promise<PracticeRun>): Promise<PracticeRun> {
+  return withRunUpdateQueue(runId, async () => writeRun(await updater(await readRun(runId))));
+}
+
 export async function readRun(runId: string): Promise<PracticeRun> {
-  const raw = await readFile(runJsonPath(runId), 'utf8');
+  const raw = await retryTransientFs(() => readFile(runJsonPath(runId), 'utf8'));
   const run = JSON.parse(raw.replace(/^\uFEFF/, '')) as PracticeRun;
   if (!run.textModel) {
     run.textModel = legacyTextModel();
@@ -61,8 +73,8 @@ export async function readRun(runId: string): Promise<PracticeRun> {
 }
 
 export async function listRuns(): Promise<PracticeRun[]> {
-  await mkdir(RUNS_DIR, { recursive: true });
-  const entries = await readdir(RUNS_DIR, { withFileTypes: true });
+  await mkdir(runsRoot, { recursive: true });
+  const entries = await readdir(runsRoot, { withFileTypes: true });
   const runs = await Promise.all(
     entries
       .filter((entry) => entry.isDirectory())
@@ -81,22 +93,25 @@ export async function listRuns(): Promise<PracticeRun[]> {
 }
 
 export async function deleteRun(runId: string): Promise<void> {
-  const root = path.resolve(RUNS_DIR);
+  const root = path.resolve(runsRoot);
   const target = path.resolve(runDir(runId));
   if (target === root || !target.startsWith(`${root}${path.sep}`)) {
     throw new Error('Invalid run path.');
   }
-  await readRun(runId);
-  await rm(target, { recursive: true, force: true });
+  await withRunUpdateQueue(runId, async () => {
+    await readRun(runId);
+    await rm(target, { recursive: true, force: true });
+  });
 }
 
 export async function reanalyzeRun(runId: string): Promise<PracticeRun> {
-  const run = await readRun(runId);
-  const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
-  run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations);
-  run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
-  run.updatedAt = nowIso();
-  return saveRun(run);
+  return mutateRun(runId, async (run) => {
+    const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
+    run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations);
+    run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
+    run.updatedAt = nowIso();
+    return run;
+  });
 }
 
 export async function updateConversation(
@@ -117,7 +132,7 @@ export async function updateConversation(
     run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
     run.updatedAt = nowIso();
     run.status = run.conversations.every((conversation) => conversation.status === 'audio_ready') ? 'complete' : run.conversations.some((conversation) => conversation.audioFileName) ? 'partial_audio' : 'generated';
-    return saveRun(run);
+    return writeRun(run);
   });
 }
 
@@ -141,4 +156,9 @@ export function touchConversation<T extends PracticeConversation>(conversation: 
     ...conversation,
     updatedAt: nowIso()
   };
+}
+
+export function configureRunStorageForTests(root: string): void {
+  runsRoot = root;
+  runUpdateQueues.clear();
 }

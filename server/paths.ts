@@ -6,6 +6,7 @@ export const CSV_PATH = path.join(ROOT_DIR, 'jlpt_n5_master_vocab_by_set_clean.c
 export const PROMPT_PATH = path.join(ROOT_DIR, 'convo-generator-prompt.md');
 export const OUTPUTS_DIR = path.join(ROOT_DIR, 'outputs');
 export const RUNS_DIR = path.join(OUTPUTS_DIR, 'runs');
+export const STUDIO_JOBS_DIR = path.join(OUTPUTS_DIR, 'studio-jobs');
 export const CURATION_REVIEWS_DIR = path.join(OUTPUTS_DIR, 'curation-reviews');
 export const CURATED_DIR = path.join(ROOT_DIR, 'curated');
 export const CURATED_SETS_DIR = path.join(CURATED_DIR, 'sets');

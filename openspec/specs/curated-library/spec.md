@@ -151,7 +151,7 @@ The studio SHALL retain every persisted AI curation review and expose a newest-f
 - **THEN** the preflight model and exact-size controls adopt that review's settings without starting curation until the operator explicitly submits the form
 
 ### Requirement: Operator-controlled recommendation actions
-AI curation results SHALL remain advisory. The studio SHALL require the operator to review and explicitly add each recommended conversation through the existing curated-library validation path.
+AI curation results SHALL remain advisory. The studio SHALL require the operator to review and explicitly add each recommended conversation through the existing curated-library validation path. Add All audio SHALL execute as a durable Studio background job through the shared bounded audio scheduler while retaining explicit start, cooperative pause, stop-on-failure, reconciliation, and portfolio-wide Library gating.
 
 #### Scenario: Review recommendations without applying them
 - **WHEN** an AI curation review completes
@@ -173,15 +173,19 @@ AI curation results SHALL remain advisory. The studio SHALL require the operator
 
 #### Scenario: Start Add All audio explicitly
 - **WHEN** the Add All modal has reconciled a portfolio with missing audio and the operator chooses Start generation
-- **THEN** the studio starts at most three missing recommendation audio requests concurrently and changes the modal control to Pause
+- **THEN** the studio persists a parent job, submits only missing recommendation audio to the shared scheduler, runs at most three speech requests globally, and changes the modal control to Pause
+
+#### Scenario: Refresh during Add All audio
+- **WHEN** the browser refreshes or navigates after Add All audio has started
+- **THEN** the durable parent and child jobs continue on the server and remain visible in the Studio background summary
 
 #### Scenario: Pause Add All audio gracefully
 - **WHEN** the operator chooses Pause while Add All audio generation is active
-- **THEN** the modal shows Pausing, the studio starts no additional audio requests, and already-started requests are allowed to succeed or fail before the workflow becomes paused
+- **THEN** the durable job shows Pausing, the scheduler starts no additional child requests for that parent, and already-started requests are allowed to succeed or fail before the workflow becomes paused
 
 #### Scenario: Resume paused Add All audio
-- **WHEN** the Add All workflow is paused and the operator chooses Resume
-- **THEN** the studio refreshes persisted source state, preserves completed audio, and resumes only conversations that still lack audio
+- **WHEN** the operator chooses Resume for a paused or interrupted Add All workflow
+- **THEN** the studio refreshes persisted source state, preserves completed audio, and resumes only recommendations that still lack audio
 
 #### Scenario: Add All encounters existing audio
 - **WHEN** one or more recommended conversations already have persisted audio files when Add All starts or retries
@@ -189,7 +193,7 @@ AI curation results SHALL remain advisory. The studio SHALL require the operator
 
 #### Scenario: Add All audio generation fails
 - **WHEN** a recommended conversation fails audio generation during Add All
-- **THEN** the studio stops starting additional audio work, allows already-started audio requests to settle, preserves every successful audio file, marks the failed and unstarted conversations distinctly, and does not begin the Library-add phase
+- **THEN** the studio stops starting additional audio work for that Add All parent, allows already-started requests to settle, preserves every successful audio file, marks the failed and unstarted conversations distinctly, and does not begin the Library-add phase
 
 #### Scenario: Retry an incomplete Add All workflow
 - **WHEN** the operator retries Add All after an audio or Library failure

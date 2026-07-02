@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import mime from 'mime';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { ConversationLine, PracticeConversation } from '../shared/types.ts';
 import { runAudioDir } from './storage.ts';
@@ -63,7 +63,7 @@ function mockWavBuffer(durationSeconds: number): Buffer {
   return Buffer.concat([wavHeader(dataLength, sampleRate, bitsPerSample, numChannels), Buffer.alloc(dataLength)]);
 }
 
-async function generateMockConversationAudio(runId: string, conversation: PracticeConversation): Promise<{ fileName: string; filePath: string }> {
+async function generateMockConversationAudio(runId: string, conversation: PracticeConversation, jobToken: string): Promise<{ fileName: string; filePath: string }> {
   await sleep(mockDelayMs());
 
   const failAt = Number(process.env.MOCK_TTS_FAIL_AT);
@@ -75,7 +75,9 @@ async function generateMockConversationAudio(runId: string, conversation: Practi
   await mkdir(outputDir, { recursive: true });
   const fileName = `${conversation.id}.mock.wav`;
   const filePath = path.join(outputDir, fileName);
-  await writeFile(filePath, mockWavBuffer(mockAudioDurationSeconds(conversation)));
+  const temporaryPath = path.join(outputDir, `.${conversation.id}.${jobToken}.mock.wav.tmp`);
+  await writeFile(temporaryPath, mockWavBuffer(mockAudioDurationSeconds(conversation)));
+  await rename(temporaryPath, filePath);
   return { fileName, filePath };
 }
 
@@ -273,9 +275,9 @@ ${conversation.sampleContext}
 ${conversation.text.map(transcriptLine).join('\n')}`;
 }
 
-export async function generateConversationAudio(runId: string, conversation: PracticeConversation): Promise<{ fileName: string; filePath: string }> {
+export async function generateConversationAudio(runId: string, conversation: PracticeConversation, jobToken = `${Date.now()}-${Math.random().toString(36).slice(2)}`): Promise<{ fileName: string; filePath: string }> {
   if (envFlag('MOCK_TTS_AUDIO')) {
-    return generateMockConversationAudio(runId, conversation);
+    return generateMockConversationAudio(runId, conversation, jobToken);
   }
 
   const ai = getAi();
@@ -327,7 +329,14 @@ export async function generateConversationAudio(runId: string, conversation: Pra
     const audio = audioBufferForInlineData(inlineData);
     const fileName = `${conversation.id}.${audio.extension}`;
     const filePath = path.join(outputDir, fileName);
-    await writeFile(filePath, audio.buffer);
+    const temporaryPath = path.join(outputDir, `.${conversation.id}.${jobToken}.${audio.extension}.tmp`);
+    await writeFile(temporaryPath, audio.buffer);
+    try {
+      await rename(temporaryPath, filePath);
+    } catch (error) {
+      await rm(temporaryPath, { force: true }).catch(() => undefined);
+      throw error;
+    }
     return { fileName, filePath };
   }
 

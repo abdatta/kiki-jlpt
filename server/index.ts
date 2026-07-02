@@ -3,13 +3,13 @@ import cors from 'cors';
 import express from 'express';
 import path from 'node:path';
 import { mkdir, readFile, unlink } from 'node:fs/promises';
-import type { AiCurationRequest, GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, RunAudioGenerateRequest, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRunAudit } from '../shared/types.ts';
-import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR } from './paths.ts';
+import type { AiCurationRequest, GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, RunAudioGenerateRequest, StudioJob, StudioRunSummary, StudioSnapshot, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRunAudit } from '../shared/types.ts';
+import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR, STUDIO_JOBS_DIR } from './paths.ts';
 import { buildAiLibraryBalancePrompt, buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
 import { buildTtsPrompt, generateConversationAudio, generateConversationJson } from './gemini.ts';
 import { CODEX_TEXT_INSTRUCTIONS, generateCodexConversationJson } from './codexText.ts';
 import { getAllowedVocabulary, getSetSummaries } from './vocab.ts';
-import { deleteRun, listRuns, makeRunId, readRun, reanalyzeRun, runAudioDir, saveRun, touchConversation, unlockCuratedSource, updateConversation } from './storage.ts';
+import { deleteRun, listRuns, makeRunId, mutateRun, readRun, reanalyzeRun, runAudioDir, saveRun, touchConversation, unlockCuratedSource, updateConversation } from './storage.ts';
 import { normalizeGeneratedConversations, parseTranscriptText } from './normalize.ts';
 import { calculateRunAnalytics } from './analytics.ts';
 import { getTextModelOptions, resolveTextModel } from './textModels.ts';
@@ -21,6 +21,9 @@ import { getPracticeLibraryPublishStatus, publishPracticeLibrary } from './pract
 import { getConversationCurationEvidence } from './curationEvidence.ts';
 import { AiCurationExecutionError, AiCurationInputError, buildAiCurationSnapshot, createAiCurationReview, getAiCurationReview, getAiCurationReviewHistory, getLatestAiCurationReview, libraryContext } from './aiCuration.ts';
 import type { AiCurationLibraryContext } from './aiCuration.ts';
+import { cancelAudioParent, cancelUnresolvedAudioChildren, createAudioBatch, createCrossRunAudioBatch, enqueueConversationAudio, hasActiveConversationAudio, pauseAudioParent, resumeAudioParent, resumeConversationAudioJob, waitForStudioJob } from './audioScheduler.ts';
+import { isGenerationSlotBusy, withGenerationSlot } from './generationGate.ts';
+import { createStudioJob, currentStudioEventRevision, findStudioJobByIdempotencyKey, interruptActiveStudioJobs, listStudioJobs, makeStudioJobId, readStudioJob, subscribeStudioEvents, updateStudioJob } from './studioJobs.ts';
 
 const app = express();
 const port = Number.parseInt(process.env.API_PORT || '8787', 10);
@@ -285,7 +288,102 @@ function updateWorkflowJob(jobId: string, updater: (job: WorkflowJob) => Workflo
     updatedAt: nowIso()
   };
   workflowJobs.set(jobId, updated);
+  const activeNode = updated.nodes.find((node) => node.status === 'processing') ?? updated.nodes.find((node) => node.status === 'pending');
+  const completedAudio = updated.nodes.filter((node) => node.kind === 'audio' && node.status === 'done').length;
+  const failedAudio = updated.nodes.filter((node) => node.kind === 'audio' && node.status === 'error').length;
+  void updateStudioJob(jobId, (studioJob) => ({
+    ...studioJob,
+    status: updated.status === 'complete' ? 'succeeded'
+      : updated.status === 'failed' ? 'failed'
+      : ['pausing', 'paused', 'queued'].includes(studioJob.status) ? studioJob.status
+      : 'running',
+    stageLabel: activeNode?.kind === 'generator'
+      ? 'Generating initial set'
+      : activeNode?.kind === 'balancer'
+        ? 'Balancing set'
+        : updated.audioRequestedCount > 0
+          ? `${completedAudio}/${updated.audioRequestedCount} audio generated`
+          : updated.status === 'complete' ? 'Complete' : 'Finishing',
+    progress: {
+      completed: completedAudio,
+      total: updated.audioRequestedCount,
+      failed: failedAudio,
+      running: updated.nodes.filter((node) => node.kind === 'audio' && node.status === 'processing').length,
+      queued: updated.nodes.filter((node) => node.kind === 'audio' && node.status === 'pending').length
+    },
+    stages: studioJob.stages.map((stage) => {
+      const nodes = stage.id === 'audio' ? updated.nodes.filter((node) => node.kind === 'audio') : updated.nodes.filter((node) => node.id === stage.id);
+      if (!nodes.length) return stage;
+      const status = nodes.some((node) => node.status === 'processing') ? 'running'
+        : nodes.some((node) => node.status === 'error') ? 'failed'
+        : nodes.every((node) => node.status === 'done' || node.status === 'skipped') ? 'succeeded'
+        : 'pending';
+      return { ...stage, status };
+    }),
+    workflow: updated,
+    error: updated.error,
+    completedAt: updated.status === 'running' ? undefined : nowIso()
+  })).catch(() => undefined);
   return updated;
+}
+
+function studioRunShell(job: StudioJob): StudioRunSummary | undefined {
+  if (!job.runId || !job.setNumber || !['run-generation', 'workflow-generation', 'library-complement'].includes(job.kind)) return undefined;
+  // Discarded jobs have nothing recoverable to show, and succeeded jobs whose
+  // run was later deleted should not resurrect as ghost entries.
+  if (job.status === 'cancelled' || job.status === 'succeeded') return undefined;
+  const request = job.request as { conversationCount?: number; textModelId?: string } | undefined;
+  return {
+    kind: 'job',
+    id: job.runId,
+    jobId: job.id,
+    setNumber: job.setNumber,
+    title: job.title,
+    modelLabel: job.workflow?.run?.textModel.label ?? request?.textModelId ?? 'Configured model',
+    requestedConversationCount: request?.conversationCount ?? 0,
+    status: job.status,
+    stageLabel: job.stageLabel,
+    progress: job.progress,
+    createdAt: job.createdAt,
+    updatedAt: job.updatedAt,
+    resumable: job.status === 'interrupted' || job.status === 'failed' || job.status === 'paused'
+  };
+}
+
+async function studioSnapshot(): Promise<StudioSnapshot> {
+  const [runs, jobs] = await Promise.all([listRuns(), listStudioJobs()]);
+  const runIds = new Set(runs.map((run) => run.id));
+  const shells = jobs.map(studioRunShell).filter((summary): summary is StudioRunSummary => {
+    if (!summary || summary.kind !== 'job') return false;
+    return !runIds.has(summary.id);
+  });
+  return {
+    generatedAt: nowIso(),
+    revision: currentStudioEventRevision(),
+    runs,
+    runSummaries: [
+      ...shells,
+      ...runs.map((run): StudioRunSummary => ({ kind: 'run', id: run.id, run }))
+    ].sort((a, b) => {
+      const aTime = a.kind === 'run' ? a.run.createdAt : a.createdAt;
+      const bTime = b.kind === 'run' ? b.run.createdAt : b.createdAt;
+      return bTime.localeCompare(aTime);
+    }),
+    jobs: jobs.filter((job, index) => ['queued', 'running', 'pausing', 'paused', 'interrupted', 'failed'].includes(job.status) || index < 30)
+  };
+}
+
+async function assertConversationHasNoActiveAudio(runId: string, conversationId: string): Promise<void> {
+  if (await hasActiveConversationAudio(runId, conversationId)) {
+    throw new Error('Audio generation is active for this conversation. Wait for it to finish or pause its parent job.');
+  }
+}
+
+async function assertRunHasNoActiveJobs(runId: string): Promise<void> {
+  const jobs = await listStudioJobs();
+  if (jobs.some((job) => job.runId === runId && ['queued', 'running', 'pausing', 'paused', 'interrupted'].includes(job.status))) {
+    throw new Error('This run has unfinished background work. Resume and finish it before deleting the run.');
+  }
 }
 
 function updateWorkflowNode(
@@ -541,29 +639,75 @@ async function generateWorkflowAudio(run: PracticeRun, audioCount: number, optio
   return { run: updatedRun, audioGeneratedCount, audioErrors };
 }
 
-async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): Promise<void> {
+const GENERATION_JOB_KINDS = ['run-generation', 'workflow-generation', 'library-complement'];
+
+/** Thrown by generationCheckpoint to unwind a runner whose job was paused or discarded. */
+class GenerationHalted extends Error {
+  constructor() {
+    super('Generation halted by operator.');
+  }
+}
+
+/**
+ * Cooperative pause/cancel point between a runner's durable steps. An LLM call
+ * already dispatched cannot be recalled, but its result is discarded: the
+ * runner unwinds here instead of persisting further work.
+ */
+async function generationCheckpoint(jobId: string): Promise<void> {
+  const job = await readStudioJob(jobId);
+  if (job.status === 'cancelled') throw new GenerationHalted();
+  if (job.status === 'pausing') {
+    await updateStudioJob(jobId, (current) => ({ ...current, status: 'paused', stageLabel: 'Paused' }));
+    throw new GenerationHalted();
+  }
+}
+
+/** Runs a generation job once the single global text-generation slot is free. */
+async function runQueuedGenerationJob(jobId: string, runner: () => Promise<void>): Promise<void> {
   try {
+    await withGenerationSlot(async () => {
+      const job = await readStudioJob(jobId);
+      // Paused, discarded, or interrupted while waiting for the slot: skip.
+      if (job.status !== 'queued' && job.status !== 'running') return;
+      if (job.status === 'queued') {
+        await updateStudioJob(jobId, (current) => ({ ...current, status: 'running' }));
+      }
+      await runner();
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await updateStudioJob(jobId, (current) => ({ ...current, status: 'failed', stageLabel: 'Generation failed', error: message, completedAt: nowIso() })).catch(() => undefined);
+  }
+}
+
+async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, resume = false): Promise<void> {
+  try {
+    const durableJob = await readStudioJob(jobId);
+    const checkpoint = (durableJob.checkpoint ?? {}) as Record<string, unknown>;
     const context = await getWorkflowGenerateContext(request);
     if ('error' in context) {
       throw new Error(context.error);
     }
 
-    updateWorkflowNode(jobId, 'generator', {
-      status: 'processing',
-      startedAt: nowIso(),
-      input: {
-        setNumber: context.setNumber,
-        requestedConversationCount: context.conversationCount,
-        model: context.textModel,
-        prompt: context.prompt
-      }
-    });
-    const primary = await generateTextBatch(
-      context.textModel,
-      context.prompt,
-      context.allowedVocabulary,
-      context.conversationCount
-    );
+    let primary = resume ? checkpoint.primary as Awaited<ReturnType<typeof generateTextBatch>> | undefined : undefined;
+    if (!primary) {
+      updateWorkflowNode(jobId, 'generator', {
+        status: 'processing',
+        startedAt: nowIso(),
+        input: {
+          setNumber: context.setNumber,
+          requestedConversationCount: context.conversationCount,
+          model: context.textModel,
+          prompt: context.prompt
+        }
+      });
+      primary = await generateTextBatch(
+        context.textModel,
+        context.prompt,
+        context.allowedVocabulary,
+        context.conversationCount
+      );
+    }
     if (!primary.conversations.length) {
       throw new Error('The generation response did not include any usable conversations.');
     }
@@ -577,6 +721,11 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
         distributionStats: calculateWorkflowDistributionStats(context.setNumber, context.allowedVocabulary, primary.conversations)
       }
     });
+    await updateStudioJob(jobId, (job) => ({
+      ...job,
+      checkpoint: { ...(job.checkpoint as Record<string, unknown> | undefined), primary }
+    }));
+    await generationCheckpoint(jobId);
 
     const balance = buildGeneratedRunBalancePlan(
       context.setNumber,
@@ -601,17 +750,29 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
         prompt: complementPrompt
       }
     });
-    const complement = await generateTextBatch(
-      context.textModel,
-      complementPrompt,
-      context.allowedVocabulary,
-      context.balanceConversationCount
-    );
+    let complement = resume ? checkpoint.complement as Awaited<ReturnType<typeof generateTextBatch>> | undefined : undefined;
+    if (!complement) {
+      complement = await generateTextBatch(
+        context.textModel,
+        complementPrompt,
+        context.allowedVocabulary,
+        context.balanceConversationCount
+      );
+    }
     const complementConversations = renumberConversations(complement.conversations, primary.conversations.length + 1);
     const conversations = [...primary.conversations, ...complementConversations];
     if (conversations.length <= primary.conversations.length) {
       throw new Error('The balancing response did not include any usable conversations.');
     }
+    await updateStudioJob(jobId, (job) => ({
+      ...job,
+      checkpoint: {
+        ...(job.checkpoint as Record<string, unknown> | undefined),
+        primary,
+        complement: { ...complement, conversations: complementConversations },
+        conversations
+      }
+    }));
     updateWorkflowNode(jobId, 'balancer', {
       status: 'done',
       completedAt: nowIso(),
@@ -628,10 +789,12 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
         distributionStats: calculateWorkflowDistributionStats(context.setNumber, context.allowedVocabulary, conversations)
       }
     });
+    await generationCheckpoint(jobId);
 
     const timestamp = nowIso();
-    let run = await saveRun({
-      id: makeRunId(context.setNumber),
+    const existingRun = resume && durableJob.runId ? await readRun(durableJob.runId).catch(() => undefined) : undefined;
+    let run = existingRun ?? await saveRun({
+      id: durableJob.runId ?? makeRunId(context.setNumber),
       setNumber: context.setNumber,
       conversationCount: context.conversationCount + context.balanceConversationCount,
       allowedVocabCount: context.allowedVocabulary.length,
@@ -655,143 +818,65 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
     updateWorkflowJob(jobId, (job) => ({ ...job, run }));
 
     const audioTargets = run.conversations.slice(0, context.audioCount);
-    run = {
-      ...run,
-      conversations: run.conversations.map((conversation) => audioTargets.some((target) => target.id === conversation.id)
-        ? touchConversation({ ...conversation, status: 'audio_generating', error: undefined })
-        : conversation),
-      updatedAt: nowIso()
-    };
-    run.status = runStatusFor(run.conversations);
-    await saveRun(run);
-    updateWorkflowJob(jobId, (job) => ({ ...job, run }));
-
-    const generateAudioTarget = async (conversation: PracticeConversation, index: number) => {
-      const nodeId = `audio-${index + 1}`;
-      const prompt = buildTtsPrompt(conversation);
-      updateWorkflowNode(jobId, nodeId, {
-        status: 'processing',
-        startedAt: nowIso(),
+    const preDoneCount = audioTargets.filter((conversation) => conversation.audioFileName).length;
+    await updateStudioJob(jobId, (job) => ({
+      ...job,
+      stopOnFailure: context.audioMode === 'max',
+      stageLabel: audioTargets.length ? `${preDoneCount}/${audioTargets.length} audio generated` : 'Complete',
+      progress: { completed: preDoneCount, total: audioTargets.length, queued: audioTargets.length - preDoneCount }
+    }));
+    const existingAudioChildren = (await listStudioJobs()).filter((job) => job.parentJobId === jobId || job.dependentParentJobIds?.includes(jobId));
+    if (resume && existingAudioChildren.length) await resumeAudioParent(jobId);
+    let pendingAudio = false;
+    for (let index = 0; index < audioTargets.length; index += 1) {
+      const conversation = audioTargets[index];
+      // Audio already on disk (a prior pass generated it): record the node as
+      // done instead of re-enqueueing, so repeated resumes never redo work.
+      if (conversation.audioFileName) {
+        updateWorkflowNode(jobId, `audio-${index + 1}`, {
+          status: 'done',
+          completedAt: nowIso(),
+          output: { fileName: conversation.audioFileName }
+        });
+        continue;
+      }
+      updateWorkflowNode(jobId, `audio-${index + 1}`, {
+        status: 'pending',
         input: {
           conversationId: conversation.id,
           conversationTitle: conversation.title,
           model: process.env.GEMINI_TTS_MODEL ?? 'GEMINI_TTS_MODEL not configured',
-          voiceConfig: {
-            speaker1: process.env.GEMINI_TTS_SPEAKER_1 || 'Zephyr',
-            speaker2: process.env.GEMINI_TTS_SPEAKER_2 || 'Puck'
-          },
-          prompt
+          prompt: buildTtsPrompt(conversation)
         }
       });
-
-      try {
-        const audio = await generateConversationAudio(run.id, conversation);
-        const durationSeconds = await readWavDurationSeconds(audio.filePath);
-        updateWorkflowNode(jobId, nodeId, {
-          status: 'done',
-          completedAt: nowIso(),
-          output: {
-            fileName: audio.fileName,
-            audioUrl: `/audio/${encodeURIComponent(run.id)}/audio/${encodeURIComponent(audio.fileName)}`,
-            filePath: audio.filePath,
-            durationSeconds
-          }
-        });
-        return { conversationId: conversation.id, audio, durationSeconds };
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        updateWorkflowNode(jobId, nodeId, {
-          status: 'error',
-          completedAt: nowIso(),
-          error: message
-        });
-        throw { conversationId: conversation.id, error: message };
-      }
-    };
-
-    const audioResults: Array<PromiseSettledResult<{ conversationId: string; audio: { fileName: string; filePath: string }; durationSeconds?: number }> | undefined> = [];
-    if (context.audioMode === 'max') {
-      const audioConcurrency = 3;
-      let nextAudioIndex = 0;
-      let stopStartingAudio = false;
-
-      async function audioWorker(): Promise<void> {
-        while (!stopStartingAudio) {
-          const currentIndex = nextAudioIndex;
-          nextAudioIndex += 1;
-          const conversation = audioTargets[currentIndex];
-          if (!conversation) return;
-
-          try {
-            audioResults[currentIndex] = {
-              status: 'fulfilled',
-              value: await generateAudioTarget(conversation, currentIndex)
-            };
-          } catch (error) {
-            audioResults[currentIndex] = {
-              status: 'rejected',
-              reason: error
-            };
-            stopStartingAudio = true;
-            return;
-          }
-        }
-      }
-
-      await Promise.all(Array.from({ length: Math.min(audioConcurrency, audioTargets.length) }, () => audioWorker()));
-      for (let index = 0; index < audioTargets.length; index += 1) {
-        if (!audioResults[index]) {
-          updateWorkflowNode(jobId, `audio-${index + 1}`, {
-            status: 'skipped',
-            completedAt: nowIso(),
-            error: 'Audio generation skipped after an earlier failure.'
-          });
-        }
-      }
-    } else {
-      audioResults.push(...await Promise.allSettled(audioTargets.map(generateAudioTarget)));
+      await enqueueConversationAudio({ runId: run.id, conversationId: conversation.id, parentJobId: jobId });
+      pendingAudio = true;
     }
-
-    let audioGeneratedCount = 0;
-    const audioErrors: Array<{ conversationId: string; error: string }> = [];
-    run = {
-      ...run,
-      conversations: run.conversations.map((conversation) => {
-        const targetIndex = audioTargets.findIndex((target) => target.id === conversation.id);
-        if (targetIndex === -1) return conversation;
-
-        const result = audioResults[targetIndex];
-        if (!result) {
-          return touchConversation({
-            ...audioTargets[targetIndex],
-            status: 'draft',
-            error: undefined
-          });
-        }
-        if (result?.status === 'fulfilled') {
-          audioGeneratedCount += 1;
-          const audioUrl = `/audio/${encodeURIComponent(run.id)}/audio/${encodeURIComponent(result.value.audio.fileName)}`;
-          return touchConversation({
-            ...conversation,
-            status: 'audio_ready',
-            audioFileName: result.value.audio.fileName,
-            audioUrl,
-            error: undefined
-          });
-        }
-
-        const reason = result?.status === 'rejected' ? result.reason as { conversationId?: string; error?: string } : {};
-        const message = reason.error ?? 'Audio generation failed.';
-        audioErrors.push({ conversationId: conversation.id, error: message });
-        return touchConversation({
-          ...conversation,
-          status: 'audio_failed',
-          error: message
-        });
-      }),
-      updatedAt: nowIso()
-    };
-    run.status = runStatusFor(run.conversations);
+    if (pendingAudio) {
+      const settled = await waitForStudioJob(jobId);
+      // Operator paused or discarded during the audio phase: leave the durable
+      // checkpoint as-is for resume instead of writing a terminal audit.
+      if (settled.status === 'paused' || settled.status === 'interrupted' || settled.status === 'cancelled') return;
+    }
+    const childJobs = (await listStudioJobs()).filter((job) => job.parentJobId === jobId);
+    const audioErrors = childJobs.filter((job) => job.status === 'failed').map((job) => ({
+      conversationId: job.conversationId ?? '',
+      error: job.error ?? 'Audio generation failed.'
+    }));
+    run = await readRun(run.id);
+    const audioGeneratedCount = audioTargets.filter((target) => run.conversations.find((item) => item.id === target.id)?.audioFileName).length;
+    for (let index = 0; index < audioTargets.length; index += 1) {
+      const child = childJobs.find((job) => job.conversationId === audioTargets[index].id && job.status === 'succeeded')
+        ?? childJobs.find((job) => job.conversationId === audioTargets[index].id);
+      const fileName = run.conversations.find((item) => item.id === audioTargets[index].id)?.audioFileName;
+      // Audio on disk is the ground truth for the node, regardless of which
+      // (possibly duplicated) child job produced it.
+      updateWorkflowNode(jobId, `audio-${index + 1}`, fileName
+        ? { status: 'done', completedAt: child?.completedAt ?? nowIso(), output: { fileName } }
+        : child?.status === 'failed'
+          ? { status: 'error', completedAt: child.completedAt, error: child.error }
+          : { status: 'skipped', completedAt: nowIso(), error: child?.error ?? 'Audio generation skipped.' });
+    }
     const completedJob = updateWorkflowJob(jobId, (job) => ({
       ...job,
       status: audioErrors.length ? 'failed' : 'complete',
@@ -806,9 +891,10 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
         workflowAudit: workflowAuditForJob(completedJob)
       };
     }
-    await saveRun(run);
+    await mutateRun(run.id, () => run);
     updateWorkflowJob(jobId, (job) => ({ ...job, run }));
   } catch (error) {
+    if (error instanceof GenerationHalted) return;
     const message = error instanceof Error ? error.message : String(error);
     updateWorkflowJob(jobId, (job) => ({
       ...job,
@@ -820,6 +906,259 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest): 
     }));
   }
 }
+
+async function runStandardGenerationJob(jobId: string): Promise<void> {
+  const job = await readStudioJob(jobId);
+  const request = job.request as GenerateRequest;
+  try {
+    const context = await getGenerateContext(request);
+    if ('error' in context) throw new Error(context.error);
+    await updateStudioJob(jobId, (current) => ({
+      ...current,
+      status: 'running',
+      stageLabel: 'Generating initial set',
+      stages: current.stages.map((stage) => ({ ...stage, status: 'running', startedAt: nowIso() }))
+    }));
+    const generated = await generateTextBatch(context.textModel, context.prompt, context.allowedVocabulary, context.conversationCount);
+    if (!generated.conversations.length) throw new Error('The generation response did not include any usable conversations.');
+    await generationCheckpoint(jobId);
+    const timestamp = nowIso();
+    const run = await saveRun({
+      id: job.runId ?? makeRunId(context.setNumber),
+      setNumber: context.setNumber,
+      conversationCount: context.conversationCount,
+      allowedVocabCount: context.allowedVocabulary.length,
+      textModel: context.textModel,
+      analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
+      status: 'generated',
+      llmExchanges: [generated.exchange],
+      createdAt: job.createdAt,
+      updatedAt: timestamp,
+      conversations: generated.conversations
+    });
+    await updateStudioJob(jobId, (current) => ({
+      ...current,
+      status: 'succeeded',
+      stageLabel: 'Initial set generated',
+      checkpoint: { generated, runId: run.id },
+      progress: { completed: 1, total: 1 },
+      completedAt: timestamp,
+      stages: current.stages.map((stage) => ({ ...stage, status: 'succeeded', completedAt: timestamp }))
+    }));
+  } catch (error) {
+    if (error instanceof GenerationHalted) return;
+    const message = error instanceof Error ? error.message : String(error);
+    await updateStudioJob(jobId, (current) => ({
+      ...current,
+      status: 'failed',
+      stageLabel: 'Generation failed',
+      error: message,
+      completedAt: nowIso(),
+      stages: current.stages.map((stage) => stage.status === 'running' ? { ...stage, status: 'failed', completedAt: nowIso(), error: message } : stage)
+    }));
+  }
+}
+
+async function runLibraryComplementJob(jobId: string): Promise<void> {
+  const job = await readStudioJob(jobId);
+  const request = job.request as LibraryComplementGenerateRequest & { setNumber: number };
+  try {
+    const context = await getLibraryComplementContext(request.setNumber, request);
+    if ('error' in context) throw new Error(context.error);
+    await updateStudioJob(jobId, (current) => ({ ...current, status: 'running', stageLabel: 'Generating balanced set' }));
+    const requestedAt = nowIso();
+    const exchange = makeLlmExchange(context.textModel, context.prompt, requestedAt);
+    const generation = context.textModel.provider === 'codex'
+      ? await generateCodexConversationJson(context.prompt, context.textModel.model)
+      : await generateConversationJson(context.prompt);
+    const conversations = await auditConversationsWithVocabulary(
+      context.allowedVocabulary,
+      normalizeGeneratedConversations(generation.parsed, context.conversationCount)
+    );
+    if (!conversations.length) throw new Error('The generation response did not include any usable conversations.');
+    await generationCheckpoint(jobId);
+    const timestamp = nowIso();
+    const run = await saveRun({
+      id: job.runId ?? makeRunId(context.setNumber),
+      setNumber: context.setNumber,
+      conversationCount: context.conversationCount,
+      allowedVocabCount: context.allowedVocabulary.length,
+      textModel: context.textModel,
+      analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
+      status: 'generated',
+      llmExchanges: [{
+        ...exchange,
+        output: generation.output,
+        stats: {
+          ...(generation.stats && typeof generation.stats === 'object' ? generation.stats : { rawStats: generation.stats }),
+          libraryBalance: context.balance,
+          libraryBalanceMode: context.balanceMode
+        },
+        receivedAt: timestamp,
+        status: 'complete'
+      }],
+      createdAt: job.createdAt,
+      updatedAt: timestamp,
+      conversations
+    });
+    await updateStudioJob(jobId, (current) => ({
+      ...current,
+      status: 'succeeded',
+      stageLabel: 'Balanced set generated',
+      checkpoint: { runId: run.id },
+      progress: { completed: 1, total: 1 },
+      completedAt: timestamp,
+      stages: current.stages.map((stage) => ({ ...stage, status: 'succeeded', completedAt: timestamp }))
+    }));
+  } catch (error) {
+    if (error instanceof GenerationHalted) return;
+    const message = error instanceof Error ? error.message : String(error);
+    await updateStudioJob(jobId, (current) => ({ ...current, status: 'failed', stageLabel: 'Balance generation failed', error: message, completedAt: nowIso() }));
+  }
+}
+
+app.get('/api/studio/snapshot', asyncHandler(async (_req, res) => {
+  res.json({ snapshot: await studioSnapshot() });
+}));
+
+app.get('/api/studio/events', (req, res) => {
+  res.status(200);
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  res.write(`event: connected\ndata: ${JSON.stringify({ revision: currentStudioEventRevision() })}\n\n`);
+  const unsubscribe = subscribeStudioEvents((event) => {
+    res.write(`id: ${event.id}\nevent: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`);
+  });
+  const heartbeat = setInterval(() => res.write(`: heartbeat ${Date.now()}\n\n`), 15_000);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    unsubscribe();
+  });
+});
+
+app.get('/api/studio/jobs/:jobId', asyncHandler(async (req, res) => {
+  res.json({ job: await readStudioJob(routeParam(req.params.jobId)) });
+}));
+
+app.post('/api/studio/jobs/:jobId/pause', asyncHandler(async (req, res) => {
+  const job = await readStudioJob(routeParam(req.params.jobId));
+  if (job.kind === 'audio-batch' || job.kind === 'add-all-audio') {
+    res.json({ job: await pauseAudioParent(job.id) });
+    return;
+  }
+  if (GENERATION_JOB_KINDS.includes(job.kind)) {
+    if (job.status === 'queued') {
+      res.json({ job: await updateStudioJob(job.id, (current) => ({ ...current, status: 'paused', stageLabel: 'Paused before start' })) });
+      return;
+    }
+    if (job.status === 'running') {
+      // If the job is in its audio phase it pauses like an audio parent;
+      // otherwise the runner honors this at its next generation checkpoint.
+      res.json({ job: await updateStudioJob(job.id, (current) => ({ ...current, status: 'pausing', stageLabel: 'Pausing after current step' })) });
+      return;
+    }
+    res.status(409).json({ error: 'This job is not running.' });
+    return;
+  }
+  res.status(409).json({ error: 'This job cannot be paused.' });
+}));
+
+app.post('/api/studio/jobs/:jobId/cancel', asyncHandler(async (req, res) => {
+  const job = await readStudioJob(routeParam(req.params.jobId));
+  if (job.kind === 'audio-batch' || job.kind === 'add-all-audio') {
+    res.json({ job: await cancelAudioParent(job.id) });
+    return;
+  }
+  if (GENERATION_JOB_KINDS.includes(job.kind)) {
+    if (!['queued', 'running', 'pausing', 'paused', 'interrupted', 'failed'].includes(job.status)) {
+      res.status(409).json({ error: 'This job is already finished.' });
+      return;
+    }
+    const cancelled = await updateStudioJob(job.id, (current) => ({
+      ...current,
+      status: 'cancelled',
+      stageLabel: 'Discarded',
+      completedAt: nowIso(),
+      stages: current.stages.map((stage) => stage.status === 'succeeded'
+        ? stage
+        : { ...stage, status: 'skipped', completedAt: nowIso() })
+    }));
+    await cancelUnresolvedAudioChildren(job.id);
+    res.json({ job: cancelled });
+    return;
+  }
+  res.status(409).json({ error: 'This job cannot be discarded.' });
+}));
+
+app.post('/api/studio/jobs/:jobId/resume', asyncHandler(async (req, res) => {
+  const job = await readStudioJob(routeParam(req.params.jobId));
+  if (job.status === 'cancelled') {
+    res.status(409).json({ error: 'This job was discarded and can no longer be resumed.' });
+    return;
+  }
+  if (job.status === 'succeeded') {
+    res.status(409).json({ error: 'This job already completed.' });
+    return;
+  }
+  if (job.status === 'running' || job.status === 'queued' || job.status === 'pausing') {
+    // Idempotent: a repeated resume (double click, stale view) must not restart work.
+    res.status(202).json({ job });
+    return;
+  }
+  if (job.kind === 'audio-batch' || job.kind === 'add-all-audio') {
+    res.json({ job: await resumeAudioParent(job.id) });
+    return;
+  }
+  if (job.kind === 'audio-child') {
+    res.status(202).json({ job: await resumeConversationAudioJob(job.id) });
+    return;
+  }
+  if (job.kind === 'workflow-generation') {
+    if (!job.workflow || !job.request) throw new Error('Workflow checkpoint is incomplete.');
+    const resumed = await updateStudioJob(job.id, (current) => ({ ...current, status: 'queued', stageLabel: isGenerationSlotBusy() ? 'Waiting for earlier generation' : 'Resuming workflow', error: undefined }));
+    workflowJobs.set(job.id, { ...job.workflow, status: 'running', error: undefined });
+    void runQueuedGenerationJob(job.id, () => runWorkflowJob(job.id, job.request as WorkflowGenerateRequest, true));
+    res.status(202).json({ job: resumed });
+    return;
+  }
+  if (job.kind === 'run-generation') {
+    const resumed = await updateStudioJob(job.id, (current) => ({ ...current, status: 'queued', stageLabel: isGenerationSlotBusy() ? 'Waiting for earlier generation' : 'Resuming generation', error: undefined }));
+    void runQueuedGenerationJob(job.id, () => runStandardGenerationJob(job.id));
+    res.status(202).json({ job: resumed });
+    return;
+  }
+  if (job.kind === 'library-complement') {
+    const resumed = await updateStudioJob(job.id, (current) => ({ ...current, status: 'queued', stageLabel: isGenerationSlotBusy() ? 'Waiting for earlier generation' : 'Resuming balance generation', error: undefined }));
+    void runQueuedGenerationJob(job.id, () => runLibraryComplementJob(job.id));
+    res.status(202).json({ job: resumed });
+    return;
+  }
+  res.status(409).json({ error: 'This job cannot be resumed yet.' });
+}));
+
+app.post('/api/studio/audio-batches', asyncHandler(async (req, res) => {
+  const body = req.body as {
+    items?: Array<{ runId?: string; conversationId?: string }>;
+    idempotencyKey?: string;
+    setNumber?: number;
+    title?: string;
+  };
+  const items = (body.items ?? []).filter((item): item is { runId: string; conversationId: string } => Boolean(item.runId && item.conversationId));
+  if (!items.length || items.length !== body.items?.length) {
+    res.status(400).json({ error: 'At least one valid audio source is required.' });
+    return;
+  }
+  const job = await createCrossRunAudioBatch({
+    items,
+    idempotencyKey: body.idempotencyKey ?? makeStudioJobId('add-all-request'),
+    setNumber: body.setNumber,
+    title: body.title ?? 'Generate recommendation audio',
+    stopOnFailure: true
+  });
+  res.status(202).json({ job });
+}));
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
@@ -838,7 +1177,16 @@ app.get('/api/runs', asyncHandler(async (_req, res) => {
 }));
 
 app.get('/api/runs/:runId', asyncHandler(async (req, res) => {
-  const run = await readRun(routeParam(req.params.runId));
+  let run: PracticeRun;
+  try {
+    run = await readRun(routeParam(req.params.runId));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      res.status(404).json({ error: 'Run not found. It may still be generating or was deleted.' });
+      return;
+    }
+    throw error;
+  }
   res.json({
     run,
     evidenceByConversationId: await getConversationCurationEvidence(run.setNumber, run.conversations)
@@ -847,6 +1195,7 @@ app.get('/api/runs/:runId', asyncHandler(async (req, res) => {
 
 app.delete('/api/runs/:runId', asyncHandler(async (req, res) => {
   const runId = routeParam(req.params.runId);
+  await assertRunHasNoActiveJobs(runId);
   await deleteRun(runId);
   res.json({ deletedRunId: runId, runs: await listRuns() });
 }));
@@ -1032,6 +1381,41 @@ app.post('/api/generate/preview', asyncHandler(async (req: express.Request<unkno
   res.json({ exchange: makeLlmExchange(context.textModel, context.prompt) });
 }));
 
+app.post('/api/generate/start', asyncHandler(async (req: express.Request<unknown, unknown, GenerateRequest>, res) => {
+  const context = await getGenerateContext(req.body);
+  if ('error' in context) {
+    res.status(context.status).json({ error: context.error });
+    return;
+  }
+  const idempotencyKey = req.body.idempotencyKey ?? makeStudioJobId('generate-request');
+  const existing = await findStudioJobByIdempotencyKey(idempotencyKey);
+  if (existing) {
+    res.status(202).json({ job: existing, attached: true });
+    return;
+  }
+  const timestamp = nowIso();
+  const candidateJobId = makeStudioJobId('generate');
+  const job = await createStudioJob({
+    id: candidateJobId,
+    idempotencyKey,
+    kind: 'run-generation',
+    status: 'queued',
+    title: `Set ${context.setNumber} generation`,
+    detail: `${context.conversationCount} conversations`,
+    stageLabel: 'Queued for generation',
+    setNumber: context.setNumber,
+    runId: makeRunId(context.setNumber),
+    revision: 1,
+    progress: { completed: 0, total: 1, queued: 1 },
+    stages: [{ id: 'generator', label: 'Generating initial set', status: 'pending' }],
+    request: req.body,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  });
+  if (job.id === candidateJobId) void runQueuedGenerationJob(job.id, () => runStandardGenerationJob(job.id));
+  res.status(202).json({ job, attached: job.id !== candidateJobId });
+}));
+
 app.post('/api/workflow/preview', asyncHandler(async (req: express.Request<unknown, unknown, WorkflowGenerateRequest>, res) => {
   const context = await getWorkflowGenerateContext(req.body);
   if ('error' in context) {
@@ -1056,8 +1440,15 @@ app.post('/api/workflow/start', asyncHandler(async (req: express.Request<unknown
   }
 
   const timestamp = nowIso();
+  const idempotencyKey = req.body.idempotencyKey ?? makeWorkflowJobId(context.setNumber);
+  const existing = await findStudioJobByIdempotencyKey(idempotencyKey);
+  if (existing?.workflow) {
+    res.status(202).json({ job: existing.workflow });
+    return;
+  }
+  const jobId = makeWorkflowJobId(context.setNumber);
   const job: WorkflowJob = {
-    id: makeWorkflowJobId(context.setNumber),
+    id: jobId,
     status: 'running',
     setNumber: context.setNumber,
     primaryConversationCount: context.conversationCount,
@@ -1070,8 +1461,34 @@ app.post('/api/workflow/start', asyncHandler(async (req: express.Request<unknown
     createdAt: timestamp,
     updatedAt: timestamp
   };
+  const studioJob = await createStudioJob({
+    id: jobId,
+    idempotencyKey,
+    kind: 'workflow-generation',
+    status: 'queued',
+    title: `Set ${context.setNumber} generation`,
+    detail: `${context.conversationCount + context.balanceConversationCount} conversations`,
+    stageLabel: isGenerationSlotBusy() ? 'Waiting for earlier generation' : 'Starting generation',
+    setNumber: context.setNumber,
+    runId: makeRunId(context.setNumber),
+    revision: 1,
+    progress: { completed: 0, total: context.audioCount, queued: context.audioCount },
+    stages: [
+      { id: 'generator', label: 'Generating initial set', status: 'pending' },
+      { id: 'balancer', label: 'Balancing set', status: 'pending' },
+      { id: 'audio', label: 'Generating audio', status: 'pending' }
+    ],
+    request: req.body,
+    workflow: job,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  });
+  if (studioJob.id !== jobId) {
+    res.status(202).json({ job: studioJob.workflow, attached: true });
+    return;
+  }
   workflowJobs.set(job.id, job);
-  void runWorkflowJob(job.id, req.body);
+  void runQueuedGenerationJob(job.id, () => runWorkflowJob(job.id, req.body));
   res.status(202).json({ job });
 }));
 
@@ -1218,6 +1635,41 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
   });
 }));
 
+app.post('/api/library/sets/:setNumber/complement/start', asyncHandler(async (req: express.Request<{ setNumber: string }, unknown, LibraryComplementGenerateRequest>, res) => {
+  const context = await getLibraryComplementContext(routeParam(req.params.setNumber), req.body);
+  if ('error' in context) {
+    res.status(context.status).json({ error: context.error });
+    return;
+  }
+  const idempotencyKey = req.body.idempotencyKey ?? makeStudioJobId('complement-request');
+  const existing = await findStudioJobByIdempotencyKey(idempotencyKey);
+  if (existing) {
+    res.status(202).json({ job: existing, attached: true });
+    return;
+  }
+  const timestamp = nowIso();
+  const candidateJobId = makeStudioJobId('complement');
+  const job = await createStudioJob({
+    id: candidateJobId,
+    idempotencyKey,
+    kind: 'library-complement',
+    status: 'queued',
+    title: `Set ${context.setNumber} balanced generation`,
+    detail: `${context.conversationCount} conversations`,
+    stageLabel: 'Queued for balance generation',
+    setNumber: context.setNumber,
+    runId: makeRunId(context.setNumber),
+    revision: 1,
+    progress: { completed: 0, total: 1, queued: 1 },
+    stages: [{ id: 'generator', label: 'Generating balanced set', status: 'pending' }],
+    request: { ...req.body, setNumber: context.setNumber },
+    createdAt: timestamp,
+    updatedAt: timestamp
+  });
+  if (job.id === candidateJobId) void runQueuedGenerationJob(job.id, () => runLibraryComplementJob(job.id));
+  res.status(202).json({ job, balance: context.balance, attached: job.id !== candidateJobId });
+}));
+
 app.post('/api/library/sets/:setNumber/complement', asyncHandler(async (req: express.Request<{ setNumber: string }, unknown, LibraryComplementGenerateRequest>, res) => {
   const context = await getLibraryComplementContext(routeParam(req.params.setNumber), req.body);
   if ('error' in context) {
@@ -1283,6 +1735,7 @@ app.put('/api/runs/:runId/conversations/:conversationId', asyncHandler(async (re
   const { title, scene, sampleContext, transcript } = req.body as Record<string, string>;
   const runId = routeParam(req.params.runId);
   const conversationId = routeParam(req.params.conversationId);
+  await assertConversationHasNoActiveAudio(runId, conversationId);
   const updated = await updateConversation(runId, conversationId, (conversation) => {
     if (conversation.curatedId) {
       throw new Error('This conversation is in Library and is read-only.');
@@ -1306,39 +1759,9 @@ app.put('/api/runs/:runId/conversations/:conversationId', asyncHandler(async (re
 app.post('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(async (req, res) => {
   const runId = routeParam(req.params.runId);
   const conversationId = routeParam(req.params.conversationId);
-  let run = await updateConversation(runId, conversationId, (conversation) => {
-    if (conversation.curatedId) {
-      throw new Error('This conversation is in Library and is read-only.');
-    }
-    return touchConversation({ ...conversation, status: 'audio_generating', error: undefined });
-  });
-
-  const conversation = run.conversations.find((item) => item.id === conversationId);
-  if (!conversation) throw new Error('Conversation not found.');
-
-  try {
-    const audio = await generateConversationAudio(runId, conversation);
-    run = await updateConversation(runId, conversationId, (current) => {
-      const audioUrl = `/audio/${encodeURIComponent(runId)}/audio/${encodeURIComponent(audio.fileName)}`;
-      return touchConversation({
-        ...current,
-        status: 'audio_ready',
-        audioFileName: audio.fileName,
-        audioUrl,
-        error: undefined
-      });
-    });
-    res.json({ run });
-  } catch (error) {
-    run = await updateConversation(runId, conversationId, (current) => {
-      return touchConversation({
-        ...current,
-        status: 'audio_failed',
-        error: error instanceof Error ? error.message : String(error)
-      });
-    });
-    res.status(502).json({ error: 'Audio generation failed.', detail: error instanceof Error ? error.message : String(error), run });
-  }
+  const idempotencyKey = typeof req.body?.idempotencyKey === 'string' ? req.body.idempotencyKey : undefined;
+  const result = await enqueueConversationAudio({ runId, conversationId, idempotencyKey });
+  res.status(202).json({ ...result, run: await readRun(runId) });
 }));
 
 app.delete('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(async (req, res) => {
@@ -1350,7 +1773,7 @@ app.delete('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(
   if (conversation.curatedId) {
     throw new Error('This conversation is in Library and is read-only.');
   }
-  if (conversation.status === 'audio_generating') {
+  if (conversation.status === 'audio_generating' || await hasActiveConversationAudio(runId, conversationId)) {
     throw new Error('Wait for audio generation to finish before deleting audio.');
   }
 
@@ -1375,6 +1798,30 @@ app.delete('/api/runs/:runId/conversations/:conversationId/audio', asyncHandler(
 }));
 
 app.post('/api/runs/:runId/audio', asyncHandler(async (req, res) => {
+  {
+    const requestedRunId = routeParam(req.params.runId);
+    const requestedMode = (req.body as RunAudioGenerateRequest & { idempotencyKey?: string } | undefined)?.mode === 'resume' ? 'resume' : 'replace';
+    const sourceRun = await readRun(requestedRunId);
+    const targets = requestedMode === 'resume'
+      ? sourceRun.conversations.filter((conversation) => !conversation.audioFileName)
+      : sourceRun.conversations;
+    if (requestedMode === 'replace' && targets.some((conversation) => conversation.curatedId)) {
+      throw new Error('Remove Library conversations before regenerating all audio for this run.');
+    }
+    if (targets.some((conversation) => conversation.curatedId)) {
+      throw new Error('Remove Library conversations that are missing audio before generating missing audio.');
+    }
+    const requestBody = req.body as RunAudioGenerateRequest & { idempotencyKey?: string } | undefined;
+    const job = await createAudioBatch({
+      runId: requestedRunId,
+      conversationIds: targets.map((conversation) => conversation.id),
+      idempotencyKey: requestBody?.idempotencyKey ?? `audio-batch:${requestedRunId}:${requestedMode}:${nowIso()}`,
+      stopOnFailure: true
+    });
+    res.status(202).json({ job, run: sourceRun });
+    return;
+  }
+  /* Legacy synchronous whole-run audio implementation retained for migration reference.
   const runId = routeParam(req.params.runId);
   const mode = (req.body as RunAudioGenerateRequest | undefined)?.mode === 'resume' ? 'resume' : 'replace';
   let run = await readRun(runId);
@@ -1588,11 +2035,13 @@ app.post('/api/runs/:runId/audio', asyncHandler(async (req, res) => {
     return;
   }
   res.json({ run });
+  */
 }));
 
 app.post('/api/runs/:runId/conversations/:conversationId/library', asyncHandler(async (req, res) => {
   const runId = routeParam(req.params.runId);
   const conversationId = routeParam(req.params.conversationId);
+  await assertConversationHasNoActiveAudio(runId, conversationId);
   let run = await readRun(runId);
   const conversation = run.conversations.find((item) => item.id === conversationId);
   if (!conversation) throw new Error('Conversation not found.');
@@ -1620,9 +2069,24 @@ app.delete('/api/library/:curatedId', asyncHandler(async (req, res) => {
 
 await mkdir(OUTPUTS_DIR, { recursive: true });
 await mkdir(RUNS_DIR, { recursive: true });
+await mkdir(STUDIO_JOBS_DIR, { recursive: true });
 await mkdir(CURATED_DIR, { recursive: true });
 await mkdir(CURATED_SETS_DIR, { recursive: true });
 await mkdir(CURATED_AUDIO_DIR, { recursive: true });
+const interruptedStudioJobs = await interruptActiveStudioJobs();
+for (const job of interruptedStudioJobs.filter((item) => item.kind === 'audio-child' && item.runId && item.conversationId)) {
+  await mutateRun(job.runId!, (run) => ({
+    ...run,
+    conversations: run.conversations.map((conversation) => conversation.id === job.conversationId
+      ? touchConversation({
+          ...conversation,
+          status: conversation.audioFileName ? 'audio_ready' : 'draft',
+          error: conversation.audioFileName ? undefined : 'Audio generation was interrupted by an API restart.'
+        })
+      : conversation),
+    updatedAt: nowIso()
+  })).catch(() => undefined);
+}
 
 app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   const message = error instanceof Error ? error.message : String(error);

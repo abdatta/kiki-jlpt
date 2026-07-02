@@ -387,6 +387,214 @@ textarea:focus {
   border-color: var(--studio-accent-border);
 }
 
+.runJobShell {
+  cursor: pointer;
+}
+
+.runJobShell.interrupted,
+.runJobShell.failed {
+  border-color: var(--studio-danger);
+}
+
+.runJobTitle {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+}
+
+.runJobResume {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--studio-info);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 0;
+}
+
+.backgroundJobTray,
+.studioToastStack {
+  bottom: 18px;
+  position: fixed;
+  right: 18px;
+  width: min(360px, calc(100vw - 36px));
+  z-index: 120;
+}
+
+.backgroundJobTray {
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  background: linear-gradient(150deg, rgb(247 224 195 / 84%), rgb(240 208 168 / 84%));
+  border: 1px solid rgb(190 130 70 / 30%);
+  border-radius: 14px;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 60%), 0 16px 48px rgb(120 78 36 / 25%);
+  color: var(--studio-text);
+  padding: 14px 16px;
+}
+
+.backgroundJobRow,
+.studioToast {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.backgroundJobTray small {
+  color: #c26f10;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.backgroundJobTrayStatus {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.backgroundJobQueueCount {
+  display: block;
+  margin-top: 10px;
+}
+
+.backgroundJobRow + .backgroundJobRow {
+  border-top: 1px solid rgb(150 100 50 / 14%);
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.backgroundJobRowMain {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: grid;
+  flex: 1;
+  font: inherit;
+  gap: 4px;
+  min-width: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.backgroundJobRowMain:hover strong {
+  color: var(--studio-accent-strong);
+}
+
+.backgroundJobRowTitle {
+  align-items: center;
+  display: flex;
+  gap: 7px;
+}
+
+.backgroundJobRowTitle svg {
+  color: #e07f1e;
+  flex-shrink: 0;
+}
+
+.backgroundJobRow.paused .backgroundJobRowTitle svg,
+.backgroundJobRow.interrupted .backgroundJobRowTitle svg {
+  color: var(--studio-text-muted);
+}
+
+.backgroundJobRowStage {
+  color: var(--studio-text-muted);
+  font-size: 12px;
+}
+
+.backgroundJobBar {
+  background: rgb(150 100 50 / 16%);
+  border-radius: 999px;
+  display: block;
+  height: 4px;
+  margin-top: 2px;
+  overflow: hidden;
+}
+
+.backgroundJobBarFill {
+  background: #e07f1e;
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  transition: width 300ms ease;
+}
+
+.backgroundJobBarFill.indeterminate {
+  animation: backgroundJobBarSlide 1.3s ease-in-out infinite;
+  width: 40%;
+}
+
+.backgroundJobRow.paused .backgroundJobBarFill,
+.backgroundJobRow.interrupted .backgroundJobBarFill {
+  background: var(--studio-border-strong);
+}
+
+@keyframes backgroundJobBarSlide {
+  from {
+    transform: translateX(-110%);
+  }
+
+  to {
+    transform: translateX(290%);
+  }
+}
+
+.backgroundJobRowActions {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.backgroundJobTray .iconButton {
+  background: rgb(224 127 30 / 10%);
+  border-color: rgb(224 127 30 / 40%);
+  border-radius: 10px;
+  color: #b96a12;
+}
+
+.backgroundJobTray .iconButton:hover {
+  background: rgb(224 127 30 / 20%);
+  border-color: rgb(224 127 30 / 65%);
+  box-shadow: 0 0 16px rgb(224 127 30 / 25%);
+}
+
+.studioToast div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.studioToast span {
+  color: var(--studio-text-muted);
+  font-size: 12px;
+}
+
+.studioToastStack {
+  bottom: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.backgroundJobTray + .studioToastStack {
+  bottom: 170px;
+}
+
+.studioToast {
+  background: var(--studio-accent-softer);
+  border: 1px solid var(--studio-accent-border);
+  border-radius: 7px;
+  box-shadow: 0 10px 28px rgb(0 0 0 / 18%);
+  padding: 10px 12px;
+}
+
+.studioToast.success { border-left-color: #39734f; }
+.studioToast.error { border-left-color: var(--studio-danger); }
+.studioToast.warning { border-left-color: var(--studio-accent); }
+
 .workspace {
   padding: 28px;
   display: grid;

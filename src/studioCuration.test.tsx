@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { AiCurationRecommendation, ConversationCurationEvidence, PracticeConversation } from '../shared/types.ts';
+import type { AiCurationRecommendation, ConversationCurationEvidence, PracticeConversation, StudioJob } from '../shared/types.ts';
 import { AddAllProgressModal } from './components/AddAllProgressModal.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
 import { AiRecommendationReason, CurationEvidencePanel } from './components/CurationEvidence.tsx';
+import { StudioBackgroundJobs } from './components/StudioBackgroundJobs.tsx';
 
 const evidence: ConversationCurationEvidence = {
   evidenceVersion: '1',
@@ -222,4 +223,85 @@ test('Studio bulk-add modal requires start and exposes the pause lifecycle', () 
   assert.match(pausedHtml, /Resume/);
   assert.match(allReadyHtml, /Generated Audio/);
   assert.match(allReadyHtml, /Add to Library/);
+});
+
+test('Studio background work renders standalone jobs, queue counts, pause controls, and terminal toasts', () => {
+  const timestamp = new Date().toISOString();
+  const standalone: StudioJob = {
+    id: 'audio-one',
+    idempotencyKey: 'audio-one',
+    kind: 'audio-child',
+    status: 'running',
+    title: 'Conversation One',
+    detail: 'Set 1',
+    stageLabel: 'Generating audio',
+    revision: 2,
+    progress: { completed: 0, total: 1, running: 1 },
+    stages: [],
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+  const batch: StudioJob = {
+    ...standalone,
+    id: 'batch-one',
+    idempotencyKey: 'batch-one',
+    kind: 'audio-batch',
+    title: 'Set 1 audio',
+    stageLabel: '2/5 audio generated'
+  };
+  const queued: StudioJob = {
+    ...standalone,
+    id: 'queued-child',
+    idempotencyKey: 'queued-child',
+    parentJobId: batch.id,
+    status: 'queued',
+    title: 'Queued conversation',
+    stageLabel: 'Queued for audio'
+  };
+  const paused: StudioJob = {
+    ...batch,
+    id: 'paused-batch',
+    idempotencyKey: 'paused-batch',
+    status: 'paused',
+    title: 'Paused Set 2 audio',
+    stageLabel: 'Audio paused'
+  };
+  const html = renderToStaticMarkup(<StudioBackgroundJobs
+    jobs={[standalone, batch, queued, paused]}
+    connected
+    toasts={[{ id: 'toast', tone: 'success', title: 'Complete', detail: 'Audio complete' }]}
+    onPause={() => undefined}
+    onResume={() => undefined}
+    onCancel={() => undefined}
+    onFocus={() => undefined}
+    onDismissToast={() => undefined}
+  />);
+
+  assert.match(html, /aria-label="Background work"/);
+  assert.match(html, /class="[^"]*\bspin\b[^"]*"/);
+  assert.match(html, /Conversation One/);
+  assert.match(html, /2\/5 audio generated/);
+  assert.match(html, /1 queued/);
+  assert.match(html, /Open in Studio/);
+  assert.match(html, /backgroundJobBarFill indeterminate/);
+  assert.match(html, /Pause background job/);
+  assert.match(html, /Resume background job/);
+  assert.match(html, /Discard remaining work/);
+  assert.match(html, /Complete/);
+  assert.match(html, /Audio complete/);
+
+  const pausedOnlyHtml = renderToStaticMarkup(<StudioBackgroundJobs
+    jobs={[paused]}
+    connected
+    toasts={[]}
+    onPause={() => undefined}
+    onResume={() => undefined}
+    onCancel={() => undefined}
+    onFocus={() => undefined}
+    onDismissToast={() => undefined}
+  />);
+
+  assert.match(pausedOnlyHtml, /Paused Set 2 audio/);
+  assert.doesNotMatch(pausedOnlyHtml, /class="[^"]*\bspin\b[^"]*"/);
+  assert.doesNotMatch(pausedOnlyHtml, /indeterminate/);
 });
