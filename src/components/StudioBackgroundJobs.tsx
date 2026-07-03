@@ -1,4 +1,4 @@
-import { CircleAlert, Clock, Pause, Play, RefreshCw, X } from 'lucide-react';
+import { CircleAlert, CircleStop, Clock, Pause, Play, RefreshCw, X } from 'lucide-react';
 import type { StudioJob } from '../../shared/types.ts';
 
 export interface StudioToast {
@@ -88,7 +88,7 @@ export function StudioBackgroundJobs({
                       ) : null}
                       {canDiscard ? (
                         <button className="iconButton" onClick={() => onCancel(job.id)} title="Discard remaining work" type="button">
-                          <X size={14} />
+                          <CircleStop size={14} />
                         </button>
                       ) : null}
                     </span>

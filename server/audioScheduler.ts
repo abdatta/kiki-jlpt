@@ -3,6 +3,7 @@ import { generateConversationAudio } from './gemini.ts';
 import { mutateRun, readRun, touchConversation } from './storage.ts';
 import {
   createStudioJob,
+  deriveStageLabel,
   findActiveStudioJobByDeduplicationKey,
   listStudioJobs,
   makeStudioJobId,
@@ -59,7 +60,6 @@ async function updateParent(parentJobId: string): Promise<void> {
   const jobs = await listStudioJobs();
   const children = jobs.filter((job) => childBelongsToParent(job, parentJobId));
   if (!children.length) return;
-  if ((await readStudioJob(parentJobId)).status === 'cancelled') return;
   const completed = children.filter((job) => job.status === 'succeeded').length;
   const failed = children.filter((job) => job.status === 'failed').length;
   const running = children.filter((job) => job.status === 'running').length;
@@ -67,22 +67,20 @@ async function updateParent(parentJobId: string): Promise<void> {
   const parent = await readStudioJob(parentJobId);
   const total = Math.max(parent.progress.total, children.length);
   let status = parent.status;
-  let stageLabel = `${completed}/${total} audio generated`;
   if (failed > 0 && parent.stopOnFailure) {
     status = 'failed';
-    stageLabel = `${completed}/${total} audio generated`;
   } else if (children.length >= total && completed + failed === total) {
     status = failed > 0 ? 'failed' : 'succeeded';
-    stageLabel = failed > 0 ? 'Audio generation failed' : 'Audio complete';
   } else if ((parent.status === 'pausing' || parent.status === 'paused') && running === 0) {
     status = 'paused';
-    stageLabel = `Audio paused - ${completed}/${total} generated`;
   }
+  const progress = { completed, total, failed, running, queued };
+  const stageLabel = deriveStageLabel({ kind: parent.kind, status, progress });
   await updateStudioJob(parentJobId, (current) => ({
     ...current,
     status,
     stageLabel,
-    progress: { completed, total, failed, running, queued },
+    progress,
     completedAt: status === 'succeeded' || status === 'failed' ? nowIso() : current.completedAt
   }));
 }
@@ -288,12 +286,7 @@ export async function createAudioBatch(args: {
     createdAt: timestamp,
     updatedAt: timestamp
   });
-  const existingChildren = (await listStudioJobs()).filter((job) => childBelongsToParent(job, parent.id));
-  if (!existingChildren.length) {
-    for (const conversationId of args.conversationIds) {
-      await enqueueConversationAudio({ runId: args.runId, conversationId, parentJobId: parent.id });
-    }
-  }
+  await reconcileAudioChildren(parent.id, { reuseExistingAudio: false });
   await updateParent(parent.id);
   void pumpAudioJobs();
   return readStudioJob(parent.id);
@@ -324,12 +317,7 @@ export async function createCrossRunAudioBatch(args: {
     createdAt: timestamp,
     updatedAt: timestamp
   });
-  const existingChildren = (await listStudioJobs()).filter((job) => childBelongsToParent(job, parent.id));
-  if (!existingChildren.length) {
-    for (const item of args.items) {
-      await enqueueConversationAudio({ ...item, parentJobId: parent.id });
-    }
-  }
+  await reconcileAudioChildren(parent.id, { reuseExistingAudio: false });
   await updateParent(parent.id);
   void pumpAudioJobs();
   return readStudioJob(parent.id);
@@ -356,34 +344,45 @@ function parentRequestedItems(parent: StudioJob): Array<{ runId: string; convers
   return [];
 }
 
-export async function resumeAudioParent(jobId: string): Promise<StudioJob> {
-  const parent = await readStudioJob(jobId);
-  if (parent.status === 'cancelled') {
-    throw new Error('This job was discarded and can no longer be resumed.');
-  }
-  // Recreate children that were never enqueued (e.g. the original start failed
-  // partway); the parent's persisted request is the durable source of truth.
-  // Children stay inert until the parent flips to running below.
-  const existing = (await listStudioJobs()).filter((job) => childBelongsToParent(job, jobId));
+/**
+ * Converges a parent's children with its persisted request: enqueues children
+ * that were never created (e.g. the original start failed partway), and, when
+ * reuseExistingAudio is set, settles unresolved children whose audio already
+ * exists on disk. Start paths pass reuseExistingAudio: false so replace-mode
+ * batches still regenerate over old audio; resume paths pass true so completed
+ * work is never redone. Children stay inert until the parent is running.
+ */
+async function reconcileAudioChildren(parentJobId: string, options: { reuseExistingAudio: boolean }): Promise<void> {
+  const parent = await readStudioJob(parentJobId);
+  const existing = (await listStudioJobs()).filter((job) => childBelongsToParent(job, parentJobId));
   const known = new Set(existing.map((child) => {
     const { runId, conversationId } = childRequest(child);
     return `${runId}:${conversationId}`;
   }));
   for (const item of parentRequestedItems(parent)) {
     if (known.has(`${item.runId}:${item.conversationId}`)) continue;
-    await enqueueConversationAudio({ ...item, parentJobId: jobId }).catch(() => undefined);
+    await enqueueConversationAudio({ ...item, parentJobId }).catch(() => undefined);
   }
-  const children = (await listStudioJobs()).filter((job) => childBelongsToParent(job, jobId));
+  if (!options.reuseExistingAudio) return;
+  const children = (await listStudioJobs()).filter((job) => childBelongsToParent(job, parentJobId));
   for (const child of children.filter((job) => ['queued', 'paused', 'interrupted', 'failed'].includes(job.status))) {
     const { runId, conversationId } = childRequest(child);
     const run = await readRun(runId).catch(() => undefined);
     const conversation = run?.conversations.find((item) => item.id === conversationId);
     if (conversation?.audioFileName) {
-      await updateStudioJob(child.id, (current) => ({ ...current, status: 'succeeded', stageLabel: 'Audio complete', progress: { completed: 1, total: 1 } }));
+      await updateStudioJob(child.id, (current) => ({ ...current, status: 'succeeded', stageLabel: deriveStageLabel({ ...current, status: 'succeeded' }), progress: { completed: 1, total: 1 } }));
     } else if (child.status !== 'queued') {
-      await updateStudioJob(child.id, (current) => ({ ...current, status: 'queued', stageLabel: 'Queued for audio', error: undefined }));
+      await updateStudioJob(child.id, (current) => ({ ...current, status: 'queued', stageLabel: deriveStageLabel({ ...current, status: 'queued' }), error: undefined }));
     }
   }
+}
+
+export async function resumeAudioParent(jobId: string): Promise<StudioJob> {
+  const parent = await readStudioJob(jobId);
+  if (parent.status === 'cancelled') {
+    throw new Error('This job was discarded and can no longer be resumed.');
+  }
+  await reconcileAudioChildren(jobId, { reuseExistingAudio: true });
   await updateStudioJob(jobId, (current) => ({ ...current, status: 'running', stageLabel: 'Resuming audio', error: undefined }));
   await updateParent(jobId);
   void pumpAudioJobs();
@@ -397,7 +396,7 @@ export async function cancelUnresolvedAudioChildren(jobId: string): Promise<void
     await updateStudioJob(child.id, (current) => ({
       ...current,
       status: 'cancelled',
-      stageLabel: 'Discarded',
+      stageLabel: deriveStageLabel({ ...current, status: 'cancelled' }),
       completedAt: nowIso(),
       stages: current.stages.map((stage) => stage.status === 'succeeded'
         ? stage
@@ -415,15 +414,19 @@ export async function cancelAudioParent(jobId: string): Promise<StudioJob> {
   await cancelUnresolvedAudioChildren(jobId);
   const children = (await listStudioJobs()).filter((job) => childBelongsToParent(job, jobId));
   const completed = children.filter((job) => job.status === 'succeeded').length;
-  return updateStudioJob(jobId, (current) => ({
-    ...current,
-    status: 'cancelled',
-    stageLabel: `Discarded with ${completed}/${current.progress.total} audio generated`,
-    completedAt: nowIso(),
-    stages: current.stages.map((stage) => stage.status === 'succeeded'
-      ? stage
-      : { ...stage, status: 'skipped', completedAt: nowIso() })
-  }));
+  return updateStudioJob(jobId, (current) => {
+    const progress = { ...current.progress, completed };
+    return {
+      ...current,
+      status: 'cancelled',
+      stageLabel: deriveStageLabel({ kind: current.kind, status: 'cancelled', progress }),
+      progress,
+      completedAt: nowIso(),
+      stages: current.stages.map((stage) => stage.status === 'succeeded'
+        ? stage
+        : { ...stage, status: 'skipped', completedAt: nowIso() })
+    };
+  });
 }
 
 export async function resumeConversationAudioJob(jobId: string): Promise<StudioJob> {

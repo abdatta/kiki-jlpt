@@ -23,7 +23,7 @@
 - [x] 3.3 Route workflow audio through the shared scheduler and persist live generated/requested counts and per-conversation audit nodes as children settle.
 - [x] 3.4 Add manual resume commands that validate current state and continue standard, complement, or balanced generation from the first incomplete checkpoint.
 - [x] 3.5 Preserve failed and interrupted shells with model, set, requested count, completed checkpoints, errors, and retry/resume eligibility instead of discarding pre-run work.
-- [ ] 3.6 Add workflow tests for immediate shell visibility, lost-response idempotency, refresh continuity, generator and balancer checkpoint resume, audio progress, failure, and manual restart recovery.
+- [x] 3.6 Add workflow tests for immediate shell visibility, lost-response idempotency, refresh continuity, generator and balancer checkpoint resume, audio progress, failure, and manual restart recovery.
 
 ## 4. Studio Snapshot And Realtime API
 
@@ -43,7 +43,7 @@
 - [x] 5.4 Add a persistent Studio background-work tray across Studio routes with running and queued summaries, expandable job details, and pause/resume actions where supported.
 - [x] 5.5 Add success, failure, and interruption toasts keyed by event id so each terminal transition appears once per tab, including completion while viewing another Studio route.
 - [x] 5.6 Remove obsolete workflow and whole-run polling after SSE parity is verified, while retaining snapshot retry as the realtime fallback.
-- [ ] 5.7 Add component tests for immediate run shells, spinner/stage changes, audio counts, tray persistence across routes, toast deduplication, interruption/resume, and SSE reconnect hydration.
+- [x] 5.7 Add component tests for immediate run shells, spinner/stage changes, audio counts, tray persistence across routes, toast deduplication, interruption/resume, and SSE reconnect hydration.
 - [x] 5.8 Make tray entries clickable so each job restores its originating foreground UI (run detail, pipeline audit, Add All dialog), and replace the tray header with per-job status icons plus determinate or indeterminate progress bars.
 
 ## 6. Add All And Existing Audio Paths
@@ -57,7 +57,7 @@
 ## 7. Verification And Compatibility
 
 - [x] 7.1 Run unit tests and add integration coverage that concurrently completes several conversations in one run without lost job, audit, or audio state.
-- [ ] 7.2 Exercise browser refresh and multi-tab scenarios during generator, balancer, individual audio, whole-run audio, and Add All stages, confirming automatic status and toast updates.
-- [ ] 7.3 Exercise API restart during every stage, confirming visible interrupted shells, no automatic provider calls, and manual resume from the last durable checkpoint.
+- [x] 7.2 Exercise browser refresh and multi-tab scenarios during generator, balancer, individual audio, whole-run audio, and Add All stages, confirming automatic status and toast updates.
+- [x] 7.3 Exercise API restart during every stage, confirming visible interrupted shells, no automatic provider calls, and manual resume from the last durable checkpoint.
 - [x] 7.4 Run `npm run test`, `npm run build:practice`, and `npm run library:check-published`, confirming Practice makes no Studio API or SSE connection and published formats remain unchanged.
 - [x] 7.5 Document the exact-once crash boundary, job retention behavior, recovery controls, and operational location of durable Studio job records.

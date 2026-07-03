@@ -36,6 +36,28 @@ The Studio SHALL persist job status, stages, progress, results, errors, and revi
 - **WHEN** the operator discards a paused, interrupted, or failed audio parent job
 - **THEN** the system marks the parent and its unresolved exclusive children cancelled, keeps completed audio, releases the run for deletion, and rejects later resume attempts for that job
 
+### Requirement: Job lifecycle integrity
+Studio job status changes SHALL follow a declared transition table in which terminal statuses (succeeded, failed, cancelled) are final and pausing may settle only to paused, back to running, or to a terminal status. A write that would perform an illegal transition SHALL be ignored, leaving the persisted job unchanged, and SHALL be observable in server diagnostics.
+
+#### Scenario: Late runner write after discard
+- **WHEN** a runner whose provider call was already dispatched writes status or progress after the operator discarded the job
+- **THEN** the persisted job remains cancelled with its discard label and no revised revision is broadcast for the ignored write
+
+#### Scenario: Stale write against a paused job
+- **WHEN** an asynchronous writer attempts to mark a paused job running without an operator resume
+- **THEN** the job remains paused and the attempted transition is recorded in server diagnostics
+
+### Requirement: Derived progress labels
+Job progress labels SHALL be derived from persisted status and progress counts by a single derivation rule, so that a status change can never discard completed-versus-total information.
+
+#### Scenario: Pause a batch mid-progress
+- **WHEN** an audio batch with completed work is paused, interrupted, or discarded
+- **THEN** its label still reports the completed-versus-total count alongside the state
+
+#### Scenario: Two writers race on one job
+- **WHEN** a status writer and a progress writer update the same job in either order
+- **THEN** the resulting label reflects both the final status and the latest counts
+
 ### Requirement: Realtime Studio synchronization
 The Studio SHALL expose an initial snapshot of run summaries and relevant jobs and SHALL publish subsequent changes through a Studio-only server-sent event stream. Events SHALL identify the changed entity and revision so clients can ignore duplicates or stale updates.
 
@@ -84,6 +106,20 @@ The Studio SHALL run at most one LLM text-generation job (run generation, workfl
 #### Scenario: Prioritize the latest generation
 - **WHEN** the operator pauses or discards the slot-holding generation job
 - **THEN** the runner stops at its next durable checkpoint, the slot is released, and the next queued generation starts
+
+### Requirement: Convergent batch starts
+Audio batch starts SHALL create children through the same reconciliation routine used by resume, so a start whose child creation is interrupted partway SHALL be repaired by a subsequent start retry or resume without duplicate provider work.
+
+#### Scenario: Child creation fails partway through a start
+- **WHEN** an audio batch start persists its parent but fails before creating all requested children
+- **THEN** a later resume or idempotent start retry creates exactly the missing children, reuses existing audio, and the batch converges to a terminal state
+
+### Requirement: Consistent operator notification policy
+The Studio SHALL decide whether a job event notifies the operator using one policy, applied identically to live realtime events and to terminal transitions discovered during reload hydration.
+
+#### Scenario: Batch children reach terminal states after a reload
+- **WHEN** the Studio reloads after child jobs of a batch reached terminal states
+- **THEN** the operator sees at most one notification for the parent batch and none for its children, exactly as they would have live
 
 ### Requirement: Shared bounded audio scheduling
 The Studio SHALL route every speech-generation path through one server scheduler with at most three provider calls active globally. It SHALL deduplicate queued or running work by source run and conversation and SHALL preserve parent-operation pause and stop-on-failure boundaries.

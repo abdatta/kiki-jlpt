@@ -7,7 +7,7 @@ import type { PracticeConversation, PracticeRun, StudioJob } from '../shared/typ
 import { cancelAudioParent, configureAudioSchedulerForTests, createAudioBatch, enqueueConversationAudio, pauseAudioParent, resumeAudioParent, waitForAudioSchedulerIdle, waitForStudioJob } from './audioScheduler.ts';
 import { resetGenerationGateForTests, withGenerationSlot } from './generationGate.ts';
 import { configureRunStorageForTests, mutateRun, readRun, saveRun } from './storage.ts';
-import { configureStudioJobStorageForTests, createStudioJob, interruptActiveStudioJobs, listStudioJobs, readStudioJob, updateStudioJob } from './studioJobs.ts';
+import { configureStudioJobStorageForTests, createStudioJob, interruptActiveStudioJobs, listStudioJobs, readStudioJob, subscribeStudioEvents, updateStudioJob } from './studioJobs.ts';
 
 function conversation(number: number): PracticeConversation {
   const timestamp = new Date().toISOString();
@@ -106,6 +106,90 @@ test('studio job persistence is idempotent, revisioned, and restart-aware', asyn
     assert.equal(afterLateWrite.status, 'cancelled');
     assert.equal(afterLateWrite.stageLabel, 'Discarded');
   } finally {
+    await storage.cleanup();
+  }
+});
+
+test('status transitions honor the legality table', async () => {
+  const storage = await isolatedStorage();
+  try {
+    // Terminal finality: succeeded rejects status changes but accepts payload updates.
+    await createStudioJob(job({ id: 'job-done', idempotencyKey: 'done', status: 'succeeded' }));
+    const events: string[] = [];
+    const unsubscribe = subscribeStudioEvents((event) => {
+      if (event.job) events.push(`${event.job.id}:${event.job.status}`);
+    });
+    const revived = await updateStudioJob('job-done', (current) => ({ ...current, status: 'running' }));
+    assert.equal(revived.status, 'succeeded');
+    assert.equal(events.length, 0);
+    const payload = await updateStudioJob('job-done', (current) => ({ ...current, detail: 'updated detail' }));
+    assert.equal(payload.detail, 'updated detail');
+    assert.equal(events.length, 1);
+    unsubscribe();
+
+    // Pausing settles to paused (not back to queued); paused resists stale
+    // failure writes but resumes to queued.
+    await createStudioJob(job({ id: 'job-pausing', idempotencyKey: 'pausing', status: 'pausing' }));
+    assert.equal((await updateStudioJob('job-pausing', (current) => ({ ...current, status: 'queued' }))).status, 'pausing');
+    assert.equal((await updateStudioJob('job-pausing', (current) => ({ ...current, status: 'paused' }))).status, 'paused');
+    assert.equal((await updateStudioJob('job-pausing', (current) => ({ ...current, status: 'failed' }))).status, 'paused');
+    assert.equal((await updateStudioJob('job-pausing', (current) => ({ ...current, status: 'queued' }))).status, 'queued');
+  } finally {
+    await storage.cleanup();
+  }
+});
+
+test('interruption retains completed-versus-total counts in the derived label', async () => {
+  const storage = await isolatedStorage();
+  try {
+    await createStudioJob(job({
+      id: 'batch-counts',
+      idempotencyKey: 'batch-counts',
+      kind: 'audio-batch',
+      status: 'running',
+      progress: { completed: 2, total: 9, queued: 7 }
+    }));
+    await interruptActiveStudioJobs();
+    assert.equal((await readStudioJob('batch-counts')).stageLabel, 'Interrupted - 2/9 generated');
+  } finally {
+    await storage.cleanup();
+  }
+});
+
+test('an idempotent start retry recreates children missing from a partial start', async () => {
+  const storage = await isolatedStorage();
+  configureAudioSchedulerForTests({
+    concurrency: 1,
+    executor: async (_runId, item) => ({ fileName: `${item.id}.wav`, filePath: `${item.id}.wav` })
+  });
+  try {
+    await saveRun(run('run-retry', 3));
+    const timestamp = new Date().toISOString();
+    const parent = await createStudioJob(job({
+      id: 'batch-retry',
+      idempotencyKey: 'batch-retry',
+      kind: 'audio-batch',
+      status: 'running',
+      runId: 'run-retry',
+      progress: { completed: 0, total: 3, queued: 0 },
+      stages: [{ id: 'audio', label: 'Generate audio', status: 'running', startedAt: timestamp }],
+      request: { runId: 'run-retry', conversationIds: ['convo-01', 'convo-02', 'convo-03'], idempotencyKey: 'batch-retry' }
+    }));
+    // Only one child was created before the original start failed partway.
+    await enqueueConversationAudio({ runId: 'run-retry', conversationId: 'convo-01', parentJobId: parent.id });
+
+    const retried = await createAudioBatch({
+      runId: 'run-retry',
+      conversationIds: ['convo-01', 'convo-02', 'convo-03'],
+      idempotencyKey: 'batch-retry'
+    });
+    assert.equal(retried.id, parent.id);
+    const completed = await waitForStudioJob(parent.id);
+    await waitForAudioSchedulerIdle();
+    assert.equal(completed.status, 'succeeded');
+    assert.equal((await listStudioJobs()).filter((item) => item.parentJobId === parent.id).length, 3);
+  } finally {
+    configureAudioSchedulerForTests();
     await storage.cleanup();
   }
 });

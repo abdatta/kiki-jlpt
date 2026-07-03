@@ -6,6 +6,7 @@ import { AddAllProgressModal } from './components/AddAllProgressModal.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
 import { AiRecommendationReason, CurationEvidencePanel } from './components/CurationEvidence.tsx';
 import { StudioBackgroundJobs } from './components/StudioBackgroundJobs.tsx';
+import { shouldNotifyJobEvent } from './studioNotifications.ts';
 
 const evidence: ConversationCurationEvidence = {
   evidenceVersion: '1',
@@ -304,4 +305,82 @@ test('Studio background work renders standalone jobs, queue counts, pause contro
   assert.match(pausedOnlyHtml, /Paused Set 2 audio/);
   assert.doesNotMatch(pausedOnlyHtml, /class="[^"]*\bspin\b[^"]*"/);
   assert.doesNotMatch(pausedOnlyHtml, /indeterminate/);
+});
+
+test('background work tray orders working first, pins interrupted parents with resume and discard, and shows queued waiting state', () => {
+  const timestamp = new Date().toISOString();
+  const base: StudioJob = {
+    id: 'base',
+    idempotencyKey: 'base',
+    kind: 'workflow-generation',
+    status: 'running',
+    title: 'Base',
+    detail: 'Test',
+    stageLabel: 'Generating initial set',
+    revision: 1,
+    progress: { completed: 0, total: 1 },
+    stages: [],
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+  const runningGeneration: StudioJob = { ...base, id: 'gen-running', idempotencyKey: 'gen-running', title: 'Running generation', createdAt: '2026-07-02T10:00:00.000Z' };
+  const queuedGeneration: StudioJob = { ...base, id: 'gen-queued', idempotencyKey: 'gen-queued', kind: 'library-complement', status: 'queued', title: 'Waiting generation', stageLabel: 'Waiting for earlier generation', createdAt: '2026-07-02T09:00:00.000Z' };
+  const interruptedBatch: StudioJob = { ...base, id: 'batch-interrupted', idempotencyKey: 'batch-interrupted', kind: 'audio-batch', status: 'interrupted', title: 'Interrupted batch', stageLabel: 'Interrupted - 2/9 generated', progress: { completed: 2, total: 9 }, createdAt: '2026-07-02T08:00:00.000Z' };
+
+  const html = renderToStaticMarkup(<StudioBackgroundJobs
+    jobs={[queuedGeneration, interruptedBatch, runningGeneration]}
+    connected
+    toasts={[]}
+    onPause={() => undefined}
+    onResume={() => undefined}
+    onCancel={() => undefined}
+    onFocus={() => undefined}
+    onDismissToast={() => undefined}
+  />);
+
+  // Working job renders first, then the FIFO queue, then resumable work.
+  assert.ok(html.indexOf('Running generation') < html.indexOf('Waiting generation'));
+  assert.ok(html.indexOf('Waiting generation') < html.indexOf('Interrupted batch'));
+
+  // The interrupted parent stays pinned with count-bearing label plus resume and discard controls.
+  assert.match(html, /Interrupted - 2\/9 generated/);
+  assert.match(html, /Resume background job/);
+  assert.match(html, /Discard remaining work/);
+
+  // The queued entry shows the waiting state without any activity bar of its own.
+  const queuedRow = html.slice(html.indexOf('Waiting generation'), html.indexOf('Interrupted batch'));
+  assert.match(queuedRow, /Waiting for earlier generation/);
+  assert.doesNotMatch(queuedRow, /backgroundJobBar/);
+});
+
+test('job notification policy toasts top-level terminal jobs only, for live and hydration alike', () => {
+  const timestamp = new Date().toISOString();
+  const base: StudioJob = {
+    id: 'parent-1',
+    idempotencyKey: 'parent-1',
+    kind: 'audio-batch',
+    status: 'succeeded',
+    title: 'Batch',
+    detail: 'Test',
+    stageLabel: 'Audio complete',
+    revision: 3,
+    progress: { completed: 2, total: 2 },
+    stages: [],
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+
+  // Top-level terminal jobs notify on both paths.
+  assert.equal(shouldNotifyJobEvent(base, 'live'), true);
+  assert.equal(shouldNotifyJobEvent(base, 'hydration'), true);
+  assert.equal(shouldNotifyJobEvent({ ...base, status: 'interrupted' }, 'hydration'), true);
+
+  // Children are summarized by their parent - never notify on their own.
+  assert.equal(shouldNotifyJobEvent({ ...base, id: 'child-1', kind: 'audio-child', parentJobId: 'parent-1' }, 'live'), false);
+  assert.equal(shouldNotifyJobEvent({ ...base, id: 'child-2', kind: 'audio-child', dependentParentJobIds: ['parent-1'] }, 'hydration'), false);
+
+  // Non-terminal states never notify; discards notify live only.
+  assert.equal(shouldNotifyJobEvent({ ...base, status: 'running' }, 'live'), false);
+  assert.equal(shouldNotifyJobEvent({ ...base, status: 'cancelled' }, 'live'), true);
+  assert.equal(shouldNotifyJobEvent({ ...base, status: 'cancelled' }, 'hydration'), false);
 });

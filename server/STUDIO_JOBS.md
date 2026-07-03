@@ -19,6 +19,18 @@ Studio generation and speech work is persisted under `outputs/studio-jobs/`. Eac
 - Parent stop-on-failure and pause state do not stop unrelated parent jobs.
 - Existing audio remains in place until a complete replacement has been written and renamed.
 
+## Invariants
+
+These rules are enforced in code (`studioJobs.ts`, `audioScheduler.ts`, `atomic.ts`) and must survive future changes:
+
+- **Status transitions follow the table in `studioJobs.ts` (`LEGAL_TRANSITIONS`).** Terminal statuses are final: `succeeded` accepts payload-only updates, `cancelled` is fully frozen, and `failed` stays resumable. A write attempting an illegal transition is dropped unchanged (no revision bump, no SSE event) and logged with job id, from-status, and to-status. Writers submit intent; the persistence layer decides.
+- **Progress labels are derived, not authored.** `deriveStageLabel` in `studioJobs.ts` formats every count-bearing state from `status` + `progress`, so no status write can lose completed-versus-total counts. Free-text labels are allowed only for transient information state cannot express (waiting-for-slot, resuming, runner stage names).
+- **One writer per file, serialized per key.** Run mutations go through `mutateRun`'s per-run queue; job writes through `updateStudioJob`'s per-job queue. Never write these files directly.
+- **Starts and resumes converge through one reconciler.** `reconcileAudioChildren` recreates children missing versus the parent's persisted request. Start paths do not reuse existing audio (replace semantics); resume paths do. A batch interrupted mid-start is repaired by any later idempotent start retry or resume.
+- **Windows atomic replacement has a retry contract.** `atomicWriteFile` retries the gap-free rename before falling back to the backup swap (which briefly leaves the destination missing); readers (`readRun`, `readStudioJob`) retry transient `ENOENT`/`EPERM`/`EBUSY` so they self-heal across that window. New readers of these files must use the same helpers.
+- **Operator notification policy lives in `src/studioNotifications.ts`.** Children never toast on their own; both the realtime and hydration paths call the same predicate.
+- **Dev restarts interrupt live jobs.** `tsx watch` restarts the API on every server-file edit, and startup marks queued/running/pausing jobs interrupted. Do not debug job behavior while editing server files.
+
 ## Retention
 
 Job files are retained as local audit records. The default Studio snapshot returns all active/interrupted/failed work plus a bounded recent terminal window. Job files may be archived or removed manually only when no related work is active.

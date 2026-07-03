@@ -2,6 +2,7 @@ import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { mkdir, readFile, unlink } from 'node:fs/promises';
 import type { AiCurationRequest, GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, RunAudioGenerateRequest, StudioJob, StudioRunSummary, StudioSnapshot, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRunAudit } from '../shared/types.ts';
 import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR, STUDIO_JOBS_DIR } from './paths.ts';
@@ -293,6 +294,9 @@ function updateWorkflowJob(jobId: string, updater: (job: WorkflowJob) => Workflo
   const failedAudio = updated.nodes.filter((node) => node.kind === 'audio' && node.status === 'error').length;
   void updateStudioJob(jobId, (studioJob) => ({
     ...studioJob,
+    // Keep preserving operator-set pausing/paused/queued inline: paused -> running
+    // is a legal table transition (resume), so only the writer knows this write
+    // is progress reporting rather than an operator resume.
     status: updated.status === 'complete' ? 'succeeded'
       : updated.status === 'failed' ? 'failed'
       : ['pausing', 'paused', 'queued'].includes(studioJob.status) ? studioJob.status
@@ -2093,7 +2097,16 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
   res.status(message.includes('not found') ? 404 : 500).json({ error: message });
 });
 
-app.listen(port, '127.0.0.1', () => {
-  console.log(`Kiki JLPT API running at http://127.0.0.1:${port}`);
-  console.log(`Audio files are stored below ${path.relative(process.cwd(), RUNS_DIR) || RUNS_DIR}`);
-});
+// Listen only when run as the entry point; tests import `app` and bind an
+// ephemeral port themselves.
+const runAsEntryPoint = process.argv[1]
+  ? import.meta.url === pathToFileURL(process.argv[1]).href
+  : false;
+if (runAsEntryPoint) {
+  app.listen(port, '127.0.0.1', () => {
+    console.log(`Kiki JLPT API running at http://127.0.0.1:${port}`);
+    console.log(`Audio files are stored below ${path.relative(process.cwd(), RUNS_DIR) || RUNS_DIR}`);
+  });
+}
+
+export { app };

@@ -55,6 +55,7 @@ import { BrandLogo } from './components/BrandLogo.tsx';
 import { AddAllProgressModal, type AddAllProgress, type AddAllProgressItem } from './components/AddAllProgressModal.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
 import { StudioBackgroundJobs, type StudioToast } from './components/StudioBackgroundJobs.tsx';
+import { shouldNotifyJobEvent } from './studioNotifications.ts';
 import { AiRecommendationReason, CurationEvidencePanel } from './components/CurationEvidence.tsx';
 import { ConsumerApp } from './consumer/ConsumerApp.tsx';
 import { planAddAllRecommendations } from './addAllAudio.ts';
@@ -241,10 +242,6 @@ function parseStudioRoute(hash = typeof window === 'undefined' ? '' : window.loc
   }
 
   return { boardMode: 'runs', auditOpen: false };
-}
-
-function isTopLevelStudioJob(job: StudioJob): boolean {
-  return !job.parentJobId && !job.dependentParentJobIds?.length;
 }
 
 function navigateToStudioRoute(route: string) {
@@ -2128,7 +2125,7 @@ function StudioApp() {
     setRunShells(snapshotPayload.snapshot.runSummaries.filter((summary): summary is StudioRunShellSummary => summary.kind === 'job'));
     if (!initialStudioHydrationComplete.current) {
       const activeBeforeReload = new Set<string>(JSON.parse(sessionStorage.getItem('kiki-jlpt.studio.activeJobs') ?? '[]') as string[]);
-      for (const job of snapshotPayload.snapshot.jobs.filter((item) => activeBeforeReload.has(item.id) && ['succeeded', 'failed', 'interrupted'].includes(item.status) && isTopLevelStudioJob(item))) {
+      for (const job of snapshotPayload.snapshot.jobs.filter((item) => activeBeforeReload.has(item.id) && shouldNotifyJobEvent(item, 'hydration'))) {
         const toastId = `job:${job.id}:${job.status}`;
         const tone = job.status === 'succeeded' ? 'success' : job.status === 'failed' ? 'error' : 'warning';
         setStudioToasts((current) => current.some((toast) => toast.id === toastId) ? current : [...current, {
@@ -2519,12 +2516,9 @@ function StudioApp() {
   }, [activeStudioJobs]);
 
   useEffect(() => {
-    const events = new EventSource('/api/studio/events');
-    events.onopen = () => setStudioRealtimeConnected(true);
-    events.onerror = () => {
-      setStudioRealtimeConnected(false);
-      void refreshStudioSnapshot().catch(() => undefined);
-    };
+    let disposed = false;
+    let events: EventSource | null = null;
+    let retryTimer: number | undefined;
     const onJob = (message: MessageEvent<string>) => {
       const event = JSON.parse(message.data) as StudioEvent;
       if (!event.job || seenStudioEventIds.current.has(event.id)) return;
@@ -2558,9 +2552,12 @@ function StudioApp() {
       });
       applyJobToRunShells(job);
       if (job.workflow) {
-        setWorkflowJob((current) => current?.id === job.id || job.status === 'running' ? job.workflow ?? current : current);
+        // Update the pipeline audit only when it is already showing this job.
+        // A running workflow must not steal the foreground from wherever the
+        // operator navigated - its tray/shell entry reopens the audit on demand.
+        setWorkflowJob((current) => current?.id === job.id ? job.workflow ?? current : current);
       }
-      if (isTopLevelStudioJob(job) && (job.status === 'succeeded' || job.status === 'failed' || job.status === 'interrupted' || job.status === 'cancelled')) {
+      if (shouldNotifyJobEvent(job, 'live')) {
         const tone = job.status === 'succeeded' ? 'success' : job.status === 'failed' ? 'error' : 'warning';
         const toastId = `job:${job.id}:${job.status}`;
         setStudioToasts((current) => current.some((toast) => toast.id === toastId) ? current : [
@@ -2584,12 +2581,34 @@ function StudioApp() {
       });
       setCurrentRun((current) => current?.id === run.id && current.updatedAt < run.updatedAt ? run : current);
     };
-    events.addEventListener('job', onJob as EventListener);
-    events.addEventListener('run', onRun as EventListener);
+    const connect = () => {
+      if (disposed) return;
+      events = new EventSource('/api/studio/events');
+      events.onopen = () => {
+        setStudioRealtimeConnected(true);
+        // Converge after every (re)connect: events emitted while disconnected
+        // are gone, so the snapshot is the recovery mechanism.
+        void refreshStudioSnapshot().catch(() => undefined);
+      };
+      events.onerror = () => {
+        setStudioRealtimeConnected(false);
+        void refreshStudioSnapshot().catch(() => undefined);
+        // EventSource gives up permanently when a reconnect lands while the
+        // API is restarting and the dev proxy answers with a non-stream
+        // response; rebuild the connection ourselves.
+        if (events?.readyState === EventSource.CLOSED) {
+          events.close();
+          retryTimer = window.setTimeout(connect, 2000);
+        }
+      };
+      events.addEventListener('job', onJob as EventListener);
+      events.addEventListener('run', onRun as EventListener);
+    };
+    connect();
     return () => {
-      events.removeEventListener('job', onJob as EventListener);
-      events.removeEventListener('run', onRun as EventListener);
-      events.close();
+      disposed = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+      events?.close();
     };
   }, []);
 

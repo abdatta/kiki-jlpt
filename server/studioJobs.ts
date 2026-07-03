@@ -25,6 +25,23 @@ function isActive(status: StudioJobStatus): boolean {
   return status === 'queued' || status === 'running' || status === 'pausing' || status === 'paused' || status === 'interrupted';
 }
 
+/**
+ * Legal status transitions. Writers submit their intended status; a write whose
+ * status change is not listed here is dropped unchanged (see updateStudioJob).
+ * `succeeded` accepts payload-only updates (same-status) but no status change;
+ * `cancelled` is fully frozen - a discard is final. `failed` stays resumable.
+ */
+const LEGAL_TRANSITIONS: Record<StudioJobStatus, StudioJobStatus[]> = {
+  queued: ['running', 'pausing', 'paused', 'interrupted', 'succeeded', 'failed', 'cancelled'],
+  running: ['pausing', 'paused', 'interrupted', 'succeeded', 'failed', 'cancelled'],
+  pausing: ['running', 'paused', 'interrupted', 'succeeded', 'failed', 'cancelled'],
+  paused: ['queued', 'running', 'succeeded', 'cancelled'],
+  interrupted: ['queued', 'running', 'succeeded', 'cancelled'],
+  failed: ['queued', 'running', 'succeeded', 'cancelled'],
+  succeeded: [],
+  cancelled: []
+};
+
 function emitJob(job: StudioJob): void {
   eventRevision += 1;
   const event: StudioEvent = {
@@ -124,10 +141,14 @@ export async function createStudioJob(job: StudioJob): Promise<StudioJob> {
 export async function updateStudioJob(jobId: string, updater: (job: StudioJob) => StudioJob | Promise<StudioJob>): Promise<StudioJob> {
   return withJobQueue(jobId, async () => {
     const current = await readStudioJob(jobId);
-    // Cancelled is terminal: late writes from a still-running runner (whose LLM
-    // call was already dispatched) must not revive the job.
+    // A discard is final: even payload-only writes from a still-running runner
+    // (whose provider call was already dispatched) must not touch the job.
     if (current.status === 'cancelled') return current;
     const updated = await updater(current);
+    if (updated.status !== current.status && !LEGAL_TRANSITIONS[current.status].includes(updated.status)) {
+      console.warn(`[studio-jobs] Ignored illegal status transition for ${jobId}: ${current.status} -> ${updated.status}`);
+      return current;
+    }
     const next: StudioJob = {
       ...updated,
       revision: current.revision + 1,
@@ -147,7 +168,7 @@ export async function interruptActiveStudioJobs(): Promise<StudioJob[]> {
     interrupted.push(await updateStudioJob(job.id, (current) => ({
       ...current,
       status: 'interrupted',
-      stageLabel: current.progress.total > 1 ? `Interrupted - ${current.progress.completed}/${current.progress.total} generated` : 'Interrupted',
+      stageLabel: deriveStageLabel({ ...current, status: 'interrupted' }),
       stages: current.stages.map((stage) => stage.status === 'running'
         ? { ...stage, status: 'interrupted', completedAt: nowIso(), error: 'API process restarted.' }
         : stage),
@@ -155,6 +176,36 @@ export async function interruptActiveStudioJobs(): Promise<StudioJob[]> {
     })));
   }
   return interrupted;
+}
+
+/**
+ * Derives the display label for count-bearing job states from durable status
+ * and progress, so no status writer can lose completed-versus-total counts.
+ * Transient labels that carry information state cannot express (for example
+ * "Waiting for earlier generation", "Pausing after current step", "Resuming
+ * workflow", runner stage names) remain caller-authored by design.
+ */
+export function deriveStageLabel(job: Pick<StudioJob, 'kind' | 'status' | 'progress'>): string {
+  const { completed, total } = job.progress;
+  const counts = total > 1 ? `${completed}/${total}` : null;
+  const isAudio = job.kind === 'audio-batch' || job.kind === 'add-all-audio' || job.kind === 'audio-child';
+  switch (job.status) {
+    case 'queued':
+      return isAudio ? 'Queued for audio' : 'Queued for generation';
+    case 'running':
+    case 'pausing':
+      return counts ? `${counts} audio generated` : isAudio ? 'Generating audio' : 'Generating';
+    case 'paused':
+      return counts ? `Audio paused - ${counts} generated` : 'Paused';
+    case 'interrupted':
+      return counts ? `Interrupted - ${counts} generated` : 'Interrupted';
+    case 'succeeded':
+      return isAudio ? 'Audio complete' : 'Complete';
+    case 'failed':
+      return counts ? `Audio generation failed - ${counts} generated` : isAudio ? 'Audio generation failed' : 'Failed';
+    case 'cancelled':
+      return counts ? `Discarded with ${counts} audio generated` : 'Discarded';
+  }
 }
 
 export function makeStudioJobId(prefix: string): string {
