@@ -1900,6 +1900,353 @@ textarea:focus {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.wordFrequencyDistribution {
+  border: 1px solid var(--studio-border);
+  border-radius: 8px;
+  background: var(--studio-surface);
+  overflow: hidden;
+}
+
+.wordFrequencyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 48px;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.wordFrequencyHeader > span {
+  font-weight: 850;
+}
+
+.wordFrequencyBody {
+  display: grid;
+  gap: 12px;
+  padding: 0 18px 14px;
+  border-top: 1px solid var(--studio-border-soft);
+}
+
+.wordFrequencyBodyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.wordFrequencyBodyHeader p {
+  margin: 0;
+  color: var(--studio-text-muted);
+  font-size: 12px;
+}
+
+.frequencyViewToggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  border: 1px solid var(--studio-border-soft);
+  border-radius: 7px;
+  background: var(--studio-surface-raised);
+  padding: 5px 9px;
+  color: var(--studio-text-muted);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 140ms ease, color 140ms ease;
+}
+
+.frequencyViewToggle:hover {
+  border-color: var(--studio-info-border);
+  box-shadow: 0 2px 7px rgb(34 92 113 / 0.1);
+  color: var(--studio-info);
+}
+
+.frequencyViewToggle:focus-visible {
+  outline: 2px solid var(--studio-info-border);
+  outline-offset: 2px;
+}
+
+.frequencyViewToggle > span {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.frequencyViewToggle > span i {
+  width: 5px;
+  height: 12px;
+  border-radius: 2px;
+  background: #285f73;
+}
+
+.frequencyViewToggle > span i:last-child {
+  height: 8px;
+  margin-top: 4px;
+  background: #d27a32;
+}
+
+.wordFrequencyLegend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px 14px;
+  color: var(--studio-text-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.wordFrequencyLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.wordFrequencyLegend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.frequencyCurrentSwatch,
+.wordFrequencyCurrent {
+  background: #285f73;
+}
+
+.frequencyDeltaSwatch,
+.wordFrequencyDelta,
+.wordFrequencyAfter {
+  background: #d27a32;
+}
+
+.wordFrequencyScroller {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-top: 42px;
+  padding-bottom: 2px;
+}
+
+.wordFrequencyPlot {
+  position: relative;
+  min-width: 700px;
+  padding-left: 28px;
+}
+
+.wordFrequencySplit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(360px, 1fr));
+  gap: 14px;
+  min-width: 734px;
+}
+
+.wordFrequencyPane {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.wordFrequencyPane h4 {
+  margin: 0 0 0 28px;
+  color: var(--studio-text-subtle);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wordFrequencySplit .wordFrequencyPlot {
+  min-width: 0;
+}
+
+.wordFrequencySplit .wordFrequencyBars {
+  gap: 1px;
+}
+
+.wordFrequencySplit .wordFrequencyBar {
+  min-width: 1px;
+}
+
+.wordFrequencyBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 132px;
+  padding: 0 2px;
+  border-bottom: 1px solid var(--studio-border-strong);
+  background: linear-gradient(
+    to bottom,
+    transparent calc(50% - 0.5px),
+    var(--studio-border-soft) calc(50% - 0.5px),
+    var(--studio-border-soft) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+}
+
+.wordFrequencyBar {
+  position: relative;
+  display: flex;
+  flex: 1 1 4px;
+  justify-content: flex-end;
+  min-width: 2px;
+  max-width: 18px;
+}
+
+.wordFrequencyStack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 3px 3px 0 0;
+  filter: drop-shadow(0 0 0 transparent);
+  transform-origin: bottom;
+  transition: filter 150ms ease, transform 150ms ease;
+}
+
+.wordFrequencyStack > span {
+  display: block;
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.wordFrequencyBar:hover .wordFrequencyStack {
+  filter: drop-shadow(0 4px 4px rgb(27 48 58 / 0.22));
+  transform: translateY(-2px) scaleX(1.12);
+}
+
+.wordFrequencyTooltip {
+  position: absolute;
+  bottom: calc(100% + 9px);
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: max-content;
+  padding: 7px 9px;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 7px;
+  background: #173844;
+  box-shadow: 0 7px 18px rgb(18 43 52 / 0.24);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.1;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 4px);
+  transition: opacity 130ms ease, transform 150ms ease;
+}
+
+.wordFrequencyTooltip::after {
+  position: absolute;
+  bottom: -5px;
+  left: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  background: #173844;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.wordFrequencyTooltip strong,
+.wordFrequencyTooltip > span {
+  position: relative;
+  z-index: 1;
+}
+
+.wordFrequencyTooltip strong {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.wordFrequencyTooltip > span {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.wordFrequencyTooltip em {
+  border-radius: 999px;
+  background: #f2b36f;
+  padding: 2px 5px;
+  color: #563012;
+  font-size: 10px;
+  font-style: normal;
+}
+
+.wordFrequencyBar:hover .wordFrequencyTooltip {
+  opacity: 1;
+  transform: translate(-50%, -3px);
+}
+
+.wordFrequencyBar:nth-child(-n + 20) .wordFrequencyTooltip {
+  left: 0;
+  transform: translate(0, 4px);
+}
+
+.wordFrequencyBar:nth-child(-n + 20):hover .wordFrequencyTooltip {
+  transform: translate(0, -3px);
+}
+
+.wordFrequencyBar:nth-child(-n + 20) .wordFrequencyTooltip::after {
+  left: 1px;
+}
+
+.wordFrequencyBar:nth-last-child(-n + 20) .wordFrequencyTooltip {
+  right: 0;
+  left: auto;
+  transform: translate(0, 4px);
+}
+
+.wordFrequencyBar:nth-last-child(-n + 20):hover .wordFrequencyTooltip {
+  transform: translate(0, -3px);
+}
+
+.wordFrequencyBar:nth-last-child(-n + 20) .wordFrequencyTooltip::after {
+  right: 1px;
+  left: auto;
+}
+
+.wordFrequencyDelta {
+  border-radius: 3px 3px 0 0;
+}
+
+.wordFrequencyScale {
+  position: absolute;
+  inset: -6px auto 23px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 22px;
+  color: var(--studio-text-subtle);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.wordFrequencyAxis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  padding-top: 6px;
+  color: var(--studio-text-subtle);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.wordFrequencyAxis span:nth-child(2) {
+  text-align: center;
+}
+
+.wordFrequencyAxis span:last-child {
+  text-align: right;
+}
+
 .aiCurationSummary span,
 .curationEvidenceDetails > div > span {
   color: var(--studio-text-subtle);
@@ -2718,6 +3065,20 @@ audio {
   }
 
   .aiCurationSummaryHeader {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .wordFrequencyHeader {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .wordFrequencyLegend {
+    justify-content: flex-start;
+  }
+
+  .wordFrequencyBodyHeader {
     align-items: flex-start;
     flex-direction: column;
   }

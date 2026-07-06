@@ -56,7 +56,11 @@ import { AddAllProgressModal, type AddAllProgress, type AddAllProgressItem } fro
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
 import { StudioBackgroundJobs, type StudioToast } from './components/StudioBackgroundJobs.tsx';
 import { shouldNotifyJobEvent } from './studioNotifications.ts';
-import { AiRecommendationReason, CurationEvidencePanel } from './components/CurationEvidence.tsx';
+import {
+  AiRecommendationReason,
+  CurationEvidencePanel,
+  WordFrequencyDistribution
+} from './components/CurationEvidence.tsx';
 import { ConsumerApp } from './consumer/ConsumerApp.tsx';
 import { planAddAllRecommendations } from './addAllAudio.ts';
 
@@ -4173,6 +4177,7 @@ function StudioApp() {
                   </div>
                 </div>
               </section>
+              <WordFrequencyDistribution words={currentAiCurationReview.result?.projectedLeastCoveredWords ?? []} />
               {currentAiCurationReview.llmExchanges.map((exchange) => <AuditLog exchange={exchange} key={exchange.id} />)}
               {currentAiCurationReview.result?.recommendations.length ? (
                 <div className="conversationGrid">

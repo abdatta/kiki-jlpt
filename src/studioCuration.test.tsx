@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { AiCurationRecommendation, ConversationCurationEvidence, PracticeConversation, StudioJob } from '../shared/types.ts';
 import { AddAllProgressModal } from './components/AddAllProgressModal.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
-import { AiRecommendationReason, CurationEvidencePanel } from './components/CurationEvidence.tsx';
+import { AiRecommendationReason, CurationEvidencePanel, WordFrequencyDistribution } from './components/CurationEvidence.tsx';
 import { StudioBackgroundJobs } from './components/StudioBackgroundJobs.tsx';
 import { shouldNotifyJobEvent } from './studioNotifications.ts';
 
@@ -70,6 +70,28 @@ test('Studio AI recommendation renders rationale, strengths, and concerns', () =
   assert.match(html, /Adds a natural reading scene/);
   assert.match(html, /Clear target context/);
   assert.match(html, /One question is vague/);
+});
+
+test('Studio word-frequency distribution stacks current and Add All counts', () => {
+  const html = renderToStaticMarkup(<WordFrequencyDistribution words={[
+    { japanese: '読む', currentLibraryCount: 2, projectedLibraryCount: 4 },
+    { japanese: '見る', currentLibraryCount: 1, projectedLibraryCount: 1 },
+    { japanese: '行く', currentLibraryCount: 3, projectedLibraryCount: 4 }
+  ]} />);
+
+  assert.match(html, /Word frequency distribution/);
+  assert.match(html, /Added by Add All/);
+  assert.match(html, /<details class="wordFrequencyDistribution">/);
+  assert.doesNotMatch(html, /<details class="wordFrequencyDistribution" open/);
+  assert.match(html, /aria-pressed="false"[^>]*>.*Split view/);
+  assert.match(html, /読む: 4 \(\+2\)/);
+  assert.doesNotMatch(html, /title="読む: 4/);
+  assert.match(html, /wordFrequencyTooltip/);
+  assert.match(html, /wordFrequencyBar[^>]*height:100%/);
+  assert.match(html, /wordFrequencyDelta[^>]*height:50%/);
+  assert.match(html, /wordFrequencyCurrent[^>]*height:50%/);
+  assert.match(html, /Less frequent/);
+  assert.match(html, /Most frequent/);
 });
 
 test('Studio bulk-add modal uses LLM Audit audio failure and stopped states', () => {
