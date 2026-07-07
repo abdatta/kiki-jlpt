@@ -21,6 +21,7 @@ import {
   isAiCurationReviewStale,
   listAiCurationReviewSummaries,
   readAiCurationReview,
+  reconcileAiCurationReview,
   saveAiCurationReview,
   validateAiCurationResponse
 } from './aiCuration.ts';
@@ -352,4 +353,149 @@ test('review storage retains and summarizes history newest first', async () => {
   } finally {
     await rm(storageRoot, { recursive: true, force: true });
   }
+});
+
+test('review reconciliation skips already curated recommendations and keeps remaining addable', async () => {
+  const snapshot = await fixtureSnapshot();
+  const result = validateAiCurationResponse({
+    summary: 'Use both candidates.',
+    recommendations: snapshot.candidateKeys.map((candidateKey) => ({
+      candidateKey,
+      rationale: 'Useful',
+      strengths: ['Clear'],
+      concerns: []
+    }))
+  }, snapshot, 2);
+  const review: AiCurationReview = {
+    id: 'curation-set-02-reconcile',
+    setNumber: 2,
+    targetConversationCount: 2,
+    status: 'complete',
+    stale: true,
+    textModel: model,
+    snapshot,
+    llmExchanges: [],
+    result,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+  const currentLibrary = library([
+    curated('run-a', 'convo-01', 'æœ¬ã‚’èª­ã¿ã¾ã™ã€‚'),
+    curated('run-a', 'convo-02', 'æœ¬ã‚’è¦‹ã¾ã™ã€‚')
+  ]);
+  const unchangedRemaining = snapshot.candidates.find((candidate) => candidate.candidateKey === 'run-b:convo-01')?.conversation;
+  assert.ok(unchangedRemaining);
+  const currentRuns = [
+    run('run-a', [
+      conversation('convo-01', 'æœ¬ã‚’èª­ã¿ã¾ã™ã€‚'),
+      conversation('convo-02', 'æœ¬ã‚’è¦‹ã¾ã™ã€‚', { status: 'audio_ready', audioFileName: 'b.wav', audioUrl: '/b.wav', curatedId: 'curated-b' })
+    ]),
+    run('run-b', [{ ...unchangedRemaining, status: 'draft' }]),
+    run('run-c', [conversation('convo-03', 'æœ¬ã‚’è¦‹ã¾ã™ã€‚')])
+  ];
+  const currentSnapshot = await buildAiCurationSnapshotFromData(2, vocabulary, currentLibrary, currentRuns);
+  const reconciliation = reconcileAiCurationReview(review, currentSnapshot, currentRuns, currentLibrary);
+
+  assert.equal(reconciliation.actionable, true);
+  assert.equal(reconciliation.actionLabel, 'Add Remaining');
+  assert.equal(reconciliation.counts.alreadyInLibrary, 1);
+  assert.equal(reconciliation.counts.remainingToAdd, 1);
+  assert.equal(reconciliation.counts.missingAudio, 1);
+  assert.equal(reconciliation.counts.newerCandidatesNotEvaluated, 1);
+  assert.deepEqual(reconciliation.recommendationKeysToAdd, ['run-b:convo-01']);
+  assert.equal(reconciliation.recommendations.find((item) => item.candidateKey === 'run-a:convo-02')?.status, 'already_in_library');
+  assert.equal(reconciliation.recommendations.find((item) => item.candidateKey === 'run-b:convo-01')?.status, 'addable_missing_audio');
+  assert.equal(reconciliation.currentProjectedLeastCoveredWords.length, 2);
+});
+
+test('review reconciliation blocks missing or changed historical sources', async () => {
+  const snapshot = await fixtureSnapshot();
+  const result = validateAiCurationResponse({
+    summary: 'Use both candidates.',
+    recommendations: snapshot.candidateKeys.map((candidateKey) => ({
+      candidateKey,
+      rationale: 'Useful',
+      strengths: ['Clear'],
+      concerns: []
+    }))
+  }, snapshot, 2);
+  const review: AiCurationReview = {
+    id: 'curation-set-02-reconcile-blocked',
+    setNumber: 2,
+    targetConversationCount: 2,
+    status: 'complete',
+    stale: true,
+    textModel: model,
+    snapshot,
+    llmExchanges: [],
+    result,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+  const currentLibrary = library([curated('run-a', 'convo-01', 'æœ¬ã‚’èª­ã¿ã¾ã™ã€‚')]);
+  const currentRuns = [
+    run('run-a', [
+      conversation('convo-01', 'æœ¬ã‚’èª­ã¿ã¾ã™ã€‚'),
+      conversation('convo-02', 'æœ¬ã‚’è¦‹ã¾ã™ã€‚', { sampleContext: 'Changed context.' })
+    ])
+  ];
+  const currentSnapshot = await buildAiCurationSnapshotFromData(2, vocabulary, currentLibrary, currentRuns);
+  const reconciliation = reconcileAiCurationReview(review, currentSnapshot, currentRuns, currentLibrary);
+
+  assert.equal(reconciliation.actionable, false);
+  assert.equal(reconciliation.counts.changedSourceContent, 1);
+  assert.equal(reconciliation.counts.missingSource, 1);
+  assert.equal(reconciliation.counts.blocked, 2);
+  assert.equal(reconciliation.recommendations.find((item) => item.candidateKey === 'run-a:convo-02')?.status, 'changed_source_content');
+  assert.equal(reconciliation.recommendations.find((item) => item.candidateKey === 'run-b:convo-01')?.status, 'missing_source');
+  assert.match(reconciliation.blockingReasons.join(' '), /could not be loaded/);
+  assert.match(reconciliation.blockingReasons.join(' '), /changed since review/);
+});
+
+test('review reconciliation treats fully applied historical reviews as review-only', async () => {
+  const snapshot = await fixtureSnapshot();
+  const result = validateAiCurationResponse({
+    summary: 'Use both candidates.',
+    recommendations: snapshot.candidateKeys.map((candidateKey) => ({
+      candidateKey,
+      rationale: 'Useful',
+      strengths: ['Clear'],
+      concerns: []
+    }))
+  }, snapshot, 2);
+  const review: AiCurationReview = {
+    id: 'curation-set-02-reconcile-applied',
+    setNumber: 2,
+    targetConversationCount: 2,
+    status: 'complete',
+    stale: true,
+    textModel: model,
+    snapshot,
+    llmExchanges: [],
+    result,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+  const currentLibrary = library([
+    curated('run-a', 'convo-01', 'æœ¬ã‚’èª­ã¿ã¾ã™ã€‚'),
+    curated('run-a', 'convo-02', 'æœ¬ã‚’è¦‹ã¾ã™ã€‚'),
+    curated('run-b', 'convo-01', 'æœ¬ã‚’èª­ã¿ã¾ã™ã€‚ãã—ã¦è¦‹ã¾ã™ã€‚')
+  ]);
+  const currentRuns = [
+    run('run-a', [
+      conversation('convo-01', 'æœ¬ã‚’èª­ã¿ã¾ã™ã€‚'),
+      conversation('convo-02', 'æœ¬ã‚’è¦‹ã¾ã™ã€‚', { curatedId: 'curated-b' })
+    ]),
+    run('run-b', [conversation('convo-01', 'changed after curation', { curatedId: 'curated-c' })])
+  ];
+  const currentSnapshot = await buildAiCurationSnapshotFromData(2, vocabulary, currentLibrary, currentRuns);
+  const reconciliation = reconcileAiCurationReview(review, currentSnapshot, currentRuns, currentLibrary);
+
+  assert.equal(reconciliation.actionable, false);
+  assert.equal(reconciliation.actionLabel, undefined);
+  assert.equal(reconciliation.counts.alreadyInLibrary, 2);
+  assert.equal(reconciliation.counts.remainingToAdd, 0);
+  assert.equal(reconciliation.counts.blocked, 0);
+  assert.match(reconciliation.blockingReasons.join(' '), /Every recommendation is already in Library/);
+  assert.deepEqual(reconciliation.recommendationKeysToAdd, []);
 });

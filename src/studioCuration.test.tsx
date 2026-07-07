@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { AiCurationRecommendation, ConversationCurationEvidence, PracticeConversation, StudioJob } from '../shared/types.ts';
+import type { AiCurationRecommendation, AiCurationReviewReconciliation, ConversationCurationEvidence, PracticeConversation, StudioJob } from '../shared/types.ts';
 import { AddAllProgressModal } from './components/AddAllProgressModal.tsx';
+import { AiCurationReconciliationPanel } from './components/AiCurationReconciliationPanel.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
 import { AiRecommendationReason, CurationEvidencePanel, WordFrequencyDistribution } from './components/CurationEvidence.tsx';
 import { StudioBackgroundJobs } from './components/StudioBackgroundJobs.tsx';
@@ -92,6 +93,83 @@ test('Studio word-frequency distribution stacks current and Add All counts', () 
   assert.match(html, /wordFrequencyCurrent[^>]*height:50%/);
   assert.match(html, /Less frequent/);
   assert.match(html, /Most frequent/);
+});
+
+test('Studio historical curation reconciliation renders action state and stale warnings', () => {
+  const reconciliation: AiCurationReviewReconciliation = {
+    reviewId: 'curation-set-02-old',
+    setNumber: 2,
+    actionable: true,
+    actionLabel: 'Add Remaining',
+    blockingReasons: [],
+    warnings: [
+      '30 newer candidates were not evaluated by this review.',
+      '6 recommendations are already in Library and will be skipped.'
+    ],
+    counts: {
+      totalRecommendations: 20,
+      alreadyInLibrary: 6,
+      remainingToAdd: 14,
+      audioReady: 4,
+      missingAudio: 10,
+      blocked: 0,
+      missingSource: 0,
+      changedSourceContent: 0,
+      notCurrentCandidate: 0,
+      newerCandidatesNotEvaluated: 30,
+      librarySourcesAddedSinceReview: 6,
+      librarySourcesRemovedSinceReview: 0
+    },
+    recommendations: [],
+    recommendationKeysToAdd: [],
+    currentProjectedLeastCoveredWords: []
+  };
+  const html = renderToStaticMarkup(<AiCurationReconciliationPanel reconciliation={reconciliation} stale />);
+
+  assert.match(html, /Historical review/);
+  assert.match(html, /historical snapshot with stale context/);
+  assert.match(html, /14.*remaining/);
+  assert.match(html, /6.*in Library/);
+  assert.match(html, /10.*need audio/);
+  assert.doesNotMatch(html, /blocked/);
+  assert.match(html, /Add Remaining ready/);
+  assert.match(html, /30 newer candidates were not evaluated/);
+  assert.match(html, /already in Library and will be skipped/);
+});
+
+test('Studio historical curation reconciliation renders blocked reasons', () => {
+  const reconciliation: AiCurationReviewReconciliation = {
+    reviewId: 'curation-set-02-blocked',
+    setNumber: 2,
+    actionable: false,
+    blockingReasons: ['1 recommended source could not be loaded.', '1 recommended source changed since review.'],
+    warnings: [],
+    counts: {
+      totalRecommendations: 2,
+      alreadyInLibrary: 0,
+      remainingToAdd: 0,
+      audioReady: 0,
+      missingAudio: 0,
+      blocked: 2,
+      missingSource: 1,
+      changedSourceContent: 1,
+      notCurrentCandidate: 0,
+      newerCandidatesNotEvaluated: 0,
+      librarySourcesAddedSinceReview: 0,
+      librarySourcesRemovedSinceReview: 0
+    },
+    recommendations: [],
+    recommendationKeysToAdd: [],
+    currentProjectedLeastCoveredWords: []
+  };
+  const html = renderToStaticMarkup(<AiCurationReconciliationPanel reconciliation={reconciliation} />);
+
+  assert.match(html, /Review only/);
+  assert.match(html, /historicalReviewStatus blocked/);
+  assert.match(html, /2<b>blocked/);
+  assert.match(html, /historical snapshot\. Use Settings/);
+  assert.match(html, /source could not be loaded/);
+  assert.match(html, /changed since review/);
 });
 
 test('Studio bulk-add modal uses LLM Audit audio failure and stopped states', () => {
@@ -246,6 +324,27 @@ test('Studio bulk-add modal requires start and exposes the pause lifecycle', () 
   assert.match(pausedHtml, /Resume/);
   assert.match(allReadyHtml, /Generated Audio/);
   assert.match(allReadyHtml, /Add to Library/);
+});
+
+test('Studio bulk-add modal can label historical remaining recommendations', () => {
+  const html = renderToStaticMarkup(<AddAllProgressModal
+    progress={{
+      stage: 'ready',
+      title: 'Add Remaining recommendations',
+      items: [{
+        candidateKey: 'run-1:convo-01',
+        title: 'Remaining conversation',
+        audioStatus: 'done',
+        libraryStatus: 'pending'
+      }]
+    }}
+    onClose={() => undefined}
+    onRun={() => undefined}
+    onPause={() => undefined}
+  />);
+
+  assert.match(html, /Add Remaining recommendations/);
+  assert.match(html, /Add to Library/);
 });
 
 test('Studio background work renders standalone jobs, queue counts, pause controls, and terminal toasts', () => {

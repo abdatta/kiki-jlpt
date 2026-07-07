@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import * as kuromojiModule from 'kuromoji';
 import type { IpadicFeatures, Tokenizer } from 'kuromoji';
@@ -108,12 +109,7 @@ function buildPatterns(tokenizer: JapaneseTokenizer, allowedVocabulary: VocabIte
     .sort((a, b) => b.formsByToken.length - a.formsByToken.length || b.item.japanese.length - a.item.japanese.length);
 }
 
-function tokenMatchesForms(token: IpadicFeatures, allowedForms: string[]): boolean {
-  const forms = tokenForms(token);
-  return forms.some((form) => allowedForms.includes(form));
-}
-
-function findVocabularyMatches(tokens: IpadicFeatures[], patterns: VocabPattern[]): MatchResult {
+function findVocabularyMatches(tokenFormSets: Set<string>[], patterns: VocabPattern[]): MatchResult {
   const usedWords = new Set<string>();
   const coveredTokenIndexes = new Set<number>();
   const wordOccurrences = new Map<string, number>();
@@ -121,8 +117,8 @@ function findVocabularyMatches(tokens: IpadicFeatures[], patterns: VocabPattern[
 
   for (const pattern of patterns) {
     const length = pattern.formsByToken.length;
-    for (let start = 0; start <= tokens.length - length; start += 1) {
-      const matches = pattern.formsByToken.every((forms, offset) => tokenMatchesForms(tokens[start + offset], forms));
+    for (let start = 0; start <= tokenFormSets.length - length; start += 1) {
+      const matches = pattern.formsByToken.every((forms, offset) => forms.some((form) => tokenFormSets[start + offset].has(form)));
       if (!matches) continue;
 
       usedWords.add(pattern.item.japanese);
@@ -152,33 +148,95 @@ function occurrenceRecord(counts: Map<string, number>): Record<string, number> {
   return Object.fromEntries([...counts.entries()].sort(([a], [b]) => a.localeCompare(b, 'ja')));
 }
 
+// Analysis is pure over (vocabulary content, set number, conversation text), and the same
+// conversations are re-analyzed constantly: every snapshot rebuild re-reads every run, and
+// every conversation update re-audits its whole run. Both caches are content-keyed, so they
+// self-invalidate when text or vocabulary actually changes and stay correct for tests that
+// pass synthetic vocabularies.
+interface VocabularyArtifacts {
+  patterns: VocabPattern[];
+  allowedForms: Set<string>;
+}
+
+const vocabularyArtifactsCache = new Map<string, VocabularyArtifacts>();
+const MAX_VOCABULARY_ARTIFACT_ENTRIES = 8;
+
+interface CachedConversationAudit {
+  vocabularyUsed: string[];
+  outOfVocabularyAudit: string[];
+  evidence: ConversationCurationEvidence;
+}
+
+const conversationAuditCache = new Map<string, CachedConversationAudit>();
+const MAX_CONVERSATION_AUDIT_ENTRIES = 4000;
+
+function vocabularyContentKey(allowedVocabulary: VocabItem[]): string {
+  return createHash('sha256')
+    .update(JSON.stringify(allowedVocabulary.map((item) => [item.set, item.japanese, item.reading])))
+    .digest('hex');
+}
+
+function getVocabularyArtifacts(tokenizer: JapaneseTokenizer, allowedVocabulary: VocabItem[], vocabularyKey: string): VocabularyArtifacts {
+  const cached = vocabularyArtifactsCache.get(vocabularyKey);
+  if (cached) return cached;
+
+  const artifacts = {
+    patterns: buildPatterns(tokenizer, allowedVocabulary),
+    allowedForms: buildAllowedFormSet(tokenizer, allowedVocabulary)
+  };
+  while (vocabularyArtifactsCache.size >= MAX_VOCABULARY_ARTIFACT_ENTRIES) {
+    vocabularyArtifactsCache.delete(vocabularyArtifactsCache.keys().next().value!);
+  }
+  vocabularyArtifactsCache.set(vocabularyKey, artifacts);
+  return artifacts;
+}
+
 function auditConversation(
   tokenizer: JapaneseTokenizer,
   patterns: VocabPattern[],
   allowedForms: Set<string>,
   allowedVocabulary: VocabItem[],
   setNumber: number,
-  conversation: PracticeConversation
+  conversation: PracticeConversation,
+  auditCachePrefix: string
 ): { conversation: PracticeConversation; evidence: ConversationCurationEvidence } {
+  const auditKey = createHash('sha256')
+    .update(auditCachePrefix)
+    .update(JSON.stringify(conversation.text.map((line) => line.japanese)))
+    .digest('hex');
+  const cached = conversationAuditCache.get(auditKey);
+  if (cached) {
+    // Refresh recency so hot conversations survive eviction.
+    conversationAuditCache.delete(auditKey);
+    conversationAuditCache.set(auditKey, cached);
+    return {
+      conversation: {
+        ...conversation,
+        vocabularyUsed: cached.vocabularyUsed,
+        outOfVocabularyAudit: cached.outOfVocabularyAudit,
+        simplerReplacementSuggestions: []
+      },
+      evidence: cached.evidence
+    };
+  }
+
   const tokens = conversation.text.flatMap((line) => tokenizer.tokenize(line.japanese));
-  const { usedWords, coveredTokenIndexes, wordOccurrences } = findVocabularyMatches(tokens, patterns);
+  const tokenFormsList = tokens.map(tokenForms);
+  const { usedWords, coveredTokenIndexes, wordOccurrences } = findVocabularyMatches(
+    tokenFormsList.map((forms) => new Set(forms)),
+    patterns
+  );
   const outOfVocabularyOccurrences = new Map<string, number>();
 
   tokens.forEach((token, index) => {
     if (!isContentToken(token)) return;
     if (coveredTokenIndexes.has(index)) return;
-    if (tokenForms(token).some((form) => allowedForms.has(form))) return;
-    if (isAuditExemptForm(tokenForms(token))) return;
+    const forms = tokenFormsList[index];
+    if (forms.some((form) => allowedForms.has(form))) return;
+    if (isAuditExemptForm(forms)) return;
     const word = auditWordForToken(token);
     outOfVocabularyOccurrences.set(word, (outOfVocabularyOccurrences.get(word) ?? 0) + 1);
   });
-
-  const auditedConversation = {
-    ...conversation,
-    vocabularyUsed: uniqueSorted(usedWords),
-    outOfVocabularyAudit: uniqueSorted(outOfVocabularyOccurrences.keys()),
-    simplerReplacementSuggestions: []
-  };
 
   const currentSetWords = new Set(uniqueVocabularyWords(allowedVocabulary.filter((item) => item.set === setNumber)));
   const allowedWords = uniqueVocabularyWords(allowedVocabulary);
@@ -186,8 +244,9 @@ function auditConversation(
   const allowedVocabUniqueWords = uniqueSorted([...usedWords].filter((word) => allowedWords.includes(word)));
   const outOfVocabularyUniqueWords = uniqueSorted(outOfVocabularyOccurrences.keys());
 
-  return {
-    conversation: auditedConversation,
+  const audit: CachedConversationAudit = {
+    vocabularyUsed: uniqueSorted(usedWords),
+    outOfVocabularyAudit: outOfVocabularyUniqueWords,
     evidence: {
       evidenceVersion: CURATION_EVIDENCE_VERSION,
       setNumber,
@@ -203,6 +262,21 @@ function auditConversation(
       outOfVocabularyOccurrenceCount: [...outOfVocabularyOccurrences.values()].reduce((total, count) => total + count, 0)
     }
   };
+
+  while (conversationAuditCache.size >= MAX_CONVERSATION_AUDIT_ENTRIES) {
+    conversationAuditCache.delete(conversationAuditCache.keys().next().value!);
+  }
+  conversationAuditCache.set(auditKey, audit);
+
+  return {
+    conversation: {
+      ...conversation,
+      vocabularyUsed: audit.vocabularyUsed,
+      outOfVocabularyAudit: audit.outOfVocabularyAudit,
+      simplerReplacementSuggestions: []
+    },
+    evidence: audit.evidence
+  };
 }
 
 export async function analyzeConversationsWithVocabulary(
@@ -211,15 +285,17 @@ export async function analyzeConversationsWithVocabulary(
   conversations: PracticeConversation[]
 ): Promise<ConversationVocabularyAnalysis> {
   const tokenizer = await getTokenizer();
-  const patterns = buildPatterns(tokenizer, allowedVocabulary);
-  const allowedForms = buildAllowedFormSet(tokenizer, allowedVocabulary);
+  const vocabularyKey = vocabularyContentKey(allowedVocabulary);
+  const { patterns, allowedForms } = getVocabularyArtifacts(tokenizer, allowedVocabulary, vocabularyKey);
+  const auditCachePrefix = `${CURATION_EVIDENCE_VERSION}:${setNumber}:${vocabularyKey}:`;
   const results = conversations.map((conversation) => auditConversation(
     tokenizer,
     patterns,
     allowedForms,
     allowedVocabulary,
     setNumber,
-    conversation
+    conversation,
+    auditCachePrefix
   ));
 
   return {

@@ -6,6 +6,8 @@ import type {
   AiCurationConversation,
   AiCurationLibraryConversation,
   AiCurationRecommendation,
+  AiCurationRecommendationLiveStatus,
+  AiCurationReviewReconciliation,
   AiCurationResult,
   AiCurationReview,
   AiCurationReviewSummary,
@@ -108,6 +110,22 @@ function curationLibraryConversation(conversation: CuratedConversation): AiCurat
     ...content
   } = conversation;
   return content;
+}
+
+function learningContent(conversation: AiCurationConversation | PracticeConversation) {
+  return {
+    title: conversation.title,
+    scene: conversation.scene,
+    sampleContext: conversation.sampleContext,
+    text: conversation.text,
+    englishTranslation: conversation.englishTranslation,
+    listeningQuestions: conversation.listeningQuestions,
+    answerKey: conversation.answerKey
+  };
+}
+
+function sameLearningContent(left: AiCurationConversation, right: PracticeConversation): boolean {
+  return JSON.stringify(learningContent(left)) === JSON.stringify(learningContent(right));
 }
 
 interface CandidateSelection {
@@ -452,6 +470,133 @@ export function projectLeastCoveredWords(
     .sort((a, b) => a.projectedLibraryCount - b.projectedLibraryCount || a.japanese.localeCompare(b.japanese, 'ja'));
 }
 
+export function reconcileAiCurationReview(
+  review: AiCurationReview,
+  current: AiCurationSnapshot,
+  runs: PracticeRun[],
+  librarySet: CuratedSet
+): AiCurationReviewReconciliation {
+  const recommendations = review.result?.recommendations ?? [];
+  const runById = new Map(runs.map((run) => [run.id, run]));
+  const currentCandidateKeys = new Set(current.candidateKeys);
+  const reviewCandidateKeys = new Set(review.snapshot.candidateKeys);
+  const currentLibrarySourceKeys = new Set(librarySet.conversations.map((conversation) => (
+    `${conversation.sourceRunId}:${conversation.sourceConversationId}`
+  )));
+  const reviewLibrarySourceKeys = new Set(review.snapshot.library.conversations.map((conversation) => (
+    `${conversation.sourceRunId}:${conversation.sourceConversationId}`
+  )));
+
+  const recommendationStates = recommendations.map((recommendation) => {
+    const candidateKey = `${recommendation.sourceRunId}:${recommendation.sourceConversationId}`;
+    const run = runById.get(recommendation.sourceRunId);
+    const conversation = run?.conversations.find((item) => item.id === recommendation.sourceConversationId);
+    const libraryReady = currentLibrarySourceKeys.has(candidateKey) || Boolean(conversation?.curatedId);
+    const currentCandidate = currentCandidateKeys.has(candidateKey);
+    let status: AiCurationRecommendationLiveStatus;
+    let detail: string | undefined;
+    let blocking = false;
+
+    if (!run || !conversation) {
+      status = 'missing_source';
+      detail = !run ? 'Source run could not be loaded.' : 'Source conversation no longer exists.';
+      blocking = true;
+    } else if (libraryReady) {
+      status = 'already_in_library';
+      detail = 'Already in Library.';
+    } else if (!sameLearningContent(recommendation.conversation, conversation)) {
+      status = 'changed_source_content';
+      detail = 'Source learning content changed since this review.';
+      blocking = true;
+    } else if (!currentCandidate) {
+      status = 'not_current_candidate';
+      detail = 'Source is no longer an eligible current candidate.';
+      blocking = true;
+    } else if (conversation.audioFileName) {
+      status = 'addable_audio_ready';
+    } else {
+      status = 'addable_missing_audio';
+    }
+
+    return {
+      candidateKey,
+      sourceRunId: recommendation.sourceRunId,
+      sourceConversationId: recommendation.sourceConversationId,
+      status,
+      audioReady: Boolean(conversation?.audioFileName),
+      libraryReady,
+      currentCandidate,
+      blocking,
+      detail
+    };
+  });
+
+  const recommendationKeysToAdd = recommendationStates
+    .filter((item) => item.status === 'addable_audio_ready' || item.status === 'addable_missing_audio')
+    .map((item) => item.candidateKey);
+  const remainingRecommendations = recommendations.filter((recommendation) => recommendationKeysToAdd.includes(recommendation.candidateKey));
+  const blocked = recommendationStates.filter((item) => item.blocking);
+  const newerCandidatesNotEvaluated = current.candidateKeys.filter((candidateKey) => !reviewCandidateKeys.has(candidateKey)).length;
+  const librarySourcesAddedSinceReview = [...currentLibrarySourceKeys].filter((candidateKey) => !reviewLibrarySourceKeys.has(candidateKey)).length;
+  const librarySourcesRemovedSinceReview = [...reviewLibrarySourceKeys].filter((candidateKey) => !currentLibrarySourceKeys.has(candidateKey)).length;
+  const alreadyInLibrary = recommendationStates.filter((item) => item.status === 'already_in_library').length;
+  const missingSource = recommendationStates.filter((item) => item.status === 'missing_source').length;
+  const changedSourceContent = recommendationStates.filter((item) => item.status === 'changed_source_content').length;
+  const notCurrentCandidate = recommendationStates.filter((item) => item.status === 'not_current_candidate').length;
+  const actionable = review.status === 'complete'
+    && recommendations.length > 0
+    && remainingRecommendations.length > 0
+    && blocked.length === 0;
+
+  const blockingReasons: string[] = [];
+  if (review.status !== 'complete') blockingReasons.push('Review did not complete.');
+  if (recommendations.length === 0) blockingReasons.push('Review has no recommendations.');
+  if (missingSource > 0) blockingReasons.push(`${missingSource} recommended source${missingSource === 1 ? '' : 's'} could not be loaded.`);
+  if (changedSourceContent > 0) blockingReasons.push(`${changedSourceContent} recommended source${changedSourceContent === 1 ? '' : 's'} changed since review.`);
+  if (notCurrentCandidate > 0) blockingReasons.push(`${notCurrentCandidate} recommendation${notCurrentCandidate === 1 ? ' is' : 's are'} no longer eligible.`);
+  if (recommendations.length > 0 && remainingRecommendations.length === 0) blockingReasons.push('Every recommendation is already in Library.');
+
+  const warnings: string[] = [];
+  if (newerCandidatesNotEvaluated > 0) {
+    warnings.push(`${newerCandidatesNotEvaluated} newer candidate${newerCandidatesNotEvaluated === 1 ? ' was' : 's were'} not evaluated by this review.`);
+  }
+  if (librarySourcesAddedSinceReview > 0 || librarySourcesRemovedSinceReview > 0) {
+    warnings.push('The curated Library changed since this review.');
+  }
+  if (alreadyInLibrary > 0) {
+    warnings.push(`${alreadyInLibrary} recommendation${alreadyInLibrary === 1 ? ' is' : 's are'} already in Library and will be skipped.`);
+  }
+
+  return {
+    reviewId: review.id,
+    setNumber: review.setNumber,
+    actionable,
+    actionLabel: actionable ? alreadyInLibrary > 0 ? 'Add Remaining' : 'Add All' : undefined,
+    blockingReasons,
+    warnings,
+    counts: {
+      totalRecommendations: recommendations.length,
+      alreadyInLibrary,
+      remainingToAdd: remainingRecommendations.length,
+      audioReady: recommendationStates.filter((item) => (
+        item.status === 'addable_audio_ready'
+        || (item.status === 'addable_missing_audio' && item.audioReady)
+      )).length,
+      missingAudio: recommendationStates.filter((item) => item.status === 'addable_missing_audio' && !item.audioReady).length,
+      blocked: blocked.length,
+      missingSource,
+      changedSourceContent,
+      notCurrentCandidate,
+      newerCandidatesNotEvaluated,
+      librarySourcesAddedSinceReview,
+      librarySourcesRemovedSinceReview
+    },
+    recommendations: recommendationStates,
+    recommendationKeysToAdd,
+    currentProjectedLeastCoveredWords: projectLeastCoveredWords(current, remainingRecommendations)
+  };
+}
+
 function buildBatchPrompt(snapshot: AiCurationSnapshot, candidates: AiCurationCandidateSnapshot[]): string {
   return `Evaluate every supplied candidate for a later JLPT Set ${snapshot.setNumber} portfolio decision.
 Use deterministic evidence as authoritative. Judge naturalness, target-word salience, repetition, question/translation quality, scene value, redundancy with the library, and concerns. Do not omit a candidate.
@@ -602,17 +747,32 @@ export async function readAiCurationReview(setNumber: number, id: string, storag
   return JSON.parse(await readFile(reviewPath(setNumber, id, storageRoot), 'utf8')) as AiCurationReview;
 }
 
-function withFreshnessAgainstSnapshot(review: AiCurationReview, current: AiCurationSnapshot): AiCurationReview {
+function withFreshnessAgainstSnapshot(
+  review: AiCurationReview,
+  current: AiCurationSnapshot,
+  runs?: PracticeRun[],
+  librarySet?: CuratedSet
+): AiCurationReview {
   const legacyTarget = review.result?.recommendations.length || Math.min(10, Math.max(1, current.candidateCount));
-  return hydrateProjectedCoverage({
+  const hydrated = hydrateProjectedCoverage({
     ...review,
     targetConversationCount: Number.isInteger(review.targetConversationCount) ? review.targetConversationCount : legacyTarget,
     stale: isAiCurationReviewStale(review, current)
   });
+  if (!runs || !librarySet) return hydrated;
+  return {
+    ...hydrated,
+    reconciliation: reconcileAiCurationReview(hydrated, current, runs, librarySet)
+  };
 }
 
 async function withCurrentFreshness(review: AiCurationReview): Promise<AiCurationReview> {
-  return withFreshnessAgainstSnapshot(review, await buildAiCurationSnapshot(review.setNumber));
+  const [current, runs, librarySet] = await Promise.all([
+    buildAiCurationSnapshot(review.setNumber),
+    listRuns(),
+    readCuratedSet(review.setNumber)
+  ]);
+  return withFreshnessAgainstSnapshot(review, current, runs, librarySet);
 }
 
 function hydrateProjectedCoverage(review: AiCurationReview): AiCurationReview {
@@ -665,8 +825,12 @@ export async function getAiCurationReviewHistory(
 ): Promise<{ reviews: AiCurationReviewSummary[]; latestReview: AiCurationReview | null }> {
   const reviews = await readAiCurationReviews(setNumber, storageRoot);
   if (reviews.length === 0) return { reviews: [], latestReview: null };
-  const current = currentSnapshot ?? await buildAiCurationSnapshot(setNumber);
-  const hydrated = reviews.map((storedReview) => withFreshnessAgainstSnapshot(storedReview, current));
+  const [current, runs, librarySet] = await Promise.all([
+    currentSnapshot ?? buildAiCurationSnapshot(setNumber),
+    listRuns(),
+    readCuratedSet(setNumber)
+  ]);
+  const hydrated = reviews.map((storedReview) => withFreshnessAgainstSnapshot(storedReview, current, runs, librarySet));
   return { reviews: hydrated.map((review) => {
     return {
       id: review.id,

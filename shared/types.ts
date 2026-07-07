@@ -214,6 +214,54 @@ export interface AiCurationResult {
   projectedLeastCoveredWords: AiCurationProjectedWord[];
 }
 
+export type AiCurationRecommendationLiveStatus =
+  | 'already_in_library'
+  | 'addable_audio_ready'
+  | 'addable_missing_audio'
+  | 'missing_source'
+  | 'changed_source_content'
+  | 'not_current_candidate';
+
+export interface AiCurationRecommendationReconciliation {
+  candidateKey: string;
+  sourceRunId: string;
+  sourceConversationId: string;
+  status: AiCurationRecommendationLiveStatus;
+  audioReady: boolean;
+  libraryReady: boolean;
+  currentCandidate: boolean;
+  blocking: boolean;
+  detail?: string;
+}
+
+export interface AiCurationReconciliationCounts {
+  totalRecommendations: number;
+  alreadyInLibrary: number;
+  remainingToAdd: number;
+  audioReady: number;
+  missingAudio: number;
+  blocked: number;
+  missingSource: number;
+  changedSourceContent: number;
+  notCurrentCandidate: number;
+  newerCandidatesNotEvaluated: number;
+  librarySourcesAddedSinceReview: number;
+  librarySourcesRemovedSinceReview: number;
+}
+
+export interface AiCurationReviewReconciliation {
+  reviewId: string;
+  setNumber: number;
+  actionable: boolean;
+  actionLabel?: 'Add All' | 'Add Remaining';
+  blockingReasons: string[];
+  warnings: string[];
+  counts: AiCurationReconciliationCounts;
+  recommendations: AiCurationRecommendationReconciliation[];
+  recommendationKeysToAdd: string[];
+  currentProjectedLeastCoveredWords: AiCurationProjectedWord[];
+}
+
 export type AiCurationReviewStatus = 'complete' | 'failed';
 
 export interface AiCurationReview {
@@ -226,6 +274,7 @@ export interface AiCurationReview {
   snapshot: AiCurationSnapshot;
   llmExchanges: LlmExchange[];
   result?: AiCurationResult;
+  reconciliation?: AiCurationReviewReconciliation;
   error?: string;
   createdAt: string;
   updatedAt: string;

@@ -16,6 +16,7 @@ export interface AddAllProgressItem {
 export interface AddAllProgress {
   stage: 'preparing' | 'ready' | 'audio' | 'pausing' | 'paused' | 'library' | 'complete' | 'failed';
   items: AddAllProgressItem[];
+  title?: string;
   error?: string;
 }
 
@@ -55,7 +56,7 @@ export function AddAllProgressModal({ progress, onClose, onRun, onPause }: {
         <div className="modalHeader">
           <div>
             <p className="eyebrow">Portfolio workflow</p>
-            <h2 id="add-all-modal-title">Add all recommendations</h2>
+            <h2 id="add-all-modal-title">{progress.title ?? 'Add all recommendations'}</h2>
           </div>
           <button className="iconButton" onClick={onClose} disabled={active} title="Close" type="button"><X size={18} /></button>
         </div>

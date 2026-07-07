@@ -53,6 +53,7 @@ import type {
 } from '../shared/types.ts';
 import { BrandLogo } from './components/BrandLogo.tsx';
 import { AddAllProgressModal, type AddAllProgress, type AddAllProgressItem } from './components/AddAllProgressModal.tsx';
+import { AiCurationReconciliationPanel } from './components/AiCurationReconciliationPanel.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
 import { StudioBackgroundJobs, type StudioToast } from './components/StudioBackgroundJobs.tsx';
 import { shouldNotifyJobEvent } from './studioNotifications.ts';
@@ -2012,6 +2013,25 @@ function StudioApp() {
   const aiCurationCandidateCount = currentRecommendations?.candidateCount ?? currentAiCurationReview?.snapshot.candidateCount ?? 0;
   const latestAiCurationReviewId = aiCurationHistory[0]?.id;
   const isHistoricalAiCurationReview = Boolean(currentAiCurationReview && latestAiCurationReviewId && currentAiCurationReview.id !== latestAiCurationReviewId);
+  const currentAiCurationReconciliation = currentAiCurationReview?.reconciliation;
+  const canAddCurrentAiCurationReview = Boolean(currentAiCurationReview?.status === 'complete'
+    && currentAiCurationReview.result?.recommendations.length
+    && (isHistoricalAiCurationReview
+      ? currentAiCurationReconciliation?.actionable
+      : !currentAiCurationReview.stale));
+  const aiCurationAddActionLabel = isHistoricalAiCurationReview
+    ? currentAiCurationReconciliation?.actionLabel ?? 'Add Remaining'
+    : 'Add All';
+  const displayedProjectedCoverage = isHistoricalAiCurationReview && currentAiCurationReconciliation
+    ? currentAiCurationReconciliation.currentProjectedLeastCoveredWords
+    : currentAiCurationReview?.result?.projectedLeastCoveredWords ?? [];
+  const [projectedCoverageView, setProjectedCoverageView] = useState<'current' | 'original'>('current');
+  useEffect(() => {
+    setProjectedCoverageView('current');
+  }, [currentAiCurationReview?.id]);
+  const projectedCoverageWords = isHistoricalAiCurationReview && projectedCoverageView === 'original'
+    ? currentAiCurationReview?.result?.projectedLeastCoveredWords ?? []
+    : displayedProjectedCoverage;
   const leastCoveredWordSet = useMemo(() => new Set(currentRecommendations?.leastCoveredWords.map((word) => word.japanese) ?? []), [currentRecommendations]);
   const showRunContent = Boolean(boardMode === 'runs' && currentRun && currentRun.setNumber === setNumber && !generationSession && !workflowJob);
   const showLibraryContent = Boolean(boardMode === 'library' && !generationSession);
@@ -2284,15 +2304,24 @@ function StudioApp() {
     });
   }
 
+  function actionableAiCurationRecommendations(review: AiCurationReview): AiCurationRecommendation[] {
+    const recommendations = review.result?.recommendations ?? [];
+    const keysToAdd = review.reconciliation?.recommendationKeysToAdd;
+    if (!keysToAdd) return recommendations;
+    const keySet = new Set(keysToAdd);
+    return recommendations.filter((recommendation) => keySet.has(recommendation.candidateKey));
+  }
+
   async function openAddAllAiRecommendations() {
     const review = currentAiCurationReview;
-    const recommendationsToAdd = review?.result?.recommendations ?? [];
-    if (!review || isHistoricalAiCurationReview || review.status !== 'complete' || review.stale || recommendationsToAdd.length === 0) return;
+    const recommendationsToAdd = review ? actionableAiCurationRecommendations(review) : [];
+    if (!review || !canAddCurrentAiCurationReview || recommendationsToAdd.length === 0) return;
 
     setError(null);
     addAllPauseRequestedRef.current = false;
     setAddAllProgress({
       stage: 'preparing',
+      title: `${aiCurationAddActionLabel} recommendations`,
       items: recommendationsToAdd.map((recommendation) => ({
         candidateKey: recommendation.candidateKey,
         title: recommendation.conversation.title,
@@ -2306,6 +2335,7 @@ function StudioApp() {
       const initialPlan = planAddAllRecommendations(recommendationsToAdd, initialSources.runsById, initialSources.unavailableRunIds);
       setAddAllProgress({
         stage: initialPlan.some((item) => item.sourceError) ? 'failed' : 'ready',
+        title: `${aiCurationAddActionLabel} recommendations`,
         error: initialPlan.some((item) => item.sourceError) ? 'Some source conversations could not be loaded. Nothing was added to Library; retry to recheck.' : undefined,
         items: addAllProgressItems(recommendationsToAdd, initialPlan)
       });
@@ -2325,9 +2355,9 @@ function StudioApp() {
 
   async function runAddAllAiRecommendations() {
     const review = currentAiCurationReview;
-    const recommendationsToAdd = review?.result?.recommendations ?? [];
+    const recommendationsToAdd = review ? actionableAiCurationRecommendations(review) : [];
     const runnableStage = addAllProgress?.stage === 'ready' || addAllProgress?.stage === 'paused' || addAllProgress?.stage === 'failed';
-    if (!review || !runnableStage || isHistoricalAiCurationReview || review.status !== 'complete' || recommendationsToAdd.length === 0) return;
+    if (!review || !runnableStage || !canAddCurrentAiCurationReview || recommendationsToAdd.length === 0) return;
 
     setError(null);
     addAllPauseRequestedRef.current = false;
@@ -3932,10 +3962,10 @@ function StudioApp() {
                     <option key={review.id} value={review.id}>{aiCurationHistoryLabel(review, index)}</option>
                   ))}
                 </select>
-                {currentAiCurationReview?.status === 'complete' && !currentAiCurationReview.stale && !isHistoricalAiCurationReview && currentAiCurationReview.result?.recommendations.length ? (
+                {canAddCurrentAiCurationReview ? (
                   <button className="auditToggle positive" onClick={openAddAllAiRecommendations} disabled={Boolean(addAllProgress)}>
                     <Plus size={15} />
-                    Add All
+                    {aiCurationAddActionLabel}
                   </button>
                 ) : null}
                 <a className="auditToggle" href={studioQueueRoute(setNumber)}>
@@ -4142,10 +4172,14 @@ function StudioApp() {
           ) : (
             <>
               {isHistoricalAiCurationReview ? (
-                <div className="historicalReviewNotice">
-                  <Eye size={18} />
-                  <span>This is a read-only historical snapshot{currentAiCurationReview.stale ? ' and its candidate or library context is now stale' : ''}. Use Settings to prepare a new review with the same model and size.</span>
-                </div>
+                currentAiCurationReconciliation ? (
+                  <AiCurationReconciliationPanel reconciliation={currentAiCurationReconciliation} stale={currentAiCurationReview.stale} />
+                ) : (
+                  <div className="historicalReviewNotice">
+                    <Eye size={18} />
+                    <span>This is a historical snapshot{currentAiCurationReview.stale ? ' with stale context' : ''}. Use Settings to prepare a new review with the same model and size, or continue with the reconciled remaining recommendations below.</span>
+                  </div>
+                )
               ) : null}
               <section className="aiCurationSummary" aria-label="AI curation summary">
                 <div>
@@ -4169,15 +4203,27 @@ function StudioApp() {
                   </div>
                 </div>
                 <div>
-                  <span>After Add All</span>
+                  {isHistoricalAiCurationReview ? (
+                    <select
+                      aria-label="Projected coverage view"
+                      className="coverageViewSelect"
+                      onChange={(event) => setProjectedCoverageView(event.target.value as 'current' | 'original')}
+                      value={projectedCoverageView}
+                    >
+                      <option value="current">After {aiCurationAddActionLabel}</option>
+                      <option value="original">Original Snapshot</option>
+                    </select>
+                  ) : (
+                    <span>After Add All</span>
+                  )}
                   <div className="miniChips coverage">
-                    {currentAiCurationReview.result?.projectedLeastCoveredWords?.slice(0, 24).map((word) => (
+                    {projectedCoverageWords.slice(0, 24).map((word) => (
                       <span className={coverageCountClass(word.projectedLibraryCount)} key={word.japanese}>{word.japanese}<b>{word.projectedLibraryCount}</b></span>
                     ))}
                   </div>
                 </div>
               </section>
-              <WordFrequencyDistribution words={currentAiCurationReview.result?.projectedLeastCoveredWords ?? []} />
+              <WordFrequencyDistribution words={projectedCoverageWords} />
               {currentAiCurationReview.llmExchanges.map((exchange) => <AuditLog exchange={exchange} key={exchange.id} />)}
               {currentAiCurationReview.result?.recommendations.length ? (
                 <div className="conversationGrid">
