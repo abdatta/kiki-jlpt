@@ -6,9 +6,9 @@
     "currentSetMissingCount": 0,
     "currentSetMissingWords": [],
     "allowedVocabTotal": 200,
-    "allowedVocabUsedCount": 177,
-    "allowedVocabUsedPercentage": 88.5,
-    "outOfAllowedCount": 32,
+    "allowedVocabUsedCount": 178,
+    "allowedVocabUsedPercentage": 89,
+    "outOfAllowedCount": 37,
     "outOfAllowedWords": [
       "くださる",
       "そう",
@@ -19,7 +19,9 @@
       "では",
       "でも",
       "どう",
+      "どういたしまして",
       "どちら",
+      "なさる",
       "まだ",
       "もう",
       "よい",
@@ -27,9 +29,12 @@
       "寒い",
       "五月",
       "後で",
+      "今",
       "座る",
+      "三月",
       "使う",
       "四月",
+      "持つ",
       "七月",
       "手",
       "終わる",
@@ -4268,8 +4273,2701 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-30.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-30",
       "curatedAt": "2026-06-27T19:01:07.282Z"
+    },
+    {
+      "id": "set-02-20260630T231846Z-aqkary-convo-02",
+      "number": 2,
+      "title": "Restroom by the Stairs",
+      "scene": "A visitor asks for the restroom inside a building.",
+      "sampleContext": "Speaker 1 is polite and a little unsure.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "すみません、お手洗いはどこですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "トイレはあちらです。階段の隣です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あの階段の隣ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい。その角まで行ってください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "トイレのドアは開きますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい、開きます。どうぞ。"
+        }
+      ],
+      "listeningQuestions": [
+        "What place is Speaker 1 looking for?",
+        "Where does Speaker 2 say the toilet is?",
+        "How far should Speaker 1 go?",
+        "What does Speaker 1 ask about the door?"
+      ],
+      "answerKey": [
+        "She is looking for the restroom.",
+        "It is over there, next to the stairs.",
+        "She should go to that corner.",
+        "She asks whether the toilet door opens."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Excuse me, where is the restroom?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "The toilet is over there. It is next to the stairs."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Next to those stairs?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. Please go as far as that corner."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Does the toilet door open?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, it opens. Go ahead."
+        }
+      ],
+      "vocabularyUsed": [
+        "あちら",
+        "あの",
+        "お手洗い",
+        "すみません",
+        "その",
+        "ドア",
+        "トイレ",
+        "どうぞ",
+        "どこ",
+        "はい",
+        "開く",
+        "階段",
+        "角",
+        "行く",
+        "隣"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:31.318Z",
+      "updatedAt": "2026-07-07T01:09:31.318Z",
+      "audioFileName": "set-02-20260630T231846Z-aqkary-convo-02.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-02.wav",
+      "sourceRunId": "set-02-20260630T231846Z-aqkary",
+      "sourceConversationId": "convo-02",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-02.wav",
+      "curatedId": "set-02-20260630T231846Z-aqkary-convo-02",
+      "curatedAt": "2026-07-07T01:09:31.318Z"
+    },
+    {
+      "id": "set-02-20260630T231846Z-aqkary-convo-03",
+      "number": 3,
+      "title": "Umbrella and This",
+      "scene": "Two people prepare to leave with an umbrella and a small item to wear.",
+      "sampleContext": "They are calmly checking what to take before going out.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "午後、傘を差しますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、差します。傘は玄関にあります。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "この青いものもかぶりますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "いいえ、赤いものをかぶります。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "では、傘とかばんを見てください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい。かばんに鍵も入れます。"
+        }
+      ],
+      "listeningQuestions": [
+        "Will Speaker 2 use an umbrella in the afternoon?",
+        "Where is the umbrella?",
+        "Which item does Speaker 2 choose to wear on his head?",
+        "What will Speaker 2 put in the bag?"
+      ],
+      "answerKey": [
+        "Yes, he will use the umbrella.",
+        "It is at the entrance.",
+        "He chooses the red item, not the blue one.",
+        "He will put the key in the bag."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Will you use an umbrella in the afternoon?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I will. The umbrella is at the entrance."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Will you also wear this blue thing?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, I will wear the red thing."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Then please check the umbrella and the bag."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. I will put the key in the bag too."
+        }
+      ],
+      "vocabularyUsed": [
+        "いいえ",
+        "かばん",
+        "かぶる",
+        "この",
+        "はい",
+        "見る",
+        "鍵",
+        "玄関",
+        "戸",
+        "午後",
+        "差す",
+        "在る",
+        "傘",
+        "青い",
+        "赤い",
+        "二",
+        "入れる",
+        "有る"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:31.896Z",
+      "updatedAt": "2026-07-07T01:09:31.896Z",
+      "audioFileName": "set-02-20260630T231846Z-aqkary-convo-03.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-03.wav",
+      "sourceRunId": "set-02-20260630T231846Z-aqkary",
+      "sourceConversationId": "convo-03",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-03.wav",
+      "curatedId": "set-02-20260630T231846Z-aqkary-convo-03",
+      "curatedAt": "2026-07-07T01:09:31.896Z"
+    },
+    {
+      "id": "set-02-20260630T231846Z-aqkary-convo-04",
+      "number": 4,
+      "title": "Coat on the Wall",
+      "scene": "Two people talk about taking off and hanging clothes after coming home.",
+      "sampleContext": "They speak gently in a home entrance area.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "お帰りなさい。コートを脱ぎますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、脱ぎます。上着も脱ぎます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "コートはここに掛けてください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "上着も掛けますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "はい。シャツはかばんに入れてください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい、ありがとうございます。"
+        }
+      ],
+      "listeningQuestions": [
+        "What two things does Speaker 2 take off?",
+        "Where should Speaker 2 hang the coat?",
+        "Does Speaker 1 want the jacket hung too?",
+        "What should Speaker 2 put in the bag?"
+      ],
+      "answerKey": [
+        "He takes off his coat and jacket.",
+        "He should hang it here.",
+        "Yes, she does.",
+        "He should put the shirt in the bag."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Welcome home. Will you take off your coat?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I will take it off. I will take off my jacket too."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Please hang the coat here."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Should I hang the jacket too?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. Please put the shirt in the bag."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, thank you."
+        }
+      ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "かばん",
+        "コート",
+        "ここ",
+        "シャツ",
+        "はい",
+        "掛ける",
+        "帰る",
+        "上着",
+        "脱ぐ",
+        "二",
+        "入れる"
+      ],
+      "outOfVocabularyAudit": [
+        "なさる"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:32.326Z",
+      "updatedAt": "2026-07-07T01:09:32.326Z",
+      "audioFileName": "set-02-20260630T231846Z-aqkary-convo-04.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-04.wav",
+      "sourceRunId": "set-02-20260630T231846Z-aqkary",
+      "sourceConversationId": "convo-04",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-04.wav",
+      "curatedId": "set-02-20260630T231846Z-aqkary-convo-04",
+      "curatedAt": "2026-07-07T01:09:32.326Z"
+    },
+    {
+      "id": "set-02-20260630T231846Z-aqkary-convo-05",
+      "number": 5,
+      "title": "Every Month at Home",
+      "scene": "Two friends talk about a monthly family visit.",
+      "sampleContext": "They sound relaxed and friendly.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "毎月、家族は来ますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、毎月来ます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "一月、ここに居ますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "いいえ、一月ではありません。五日だけです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "毎年も来ますね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "はい、毎年、父と母が来ます。"
+        }
+      ],
+      "listeningQuestions": [
+        "How often does Speaker 2's family come?",
+        "Do they stay for one month?",
+        "How long do they stay?",
+        "Which family members come every year?"
+      ],
+      "answerKey": [
+        "They come every month.",
+        "No, they do not stay for one month.",
+        "They stay for only five days.",
+        "His father and mother come every year."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Does your family come every month?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, they come every month."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do they stay here for one month?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, not for one month. Only five days."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "They come every year too, right?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, my father and mother come every year."
+        }
+      ],
+      "vocabularyUsed": [
+        "～日",
+        "いいえ",
+        "ここ",
+        "はい",
+        "一月",
+        "家族",
+        "居る",
+        "戸",
+        "五",
+        "五日",
+        "在る",
+        "二",
+        "父",
+        "母",
+        "毎月",
+        "毎年",
+        "有る",
+        "来る"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:32.778Z",
+      "updatedAt": "2026-07-07T01:09:32.778Z",
+      "audioFileName": "set-02-20260630T231846Z-aqkary-convo-05.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-05.wav",
+      "sourceRunId": "set-02-20260630T231846Z-aqkary",
+      "sourceConversationId": "convo-05",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-05.wav",
+      "curatedId": "set-02-20260630T231846Z-aqkary-convo-05",
+      "curatedAt": "2026-07-07T01:09:32.778Z"
+    },
+    {
+      "id": "set-02-20260630T231846Z-aqkary-convo-07",
+      "number": 7,
+      "title": "Morning and Night Habits",
+      "scene": "Two friends talk about repeated daily routines.",
+      "sampleContext": "They sound calm and conversational.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "毎朝、朝御飯を食べますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、毎朝食べます。でも時々、小さいです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "昼も食べますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、昼は友達と食べます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "毎晩、晩御飯は家族と食べますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "はい、毎晩、母と食べます。"
+        }
+      ],
+      "listeningQuestions": [
+        "Does Speaker 2 eat breakfast every morning?",
+        "What does Speaker 2 say about breakfast sometimes?",
+        "Who does Speaker 2 eat with at noon?",
+        "Who does Speaker 2 eat dinner with every night?"
+      ],
+      "answerKey": [
+        "Yes, he eats breakfast every morning.",
+        "He says it is sometimes small.",
+        "He eats with a friend at noon.",
+        "He eats with his mother every night."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you eat breakfast every morning?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I eat every morning. But sometimes it is small."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you eat at noon too?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, at noon I eat with a friend."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you eat dinner with your family every night?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, every night I eat with my mother."
+        }
+      ],
+      "vocabularyUsed": [
+        "はい",
+        "家族",
+        "戸",
+        "時々",
+        "小さい",
+        "食べる",
+        "昼",
+        "朝",
+        "朝御飯",
+        "晩",
+        "晩御飯",
+        "母",
+        "毎朝",
+        "毎晩",
+        "友達"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:33.304Z",
+      "updatedAt": "2026-07-07T01:09:33.304Z",
+      "audioFileName": "set-02-20260630T231846Z-aqkary-convo-07.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-07.wav",
+      "sourceRunId": "set-02-20260630T231846Z-aqkary",
+      "sourceConversationId": "convo-07",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-07.wav",
+      "curatedId": "set-02-20260630T231846Z-aqkary-convo-07",
+      "curatedAt": "2026-07-07T01:09:33.304Z"
+    },
+    {
+      "id": "set-02-20260630T231846Z-aqkary-convo-09",
+      "number": 9,
+      "title": "This Week's Dates",
+      "scene": "Two people check a simple weekly plan with dates.",
+      "sampleContext": "They speak slowly while arranging plans.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "先週の二日は火曜日でしたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、火曜日でした。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "三日は水曜日でしたね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい。そして、今週の三日も水曜日です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "では、水曜日に行きましょう。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい、お願いします。"
+        }
+      ],
+      "listeningQuestions": [
+        "What day of the week was the second last week?",
+        "What day of the week was the third last week?",
+        "What does Speaker 2 say about the third this week?",
+        "On which day do they decide to go?"
+      ],
+      "answerKey": [
+        "It was Tuesday.",
+        "It was Wednesday.",
+        "He says the third this week is also Wednesday.",
+        "They decide to go on Wednesday."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Was the second last week Tuesday?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, it was Tuesday."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "The third was Wednesday, right?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. And the third this week is also Wednesday."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Then let's go on Wednesday."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, please."
+        }
+      ],
+      "vocabularyUsed": [
+        "～日",
+        "お願いします",
+        "する",
+        "はい",
+        "火曜日",
+        "行く",
+        "今週",
+        "三",
+        "三日",
+        "四",
+        "水曜日",
+        "先週",
+        "二",
+        "二日"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:33.739Z",
+      "updatedAt": "2026-07-07T01:09:33.739Z",
+      "audioFileName": "set-02-20260630T231846Z-aqkary-convo-09.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-09.wav",
+      "sourceRunId": "set-02-20260630T231846Z-aqkary",
+      "sourceConversationId": "convo-09",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-09.wav",
+      "curatedId": "set-02-20260630T231846Z-aqkary-convo-09",
+      "curatedAt": "2026-07-07T01:09:33.739Z"
+    },
+    {
+      "id": "set-02-20260630T231846Z-aqkary-convo-14",
+      "number": 14,
+      "title": "Last Month's Key",
+      "scene": "Two friends talk about a key that was in a bag last month.",
+      "sampleContext": "Speaker 1 is curious and Speaker 2 explains calmly.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "先月、鍵はどこにありましたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "先月は、かばんにありました。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "今月もかばんに入れますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "いいえ、今月は箱に入れます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "その箱は部屋にありますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、ベッドの隣です。"
+        }
+      ],
+      "listeningQuestions": [
+        "Where was the key last month?",
+        "Where will Speaker 2 put the key this month?",
+        "What does Speaker 1 ask about the box?",
+        "Where is the box?"
+      ],
+      "answerKey": [
+        "It was in the bag.",
+        "He will put it in the box.",
+        "She asks whether the box is in the room.",
+        "It is next to the bed."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Where was the key last month?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Last month, it was in the bag."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Will you put it in the bag this month too?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, this month I will put it in a box."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is that box in the room?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, it is next to the bed."
+        }
+      ],
+      "vocabularyUsed": [
+        "いいえ",
+        "かばん",
+        "その",
+        "どこ",
+        "はい",
+        "ベッド",
+        "鍵",
+        "今月",
+        "在る",
+        "先月",
+        "二",
+        "入れる",
+        "箱",
+        "部屋",
+        "有る",
+        "隣"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:34.275Z",
+      "updatedAt": "2026-07-07T01:09:34.275Z",
+      "audioFileName": "set-02-20260630T231846Z-aqkary-convo-14.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-14.wav",
+      "sourceRunId": "set-02-20260630T231846Z-aqkary",
+      "sourceConversationId": "convo-14",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-14.wav",
+      "curatedId": "set-02-20260630T231846Z-aqkary-convo-14",
+      "curatedAt": "2026-07-07T01:09:34.275Z"
+    },
+    {
+      "id": "set-02-20260630T231846Z-aqkary-convo-19",
+      "number": 19,
+      "title": "A Month with a Pen",
+      "scene": "Two friends talk about using a fountain pen for one month.",
+      "sampleContext": "They are quietly discussing a borrowed item.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "この万年筆を使いますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、一月だけ使いたいです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "一月ですか。いいですよ。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。先月は古い万年筆を使いました。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "これは新しいです。箱に入れてください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、箱に入れます。"
+        }
+      ],
+      "listeningQuestions": [
+        "What item does Speaker 2 want to use?",
+        "How long does Speaker 2 want to use it?",
+        "What kind of fountain pen did Speaker 2 use last month?",
+        "Where should Speaker 2 put the new fountain pen?"
+      ],
+      "answerKey": [
+        "He wants to use this fountain pen.",
+        "He wants to use it for one month.",
+        "He used an old fountain pen.",
+        "He should put it in the box."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Will you use this fountain pen?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I want to use it for just one month."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "One month? That's fine."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Thank you. Last month I used an old fountain pen."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "This one is new. Please put it in the box."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I will put it in the box."
+        }
+      ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "いい",
+        "この",
+        "これ",
+        "はい",
+        "一月",
+        "古い",
+        "新しい",
+        "先月",
+        "二",
+        "入れる",
+        "箱",
+        "万年筆"
+      ],
+      "outOfVocabularyAudit": [
+        "使う"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:34.694Z",
+      "updatedAt": "2026-07-07T01:09:34.694Z",
+      "audioFileName": "set-02-20260630T231846Z-aqkary-convo-19.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-19.wav",
+      "sourceRunId": "set-02-20260630T231846Z-aqkary",
+      "sourceConversationId": "convo-19",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-19.wav",
+      "curatedId": "set-02-20260630T231846Z-aqkary-convo-19",
+      "curatedAt": "2026-07-07T01:09:34.694Z"
+    },
+    {
+      "id": "set-02-20260630T230813Z-rtesfn-convo-03",
+      "number": 3,
+      "title": "Summer Vacation Ends",
+      "scene": "Two students talk about summer vacation dates.",
+      "sampleContext": "They sound relaxed but are checking the schedule carefully.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "夏休みはいつ終りますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "二十日に終ります。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "そうですか。夏は好きですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、好きです。でも夏休みは短いです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "私は一日だけ暇です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "その一日に、うちへ来ますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "はい、行きたいです。"
+        }
+      ],
+      "listeningQuestions": [
+        "When does summer vacation end?",
+        "Does Speaker 2 like summer?",
+        "How much free time does Speaker 1 have?",
+        "Where does Speaker 2 invite Speaker 1?",
+        "Does Speaker 1 want to go?"
+      ],
+      "answerKey": [
+        "It ends on the twentieth.",
+        "Yes, he likes summer.",
+        "She has only one day of free time.",
+        "He invites her to his home.",
+        "Yes, she wants to go."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "When does summer vacation end?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It ends on the twentieth."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I see. Do you like summer?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I like it. But summer vacation is short."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I have only one free day."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "On that one day, will you come to my home?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, I want to go."
+        }
+      ],
+      "vocabularyUsed": [
+        "～日",
+        "うち",
+        "その",
+        "はい",
+        "一",
+        "一日",
+        "夏",
+        "夏休み",
+        "暇",
+        "居る",
+        "好き",
+        "行く",
+        "私",
+        "終る",
+        "十",
+        "十日",
+        "二",
+        "二十日",
+        "来る"
+      ],
+      "outOfVocabularyAudit": [
+        "短い"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:35.230Z",
+      "updatedAt": "2026-07-07T01:09:35.230Z",
+      "audioFileName": "set-02-20260630T230813Z-rtesfn-convo-03.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-03.wav",
+      "sourceRunId": "set-02-20260630T230813Z-rtesfn",
+      "sourceConversationId": "convo-03",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-03.wav",
+      "curatedId": "set-02-20260630T230813Z-rtesfn-convo-03",
+      "curatedAt": "2026-07-07T01:09:35.230Z"
+    },
+    {
+      "id": "set-02-20260630T230813Z-rtesfn-convo-07",
+      "number": 7,
+      "title": "Every Morning Clothes",
+      "scene": "Two people talk about a morning clothing routine.",
+      "sampleContext": "Speaker 1 is curious, and Speaker 2 answers simply.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "たろうさんは毎朝、何を着ますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "毎朝、シャツと上着を着ます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "靴下も毎朝、洗いますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、靴下は晩に洗います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "そうですか。コートは着ませんか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "冬だけ着ます。今は着ません。"
+        }
+      ],
+      "listeningQuestions": [
+        "What does Speaker 2 wear every morning?",
+        "When does Speaker 2 wash his socks?",
+        "Does he wear a coat now?",
+        "In what season does he wear a coat?",
+        "Who asks about the morning routine?"
+      ],
+      "answerKey": [
+        "He wears a shirt and a jacket every morning.",
+        "He washes his socks in the evening.",
+        "No, he does not wear a coat now.",
+        "He wears a coat only in winter.",
+        "Speaker 1 asks about it."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Taro, what do you wear every morning?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Every morning, I wear a shirt and a jacket."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you wash your socks every morning too?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, I wash my socks in the evening."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I see. Do you not wear a coat?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I wear it only in winter. I do not wear it now."
+        }
+      ],
+      "vocabularyUsed": [
+        "いいえ",
+        "コート",
+        "シャツ",
+        "何",
+        "何～",
+        "靴下",
+        "戸",
+        "三",
+        "上着",
+        "洗う",
+        "着る",
+        "冬",
+        "二",
+        "晩",
+        "毎朝"
+      ],
+      "outOfVocabularyAudit": [
+        "今"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:35.705Z",
+      "updatedAt": "2026-07-07T01:09:35.705Z",
+      "audioFileName": "set-02-20260630T230813Z-rtesfn-convo-07.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-07.wav",
+      "sourceRunId": "set-02-20260630T230813Z-rtesfn",
+      "sourceConversationId": "convo-07",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-07.wav",
+      "curatedId": "set-02-20260630T230813Z-rtesfn-convo-07",
+      "curatedAt": "2026-07-07T01:09:35.705Z"
+    },
+    {
+      "id": "set-02-20260630T230813Z-rtesfn-convo-08",
+      "number": 8,
+      "title": "Taking Off Shoes",
+      "scene": "At home, one person explains what to take off at the entrance.",
+      "sampleContext": "Speaker 1 is visiting politely, and Speaker 2 is welcoming.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "失礼します。ここで靴を脱ぎますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、玄関で靴を脱いでください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "コートも脱ぎますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "はい、コートも脱いでください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "かばんはどこに入れますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "その箱に入れてください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thankful",
+            "slow"
+          ],
+          "japanese": "はい、ありがとうございます。"
+        }
+      ],
+      "listeningQuestions": [
+        "Where should Speaker 1 take off her shoes?",
+        "What else should she take off?",
+        "What does she ask about her bag?",
+        "Where should she put the bag?",
+        "Is Speaker 1 visiting politely or casually?"
+      ],
+      "answerKey": [
+        "She should take off her shoes at the entrance.",
+        "She should also take off her coat.",
+        "She asks where to put her bag.",
+        "She should put it in the box.",
+        "She is visiting politely."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Excuse me for entering. Should I take off my shoes here?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, please take off your shoes at the entrance."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Should I take off my coat too?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, please take off your coat too."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Where should I put my bag?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Please put it in that box."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, thank you very much."
+        }
+      ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "かばん",
+        "コート",
+        "ここ",
+        "する",
+        "その",
+        "どこ",
+        "はい",
+        "靴",
+        "玄関",
+        "四",
+        "失礼します",
+        "脱ぐ",
+        "二",
+        "入れる",
+        "箱"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:36.189Z",
+      "updatedAt": "2026-07-07T01:09:36.189Z",
+      "audioFileName": "set-02-20260630T230813Z-rtesfn-convo-08.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-08.wav",
+      "sourceRunId": "set-02-20260630T230813Z-rtesfn",
+      "sourceConversationId": "convo-08",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-08.wav",
+      "curatedId": "set-02-20260630T230813Z-rtesfn-convo-08",
+      "curatedAt": "2026-07-07T01:09:36.189Z"
+    },
+    {
+      "id": "set-02-20260630T230813Z-rtesfn-convo-09",
+      "number": 9,
+      "title": "Hanging a Coat",
+      "scene": "Two people decide where to hang clothes in a room.",
+      "sampleContext": "They sound calm and cooperative.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "この上着はどこに掛けますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "部屋の窓の隣に掛けてください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "青いコートもそこに掛けますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、青いコートもお願いします。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "シャツは箱に入れますね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい、ありがとうございます。"
+        }
+      ],
+      "listeningQuestions": [
+        "What item does Speaker 1 ask about first?",
+        "Where should she hang it?",
+        "What color is the coat?",
+        "Where will she put the shirt?",
+        "Who thanks the other person?"
+      ],
+      "answerKey": [
+        "She asks about a jacket.",
+        "She should hang it next to the room's window.",
+        "The coat is blue.",
+        "She will put the shirt in the box.",
+        "Speaker 2 thanks Speaker 1."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Where should I hang this jacket?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Please hang it next to the room's window."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Should I hang the blue coat there too?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, the blue coat too, please."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I will put the shirt in the box."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, thank you very much."
+        }
+      ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "お願いします",
+        "コート",
+        "この",
+        "シャツ",
+        "する",
+        "そこ",
+        "どこ",
+        "はい",
+        "掛ける",
+        "四",
+        "上着",
+        "青い",
+        "窓",
+        "二",
+        "入れる",
+        "箱",
+        "部屋",
+        "隣"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:36.659Z",
+      "updatedAt": "2026-07-07T01:09:36.659Z",
+      "audioFileName": "set-02-20260630T230813Z-rtesfn-convo-09.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-09.wav",
+      "sourceRunId": "set-02-20260630T230813Z-rtesfn",
+      "sourceConversationId": "convo-09",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-09.wav",
+      "curatedId": "set-02-20260630T230813Z-rtesfn-convo-09",
+      "curatedAt": "2026-07-07T01:09:36.659Z"
+    },
+    {
+      "id": "set-02-20260630T230813Z-rtesfn-convo-13",
+      "number": 13,
+      "title": "Year Before Last",
+      "scene": "Two friends talk about past years and seasons.",
+      "sampleContext": "Speaker 1 is curious, and Speaker 2 is remembering calmly.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "おととし、どこへ行きましたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "おととしは、兄のうちへ行きました。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "去年も行きましたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、去年は行きませんでした。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "今年は行きますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、秋に行きたいです。"
+        }
+      ],
+      "listeningQuestions": [
+        "Where did Speaker 2 go the year before last?",
+        "Did he go last year?",
+        "Does he want to go this year?",
+        "In which season does he want to go?",
+        "Whose home did he go to?"
+      ],
+      "answerKey": [
+        "He went to his older brother's home.",
+        "No, he did not go last year.",
+        "Yes, he wants to go this year.",
+        "He wants to go in autumn.",
+        "He went to his older brother's home."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Where did you go the year before last?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "The year before last, I went to my older brother's home."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Did you go last year too?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, I did not go last year."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Will you go this year?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I want to go in autumn."
+        }
+      ],
+      "vocabularyUsed": [
+        "いいえ",
+        "うち",
+        "おととし",
+        "どこ",
+        "はい",
+        "去年",
+        "兄",
+        "行く",
+        "今年",
+        "秋",
+        "二"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:37.146Z",
+      "updatedAt": "2026-07-07T01:09:37.146Z",
+      "audioFileName": "set-02-20260630T230813Z-rtesfn-convo-13.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-13.wav",
+      "sourceRunId": "set-02-20260630T230813Z-rtesfn",
+      "sourceConversationId": "convo-13",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-13.wav",
+      "curatedId": "set-02-20260630T230813Z-rtesfn-convo-13",
+      "curatedAt": "2026-07-07T01:09:37.146Z"
+    },
+    {
+      "id": "set-02-20260630T230813Z-rtesfn-convo-15",
+      "number": 15,
+      "title": "Every Year in Spring",
+      "scene": "Two people discuss a yearly spring visit.",
+      "sampleContext": "They sound warm and relaxed.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "毎年、春に来ますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、毎年、春に来ます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "今年で何年ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "今年で三年です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "春が好きですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "はい、春が好きです。秋も好きです。"
+        }
+      ],
+      "listeningQuestions": [
+        "When does Speaker 2 come every year?",
+        "How many years has it been this year?",
+        "Does Speaker 2 like spring?",
+        "What other season does Speaker 2 like?",
+        "Who asks how many years it has been?"
+      ],
+      "answerKey": [
+        "He comes every year in spring.",
+        "It has been three years this year.",
+        "Yes, he likes spring.",
+        "He also likes autumn.",
+        "Speaker 1 asks."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you come every year in spring?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I come every year in spring."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "How many years has it been this year?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "This year makes three years."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you like spring?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I like spring. I like autumn too."
+        }
+      ],
+      "vocabularyUsed": [
+        "～年",
+        "はい",
+        "何",
+        "何～",
+        "好き",
+        "今年",
+        "三",
+        "秋",
+        "春",
+        "二",
+        "年",
+        "毎年",
+        "来る"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:37.634Z",
+      "updatedAt": "2026-07-07T01:09:37.634Z",
+      "audioFileName": "set-02-20260630T230813Z-rtesfn-convo-15.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-15.wav",
+      "sourceRunId": "set-02-20260630T230813Z-rtesfn",
+      "sourceConversationId": "convo-15",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-15.wav",
+      "curatedId": "set-02-20260630T230813Z-rtesfn-convo-15",
+      "curatedAt": "2026-07-07T01:09:37.634Z"
+    },
+    {
+      "id": "set-02-20260630T085023Z-evotis-convo-06",
+      "number": 6,
+      "title": "Birthday This Month",
+      "scene": "Two friends talk about a birthday and a day of the month.",
+      "sampleContext": "Speaker 1 is curious, and Speaker 2 answers warmly.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "太郎さん、誕生日は今月ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、今月の二十日です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "excited",
+            "slow"
+          ],
+          "japanese": "そうですか。二十日は水曜日ですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。晩にうちへ来ませんか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "行きたいです。晩御飯もありますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、美味しい晩御飯がありますよ。"
+        }
+      ],
+      "listeningQuestions": [
+        "When is Speaker 2's birthday?",
+        "What weekday is the twentieth?",
+        "When does Speaker 2 invite Speaker 1 to come?",
+        "What does Speaker 2 say will be there?"
+      ],
+      "answerKey": [
+        "His birthday is on the twentieth of this month.",
+        "It is Wednesday.",
+        "He invites her to come in the evening.",
+        "He says there will be delicious dinner."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Taro, is your birthday this month?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, it is on the twentieth of this month."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I see. The twentieth is Wednesday, right?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. Would you like to come to my home in the evening?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I want to go. Will there be dinner too?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, there will be delicious dinner."
+        }
+      ],
+      "vocabularyUsed": [
+        "～日",
+        "うち",
+        "はい",
+        "行く",
+        "今月",
+        "在る",
+        "三",
+        "十",
+        "十日",
+        "水曜日",
+        "誕生日",
+        "二",
+        "二十日",
+        "晩",
+        "晩御飯",
+        "美味しい",
+        "有る",
+        "来る"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:38.039Z",
+      "updatedAt": "2026-07-07T01:09:38.039Z",
+      "audioFileName": "set-02-20260630T085023Z-evotis-convo-06.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-06.wav",
+      "sourceRunId": "set-02-20260630T085023Z-evotis",
+      "sourceConversationId": "convo-06",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-06.wav",
+      "curatedId": "set-02-20260630T085023Z-evotis-convo-06",
+      "curatedAt": "2026-07-07T01:09:38.039Z"
+    },
+    {
+      "id": "set-02-20260630T085023Z-evotis-convo-08",
+      "number": 8,
+      "title": "Summer Vacation",
+      "scene": "Two friends discuss summer vacation dates and plans.",
+      "sampleContext": "They sound cheerful and interested.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "なおきさん、今年の夏休みは何日からですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "十日から二十日までです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "excited",
+            "slow"
+          ],
+          "japanese": "いいですね。毎日遊びますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "いいえ。時々遊びます。そして、毎朝起きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "朝御飯も毎朝食べますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、毎朝食べます。"
+        }
+      ],
+      "listeningQuestions": [
+        "What dates are Speaker 2's summer vacation?",
+        "Will Speaker 2 play every day?",
+        "What does Speaker 2 say he will do every morning?",
+        "What meal does Speaker 1 ask about?"
+      ],
+      "answerKey": [
+        "It is from the tenth to the twentieth.",
+        "No, he will play sometimes.",
+        "He says he will get up every morning.",
+        "She asks about breakfast."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Naoki, from what day is your summer vacation this year?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It is from the tenth to the twentieth."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "That's nice. Will you play every day?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No. I will play sometimes. And I will get up every morning."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Will you eat breakfast every morning too?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I will eat every morning."
+        }
+      ],
+      "vocabularyUsed": [
+        "～日",
+        "いい",
+        "いいえ",
+        "はい",
+        "何",
+        "何～",
+        "夏休み",
+        "起きる",
+        "今年",
+        "時々",
+        "十",
+        "十日",
+        "食べる",
+        "朝",
+        "朝御飯",
+        "二",
+        "二十日",
+        "毎朝",
+        "毎日",
+        "遊ぶ",
+        "来る"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:38.600Z",
+      "updatedAt": "2026-07-07T01:09:38.600Z",
+      "audioFileName": "set-02-20260630T085023Z-evotis-convo-08.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-08.wav",
+      "sourceRunId": "set-02-20260630T085023Z-evotis",
+      "sourceConversationId": "convo-08",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-08.wav",
+      "curatedId": "set-02-20260630T085023Z-evotis-convo-08",
+      "curatedAt": "2026-07-07T01:09:38.600Z"
+    },
+    {
+      "id": "set-02-20260630T085023Z-evotis-convo-15",
+      "number": 15,
+      "title": "Checking March Dates",
+      "scene": "Two people check dates for this month.",
+      "sampleContext": "They sound calm and careful while choosing a day to meet.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "curious",
+            "slow"
+          ],
+          "japanese": "すみません、今月は何月ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "三月です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "三月二日は月曜日ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。三日は火曜日です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "五日は暇ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、暇です。七日は土曜日ですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "そうですね。九日は月曜日です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "では、五日に来てください。"
+        }
+      ],
+      "listeningQuestions": [
+        "What month are the speakers talking about?",
+        "What day of the week is March 2?",
+        "Which date does Speaker 1 ask if Speaker 2 is free?",
+        "What day of the week is the seventh?",
+        "On which date does Speaker 2 ask Speaker 1 to come?"
+      ],
+      "answerKey": [
+        "They are talking about March.",
+        "March 2 is Monday.",
+        "Speaker 1 asks about the fifth.",
+        "The seventh is Saturday.",
+        "Speaker 2 asks Speaker 1 to come on the fifth."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Excuse me, what month is this month?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It is March."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is March 2 Monday?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. The third is Tuesday."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Are you free on the fifth?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I am free. The seventh is Saturday, right?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "That's right. The ninth is Monday."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Then please come on the fifth."
+        }
+      ],
+      "vocabularyUsed": [
+        "～月",
+        "～日",
+        "すみません",
+        "はい",
+        "何",
+        "何～",
+        "暇",
+        "火曜日",
+        "九",
+        "九日",
+        "月曜日",
+        "五",
+        "五日",
+        "今月",
+        "三",
+        "三日",
+        "七",
+        "七日",
+        "土曜日",
+        "二",
+        "二日",
+        "来る"
+      ],
+      "outOfVocabularyAudit": [
+        "三月"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:39.098Z",
+      "updatedAt": "2026-07-07T01:09:39.098Z",
+      "audioFileName": "set-02-20260630T085023Z-evotis-convo-15.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-15.wav",
+      "sourceRunId": "set-02-20260630T085023Z-evotis",
+      "sourceConversationId": "convo-15",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-15.wav",
+      "curatedId": "set-02-20260630T085023Z-evotis-convo-15",
+      "curatedAt": "2026-07-07T01:09:39.098Z"
+    },
+    {
+      "id": "set-02-20260630T085023Z-evotis-convo-18",
+      "number": 18,
+      "title": "Years at the Apartment",
+      "scene": "Two people talk about how long someone has lived in an apartment.",
+      "sampleContext": "They speak warmly while comparing years and future plans.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "おととし、このアパートに来ました。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "そうですか。もう二年ですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい。今年はいい年です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "毎年、夏休みはありますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、夏休みは一月です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "curious",
+            "slow"
+          ],
+          "japanese": "さ来年もここに居ますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、さ来年まで居ます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "いいですね。"
+        }
+      ],
+      "listeningQuestions": [
+        "When did Speaker 1 come to this apartment?",
+        "How many years has it been?",
+        "How does Speaker 1 describe this year?",
+        "How long is summer vacation?",
+        "Until when will Speaker 1 be here?"
+      ],
+      "answerKey": [
+        "Speaker 1 came to this apartment the year before last.",
+        "It has been two years.",
+        "Speaker 1 says this year is a good year.",
+        "Summer vacation is one month.",
+        "Speaker 1 will be here until the year after next."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "I came to this apartment the year before last."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is that so? Has it already been two years?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. This year is a good year."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Do you have summer vacation every year?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, summer vacation is one month."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Will you be here in the year after next too?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, I will be here until the year after next."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That's good."
+        }
+      ],
+      "vocabularyUsed": [
+        "～年",
+        "アパート",
+        "いい",
+        "おととし",
+        "ここ",
+        "この",
+        "さ来年",
+        "はい",
+        "一月",
+        "夏休み",
+        "居る",
+        "今年",
+        "在る",
+        "二",
+        "年",
+        "毎年",
+        "有る",
+        "来る"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:39.625Z",
+      "updatedAt": "2026-07-07T01:09:39.625Z",
+      "audioFileName": "set-02-20260630T085023Z-evotis-convo-18.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-18.wav",
+      "sourceRunId": "set-02-20260630T085023Z-evotis",
+      "sourceConversationId": "convo-18",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-18.wav",
+      "curatedId": "set-02-20260630T085023Z-evotis-convo-18",
+      "curatedAt": "2026-07-07T01:09:39.625Z"
+    },
+    {
+      "id": "set-02-20260630T085023Z-evotis-convo-20",
+      "number": 20,
+      "title": "Umbrella and Police Box",
+      "scene": "Two people talk about going to a police box with an umbrella.",
+      "sampleContext": "They sound calm, as if confirming details from last week.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "先週の土曜日、傘を差しましたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、青い傘を差しました。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "交番はどこでしたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "角の隣でした。そこまで行きました。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "七日も行きましたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、七日は行きませんでした。九日に行きました。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "そうですか。ありがとうございます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "どういたしまして。"
+        }
+      ],
+      "listeningQuestions": [
+        "When did Speaker 2 use an umbrella?",
+        "What color was the umbrella?",
+        "Where was the police box?",
+        "Did Speaker 2 go on the seventh?",
+        "On which date did Speaker 2 go?"
+      ],
+      "answerKey": [
+        "Speaker 2 used an umbrella last Saturday.",
+        "The umbrella was blue.",
+        "The police box was next to the corner.",
+        "No, Speaker 2 did not go on the seventh.",
+        "Speaker 2 went on the ninth."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Last Saturday, did you raise/use an umbrella?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I used a blue umbrella."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Where was the police box?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It was next to the corner. I went there."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Did you go on the seventh too?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, I did not go on the seventh. I went on the ninth."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I see. Thank you very much."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "You're welcome."
+        }
+      ],
+      "vocabularyUsed": [
+        "～日",
+        "ありがとうございます",
+        "いいえ",
+        "そこ",
+        "どこ",
+        "はい",
+        "角",
+        "九",
+        "九日",
+        "交番",
+        "行く",
+        "差す",
+        "傘",
+        "七",
+        "七日",
+        "青い",
+        "先週",
+        "土曜日",
+        "二",
+        "隣"
+      ],
+      "outOfVocabularyAudit": [
+        "どういたしまして"
+      ],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:40.115Z",
+      "updatedAt": "2026-07-07T01:09:40.115Z",
+      "audioFileName": "set-02-20260630T085023Z-evotis-convo-20.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-20.wav",
+      "sourceRunId": "set-02-20260630T085023Z-evotis",
+      "sourceConversationId": "convo-20",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-20.wav",
+      "curatedId": "set-02-20260630T085023Z-evotis-convo-20",
+      "curatedAt": "2026-07-07T01:09:40.115Z"
+    },
+    {
+      "id": "set-02-20260525T211348Z-lrfn89-convo-05",
+      "number": 5,
+      "title": "At Home at Night",
+      "scene": "Two people talk about the bathroom and bedtime at home.",
+      "sampleContext": "They speak quietly in the evening.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "うちのお風呂はどこですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "階段のあちらです。トイレもあちらです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "お手洗いのドアを閉めましたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい、閉めました。窓も閉めました。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "毎晩、お風呂でシャツを洗いますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ。時々洗います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "soft",
+            "slow"
+          ],
+          "japanese": "ベッドは大きいですね。今晩、何時に寝ますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "sleepy",
+            "slow"
+          ],
+          "japanese": "十時に寝ます。でもまだ食べます。"
+        }
+      ],
+      "listeningQuestions": [
+        "Where is the bath?",
+        "What else is in the same direction as the bath?",
+        "What did Speaker 2 close besides the restroom door?",
+        "Does Speaker 2 wash his shirt every night?",
+        "What time will Speaker 2 sleep?"
+      ],
+      "answerKey": [
+        "It is over by the stairs.",
+        "The toilet is also over there.",
+        "He also closed the window.",
+        "No, he washes it sometimes.",
+        "He will sleep at 10 o'clock."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Where is the bath at home?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It is over by the stairs. The toilet is over there too."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Did you close the restroom door?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I closed it. I closed the window too."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you wash your shirt in the bath every night?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No. I wash it sometimes."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "The bed is big, isn't it? What time will you sleep tonight?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I will sleep at ten. But I will still eat."
+        }
+      ],
+      "vocabularyUsed": [
+        "～時",
+        "あちら",
+        "いいえ",
+        "うち",
+        "お手洗い",
+        "お風呂",
+        "シャツ",
+        "ドア",
+        "トイレ",
+        "どこ",
+        "はい",
+        "ベッド",
+        "何",
+        "何～",
+        "階段",
+        "今晩",
+        "時々",
+        "十",
+        "食べる",
+        "寝る",
+        "洗う",
+        "窓",
+        "大きい",
+        "二",
+        "閉める",
+        "毎晩"
+      ],
+      "outOfVocabularyAudit": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-07T01:09:40.644Z",
+      "updatedAt": "2026-07-07T01:09:40.644Z",
+      "audioFileName": "set-02-20260525T211348Z-lrfn89-convo-05.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260525T211348Z-lrfn89-convo-05.wav",
+      "sourceRunId": "set-02-20260525T211348Z-lrfn89",
+      "sourceConversationId": "convo-05",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260525T211348Z-lrfn89-convo-05.wav",
+      "curatedId": "set-02-20260525T211348Z-lrfn89-convo-05",
+      "curatedAt": "2026-07-07T01:09:40.644Z"
     }
   ],
   "createdAt": "2026-05-25T21:44:22.592Z",
-  "updatedAt": "2026-06-27T19:01:07.282Z"
+  "updatedAt": "2026-07-07T01:09:40.644Z"
 }
