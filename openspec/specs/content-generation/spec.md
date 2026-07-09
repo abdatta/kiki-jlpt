@@ -137,6 +137,20 @@ The studio SHALL list, retrieve, reanalyze, and delete persisted runs. Reanalysi
 - **WHEN** an operator deletes an eligible run
 - **THEN** the system removes its persisted run data and associated generated audio
 
+### Requirement: Studio set-scoped run selection
+The Studio interface SHALL keep the operator-selected vocabulary set as the active generation context in Runs mode. When the selected set has generated runs, the Studio MAY select the newest matching run. When the selected set has no generated runs, the Studio SHALL keep that set selected and show the empty run state instead of switching to a different set's run.
+
+#### Scenario: Selected set has generated runs
+- **WHEN** an operator selects a set that has one or more generated runs
+- **THEN** the Studio selects a run from that set
+- **AND** keeps the sidebar set selector on that set
+
+#### Scenario: Selected set has no generated runs
+- **WHEN** an operator selects a set that has no generated runs
+- **THEN** the Studio keeps the sidebar set selector on the selected set
+- **AND** shows the empty run state for that set
+- **AND** does not switch to another set because that set has a newer run
+
 ### Requirement: Natural current-set generation guidance
 The studio SHALL instruct standard and complementary conversation-generation models to prioritize meaningful use of vocabulary from the selected current set while using earlier allowed sets as supporting language. The guidance SHALL favor coherent beginner conversations, natural repetition, and varied situations over forcing priority words into unsuitable dialogue, while retaining aggregate vocabulary coverage as a batch objective. When an AI-balanced complementary prompt is prepared, the studio SHALL additionally supply the existing curated library's conversation content and per-word exposure so the model can author conversations that improve coverage of absent and underexposed current-set words while avoiding redundancy with existing scenes and over-repetition, treating the deterministic plan and exposure as authoritative inputs it does not recalculate.
 

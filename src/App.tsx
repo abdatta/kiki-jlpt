@@ -57,6 +57,7 @@ import { AiCurationReconciliationPanel } from './components/AiCurationReconcilia
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
 import { StudioBackgroundJobs, type StudioToast } from './components/StudioBackgroundJobs.tsx';
 import { shouldNotifyJobEvent } from './studioNotifications.ts';
+import { selectStudioRunForSet } from './studioRunSelection.ts';
 import {
   AiRecommendationReason,
   CurationEvidencePanel,
@@ -2694,7 +2695,7 @@ function StudioApp() {
   useEffect(() => {
     if (studioRoute.boardMode !== 'runs') return;
     if (!studioRoute.runId) {
-      const nextRun = runs[0] ?? null;
+      const nextRun = selectStudioRunForSet(runs, setNumber);
       if (currentRun?.id !== nextRun?.id) {
         if (nextRun) {
           applyRunGeneratorDefaults(nextRun);
@@ -2878,7 +2879,7 @@ function StudioApp() {
     } else if (boardMode === 'library') {
       navigateToStudioRoute(studioLibraryRoute(nextSetNumber));
     } else {
-      const nextRun = runs.find((run) => run.setNumber === nextSetNumber) ?? null;
+      const nextRun = selectStudioRunForSet(runs, nextSetNumber);
       setCurrentRun(nextRun);
       if (nextRun) {
         setTextModelId(nextRun.textModel.id);
@@ -3142,7 +3143,7 @@ function StudioApp() {
       });
       setRuns(payload.runs);
       if (currentRun?.id === payload.deletedRunId) {
-        const nextRun = payload.runs[0] ?? null;
+        const nextRun = selectStudioRunForSet(payload.runs, run.setNumber);
         setCurrentRun(nextRun);
         setWorkflowJob(null);
         setSelectedWorkflowNodeId(undefined);
