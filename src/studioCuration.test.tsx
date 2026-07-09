@@ -6,6 +6,12 @@ import { AddAllProgressModal } from './components/AddAllProgressModal.tsx';
 import { AiCurationReconciliationPanel } from './components/AiCurationReconciliationPanel.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
 import { AiRecommendationReason, CurationEvidencePanel, WordFrequencyDistribution } from './components/CurationEvidence.tsx';
+import {
+  SourceRunDistribution,
+  SourceRunLabel,
+  resolveSourceRunMetadata,
+  sourceRunDistribution
+} from './components/SourceRunProvenance.tsx';
 import { StudioBackgroundJobs } from './components/StudioBackgroundJobs.tsx';
 import { shouldNotifyJobEvent } from './studioNotifications.ts';
 
@@ -93,6 +99,95 @@ test('Studio word-frequency distribution stacks current and Add All counts', () 
   assert.match(html, /wordFrequencyCurrent[^>]*height:50%/);
   assert.match(html, /Less frequent/);
   assert.match(html, /Most frequent/);
+});
+
+test('Studio source provenance resolves links and falls back without broken navigation', () => {
+  const runs = [{
+    ...conversation,
+    id: 'run-a',
+    setNumber: 2,
+    conversationCount: 1,
+    allowedVocabCount: 195,
+    textModel: { id: 'model-1', provider: 'gemini' as const, model: 'gemini-test', label: 'Gemini Test' },
+    analytics: {
+      currentSetTotal: 98,
+      currentSetUsedCount: 80,
+      currentSetMissingCount: 18,
+      currentSetMissingWords: [],
+      allowedVocabTotal: 195,
+      allowedVocabUsedCount: 150,
+      allowedVocabUsedPercentage: 77,
+      outOfAllowedCount: 2,
+      outOfAllowedWords: ['猫', '犬']
+    },
+    status: 'generated' as const,
+    conversations: [conversation],
+    createdAt: '2026-07-09T07:28:00.000Z',
+    updatedAt: '2026-07-09T07:28:00.000Z'
+  }];
+  const format = (value: string) => `title:${value}`;
+  const route = (runId: string) => `#/studio/runs/${runId}`;
+
+  const resolved = resolveSourceRunMetadata({ sourceRunId: 'run-a' }, runs, format, route);
+  const unresolved = resolveSourceRunMetadata(
+    { sourceRunId: 'missing-run', sourceRunCreatedAt: '2026-07-02T19:44:00.000Z' },
+    runs,
+    format,
+    route
+  );
+  const unresolvedWithoutTimestamp = resolveSourceRunMetadata({ sourceRunId: 'missing-run-extra' }, runs, format, route);
+
+  assert.equal(resolved?.label, 'title:2026-07-09T07:28:00.000Z');
+  assert.equal(resolved?.targetRoute, '#/studio/runs/run-a');
+  assert.equal(resolved?.resolved, true);
+  assert.equal(unresolved?.label, 'title:2026-07-02T19:44:00.000Z');
+  assert.equal(unresolved?.targetRoute, undefined);
+  assert.equal(unresolved?.resolved, false);
+  assert.equal(unresolvedWithoutTimestamp?.label, 'Run missing-');
+
+  const resolvedHtml = renderToStaticMarkup(<SourceRunLabel metadata={resolved} />);
+  const unresolvedHtml = renderToStaticMarkup(<SourceRunLabel metadata={unresolved} />);
+
+  assert.match(resolvedHtml, /href="#\/studio\/runs\/run-a"/);
+  assert.match(resolvedHtml, /Gemini Test/);
+  assert.match(resolvedHtml, /Current set: 80\/98 used, 18 missing/);
+  assert.match(resolvedHtml, /Cumulative: 77% \(150\/195\)/);
+  assert.match(resolvedHtml, /OOV: 2/);
+  assert.match(unresolvedHtml, /Run metadata unavailable/);
+  assert.doesNotMatch(unresolvedHtml, /href=/);
+});
+
+test('Studio source distribution groups visible items and renders collapsed rows', () => {
+  const runs = [
+    { id: 'run-a', createdAt: '2026-07-09T07:28:00.000Z' },
+    { id: 'run-b', createdAt: '2026-07-08T17:57:00.000Z' }
+  ];
+  const rows = sourceRunDistribution(
+    [
+      { sourceRunId: 'run-a' },
+      { sourceRunId: 'run-b' },
+      { sourceRunId: 'run-a' },
+      { sourceRunId: 'missing-run', sourceRunCreatedAt: '2026-07-02T19:44:00.000Z' }
+    ],
+    runs,
+    (value) => `title:${value}`,
+    (runId) => `#/studio/runs/${runId}`
+  );
+  const html = renderToStaticMarkup(<SourceRunDistribution rows={rows} />);
+
+  assert.deepEqual(rows.map((row) => [row.sourceRunId, row.count, row.percentage]), [
+    ['run-a', 2, 50],
+    ['run-b', 1, 25],
+    ['missing-run', 1, 25]
+  ]);
+  assert.match(html, /<details class="sourceRunDistribution">/);
+  assert.doesNotMatch(html, /<details class="sourceRunDistribution" open/);
+  assert.match(html, /3 sources/);
+  assert.match(html, /2 conversations/);
+  assert.match(html, /50%/);
+  assert.match(html, /25%/);
+  assert.match(html, /href="#\/studio\/runs\/run-a"/);
+  assert.match(html, /Run metadata unavailable/);
 });
 
 test('Studio historical curation reconciliation renders action state and stale warnings', () => {

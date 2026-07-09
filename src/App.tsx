@@ -66,6 +66,13 @@ import {
   CurationEvidencePanel,
   WordFrequencyDistribution
 } from './components/CurationEvidence.tsx';
+import {
+  SourceRunDistribution,
+  SourceRunLabel,
+  resolveSourceRunMetadata,
+  sourceRunDistribution,
+  type SourceRunReference
+} from './components/SourceRunProvenance.tsx';
 import { ConsumerApp } from './consumer/ConsumerApp.tsx';
 import { planAddAllRecommendations } from './addAllAudio.ts';
 
@@ -2272,6 +2279,39 @@ function StudioApp() {
   const projectedCoverageWords = isHistoricalAiCurationReview && projectedCoverageView === 'original'
     ? currentAiCurationReview?.result?.projectedLeastCoveredWords ?? []
     : displayedProjectedCoverage;
+  const aiCurationVisibleRecommendations = currentAiCurationReview?.result?.recommendations ?? [];
+  const librarySourceRunDistribution = useMemo(() => sourceRunDistribution(
+    currentLibrarySet?.conversations.map((conversation) => ({ sourceRunId: conversation.sourceRunId })) ?? [],
+    runs,
+    formatRunHistoryTitle,
+    studioRunsRoute
+  ), [currentLibrarySet?.conversations, runs]);
+  const recommendationSourceRunDistribution = useMemo(() => sourceRunDistribution(
+    currentRecommendations?.recommendations.map((recommendation) => ({
+      sourceRunId: recommendation.sourceRunId,
+      sourceRunCreatedAt: recommendation.sourceRunCreatedAt
+    })) ?? [],
+    runs,
+    formatRunHistoryTitle,
+    studioRunsRoute
+  ), [currentRecommendations?.recommendations, runs]);
+  const aiCurationSourceRunDistribution = useMemo(() => sourceRunDistribution(
+    aiCurationVisibleRecommendations.map((recommendation) => {
+      const candidate = currentAiCurationReview?.snapshot.candidates.find((item) => item.candidateKey === recommendation.candidateKey);
+      return {
+        sourceRunId: recommendation.sourceRunId,
+        sourceRunCreatedAt: candidate?.sourceRunCreatedAt
+      };
+    }),
+    runs,
+    formatRunHistoryTitle,
+    studioRunsRoute
+  ), [aiCurationVisibleRecommendations, currentAiCurationReview?.snapshot.candidates, runs]);
+  const sourceRunColorIndexBySurface = useMemo(() => ({
+    library: new Map(librarySourceRunDistribution.map((row) => [row.sourceRunId, row.colorIndex])),
+    recommendations: new Map(recommendationSourceRunDistribution.map((row) => [row.sourceRunId, row.colorIndex])),
+    aiCuration: new Map(aiCurationSourceRunDistribution.map((row) => [row.sourceRunId, row.colorIndex]))
+  }), [librarySourceRunDistribution, recommendationSourceRunDistribution, aiCurationSourceRunDistribution]);
   const leastCoveredWordSet = useMemo(() => new Set(currentRecommendations?.leastCoveredWords.map((word) => word.japanese) ?? []), [currentRecommendations]);
   const showRunContent = Boolean(boardMode === 'runs' && currentRun && currentRun.setNumber === setNumber && !generationSession && !workflowJob);
   const showLibraryContent = Boolean(boardMode === 'library' && !generationSession);
@@ -3652,7 +3692,26 @@ function StudioApp() {
     deterministicRecommendation?: LibraryRecommendationCandidate,
     historicalReadonly = false
   ) {
-    const sourceRunId = recommendation?.sourceRunId ?? deterministicRecommendation?.sourceRunId ?? (source === 'run' ? currentRun?.id : undefined);
+    const sourceRunReference: SourceRunReference = recommendation
+      ? {
+          sourceRunId: recommendation.sourceRunId,
+          sourceRunCreatedAt: currentAiCurationReview?.snapshot.candidates.find((item) => item.candidateKey === recommendation.candidateKey)?.sourceRunCreatedAt,
+          sourceRunColorIndex: sourceRunColorIndexBySurface.aiCuration.get(recommendation.sourceRunId)
+        }
+      : deterministicRecommendation
+        ? {
+            sourceRunId: deterministicRecommendation.sourceRunId,
+            sourceRunCreatedAt: deterministicRecommendation.sourceRunCreatedAt,
+            sourceRunColorIndex: sourceRunColorIndexBySurface.recommendations.get(deterministicRecommendation.sourceRunId)
+          }
+        : source === 'library'
+          ? {
+              sourceRunId: (conversation as CuratedConversation).sourceRunId,
+              sourceRunColorIndex: sourceRunColorIndexBySurface.library.get((conversation as CuratedConversation).sourceRunId)
+            }
+          : {};
+    const sourceRunId = sourceRunReference.sourceRunId ?? (source === 'run' ? currentRun?.id : undefined);
+    const sourceRunMetadata = source === 'run' ? null : resolveSourceRunMetadata(sourceRunReference, runs, formatRunHistoryTitle, studioRunsRoute);
     const itemKey = actionKey(sourceRunId, conversation.id);
     const isEditing = source === 'run' && edit?.conversationId === conversation.id;
     const isLibraryCard = source === 'library';
@@ -3678,7 +3737,10 @@ function StudioApp() {
             <span className="conversationNumber">Conversation {conversation.number}</span>
             <h3>{conversation.title}</h3>
           </div>
-          <span className={`statusPill ${conversation.status}`}>{isLibraryCard ? 'in library' : recommendation ? `AI pick ${recommendation.rank}` : deterministicRecommendation ? `score ${deterministicRecommendation.score}` : statusLabel(conversation.status)}</span>
+          <div className="cardHeaderMeta">
+            <span className={`statusPill ${conversation.status}`}>{isLibraryCard ? 'in library' : recommendation ? `AI pick ${recommendation.rank}` : deterministicRecommendation ? `score ${deterministicRecommendation.score}` : statusLabel(conversation.status)}</span>
+            <SourceRunLabel metadata={sourceRunMetadata} />
+          </div>
         </div>
 
         {recommendation ? (
@@ -4417,6 +4479,7 @@ function StudioApp() {
                   <p>{currentRecommendations.targetWordCount} Set {setNumber} words tracked</p>
                 </div>
               </section>
+              <SourceRunDistribution rows={recommendationSourceRunDistribution} />
               <div className="conversationGrid">
                 {currentRecommendations.recommendations.map((recommendation) => renderConversationCard(recommendation.conversation, 'recommendation', undefined, recommendation))}
               </div>
@@ -4518,24 +4581,27 @@ function StudioApp() {
               <WordFrequencyDistribution words={projectedCoverageWords} />
               {currentAiCurationReview.llmExchanges.map((exchange) => <AuditLog exchange={exchange} key={exchange.id} />)}
               {currentAiCurationReview.result?.recommendations.length ? (
-                <div className="conversationGrid">
-                  {currentAiCurationReview.result.recommendations.map((recommendation) => {
-                    const liveCandidate = currentRecommendations?.recommendations.find((candidate) => (
-                      candidate.sourceRunId === recommendation.sourceRunId
-                      && candidate.conversation.id === recommendation.sourceConversationId
-                    ));
-                    const sourceConversation = liveCandidate?.conversation
-                      ?? runs.find((run) => run.id === recommendation.sourceRunId)?.conversations.find((conversation) => conversation.id === recommendation.sourceConversationId)
-                      ?? { ...recommendation.conversation, status: 'draft' as const };
-                    return renderConversationCard(
-                      sourceConversation,
-                      'recommendation',
-                      recommendation,
-                      undefined,
-                      isHistoricalAiCurationReview
-                    );
-                  })}
-                </div>
+                <>
+                  <SourceRunDistribution rows={aiCurationSourceRunDistribution} />
+                  <div className="conversationGrid">
+                    {aiCurationVisibleRecommendations.map((recommendation) => {
+                      const liveCandidate = currentRecommendations?.recommendations.find((candidate) => (
+                        candidate.sourceRunId === recommendation.sourceRunId
+                        && candidate.conversation.id === recommendation.sourceConversationId
+                      ));
+                      const sourceConversation = liveCandidate?.conversation
+                        ?? runs.find((run) => run.id === recommendation.sourceRunId)?.conversations.find((conversation) => conversation.id === recommendation.sourceConversationId)
+                        ?? { ...recommendation.conversation, status: 'draft' as const };
+                      return renderConversationCard(
+                        sourceConversation,
+                        'recommendation',
+                        recommendation,
+                        undefined,
+                        isHistoricalAiCurationReview
+                      );
+                    })}
+                  </div>
+                </>
               ) : (
                 <div className="blankState"><Target size={42} /><h3>No conversations recommended</h3><p>The curator did not find a strong next addition.</p></div>
               )}
@@ -4545,9 +4611,12 @@ function StudioApp() {
 
         {showLibraryContent ? (
           currentLibrarySet && currentLibrarySet.conversations.length > 0 ? (
-            <div className="conversationGrid">
-              {currentLibrarySet.conversations.map((conversation) => renderConversationCard(conversation, 'library'))}
-            </div>
+            <>
+              <SourceRunDistribution rows={librarySourceRunDistribution} />
+              <div className="conversationGrid">
+                {currentLibrarySet.conversations.map((conversation) => renderConversationCard(conversation, 'library'))}
+              </div>
+            </>
           ) : (
             <div className="blankState">
               <BookOpen size={42} />
