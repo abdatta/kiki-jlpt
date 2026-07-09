@@ -140,8 +140,22 @@ function EvidenceWordList({ label, words }: { label: string; words: string[] }) 
   );
 }
 
+function EvidenceDetailList({ label, items }: { label: string; items: string[] }) {
+  if (!items.length) return null;
+  return (
+    <div>
+      <span>{label}</span>
+      <div className="vocabChips">
+        {items.map((item) => <span key={item}>{item}</span>)}
+      </div>
+    </div>
+  );
+}
+
 export function CurationEvidencePanel({ evidence }: { evidence?: ConversationCurationEvidence }) {
   if (!evidence) return null;
+  const exemptions = evidence.vocabularyExemptions ?? [];
+  const rejected = evidence.rejectedVocabularyDeclarations ?? [];
   return (
     <details className="curationEvidence">
       <summary>
@@ -152,7 +166,15 @@ export function CurationEvidencePanel({ evidence }: { evidence?: ConversationCur
       <div className="curationEvidenceDetails">
         <EvidenceWordList label={`Set ${evidence.setNumber} unique (${evidence.currentSetUniqueCount}/${evidence.currentSetTotal})`} words={evidence.currentSetUniqueWords} />
         <EvidenceWordList label={`Allowed unique (${evidence.allowedVocabUniqueCount}/${evidence.allowedVocabTotal})`} words={evidence.allowedVocabUniqueWords} />
-        <EvidenceWordList label={`Out of vocabulary (${evidence.outOfVocabularyUniqueCount} unique, ${evidence.outOfVocabularyOccurrenceCount} uses)`} words={evidence.outOfVocabularyUniqueWords} />
+        <EvidenceWordList label={`True out of vocabulary (${evidence.outOfVocabularyUniqueCount} unique, ${evidence.outOfVocabularyOccurrenceCount} uses)`} words={evidence.outOfVocabularyUniqueWords} />
+        <EvidenceDetailList
+          label={`Accepted exemptions (${exemptions.length})`}
+          items={exemptions.map((item) => `${item.surface} · ${item.kind}${item.category ? ` · ${item.category}` : ''}`)}
+        />
+        <EvidenceDetailList
+          label={`Rejected declarations (${rejected.length})`}
+          items={rejected.map((item) => `${item.surface} · ${item.category} · ${item.reason}`)}
+        />
       </div>
     </details>
   );

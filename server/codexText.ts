@@ -38,6 +38,19 @@ type CodexContent = Array<string | { type?: string; text?: string }>;
 
 export const CODEX_TEXT_INSTRUCTIONS = 'Generate the requested JLPT listening-practice conversations. Return only valid JSON, with no Markdown fences or explanatory text.';
 
+export class CodexStreamReadError extends Error {
+  partialOutput: string;
+  stats: unknown;
+
+  constructor(message: string, details: { partialOutput: string; stats: unknown; cause?: unknown }) {
+    super(message);
+    this.name = 'CodexStreamReadError';
+    this.partialOutput = details.partialOutput;
+    this.stats = details.stats;
+    if (details.cause) this.cause = details.cause;
+  }
+}
+
 function stripJsonFences(text: string): string {
   const trimmed = text.trim();
   const withoutFence = trimmed.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
@@ -47,6 +60,76 @@ function stripJsonFences(text: string): string {
     return withoutFence.slice(firstObject, lastObject + 1);
   }
   return withoutFence;
+}
+
+function errorDetails(error: unknown): Record<string, unknown> {
+  if (!(error instanceof Error)) return { errorMessage: String(error) };
+  const cause = error.cause instanceof Error
+    ? { causeName: error.cause.name, causeMessage: error.cause.message }
+    : error.cause
+      ? { cause: String(error.cause) }
+      : {};
+  return {
+    errorName: error.name,
+    errorMessage: error.message,
+    ...cause
+  };
+}
+
+function countStreamEvents(streamText: string): number {
+  return streamText.split('\n').filter((line) => {
+    if (!line.startsWith('data: ')) return false;
+    const data = line.slice(6).trim();
+    return Boolean(data && data !== '[DONE]');
+  }).length;
+}
+
+function partialCodexStreamAudit(streamText: string, error: unknown): { partialOutput: string; stats: unknown } {
+  let parsed: { content: string; stats?: unknown } | undefined;
+  let parseError: unknown;
+  try {
+    parsed = parseCodexStream(streamText);
+  } catch (caught) {
+    parseError = caught;
+  }
+
+  return {
+    partialOutput: parsed?.content.trim() ? parsed.content : streamText,
+    stats: compactObject({
+      ...(parsed?.stats && typeof parsed.stats === 'object' && !Array.isArray(parsed.stats) ? parsed.stats as Record<string, unknown> : {}),
+      transport: 'codex-stream',
+      streamTerminated: true,
+      partialResponseBytes: new TextEncoder().encode(streamText).length,
+      partialStreamEventCount: countStreamEvents(streamText),
+      partialContentLength: parsed?.content.length ?? 0,
+      parseError: parseError instanceof Error ? parseError.message : parseError ? String(parseError) : undefined,
+      ...errorDetails(error)
+    })
+  };
+}
+
+async function readCodexResponseText(response: Response): Promise<string> {
+  if (!response.body) return response.text();
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let streamText = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      streamText += decoder.decode(value, { stream: true });
+    }
+    streamText += decoder.decode();
+    return streamText;
+  } catch (error) {
+    const audit = partialCodexStreamAudit(streamText, error);
+    throw new CodexStreamReadError('Codex stream terminated while reading the generation response.', {
+      partialOutput: audit.partialOutput,
+      stats: audit.stats,
+      cause: error
+    });
+  }
 }
 
 export async function generateCodexStructuredJson(
@@ -75,7 +158,7 @@ export async function generateCodexStructuredJson(
     })
   });
 
-  const streamText = await response.text();
+  const streamText = await readCodexResponseText(response);
   if (!response.ok) {
     throw new Error(`Codex generation failed with ${response.status}: ${streamText}`);
   }

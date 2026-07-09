@@ -5,7 +5,7 @@ import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import test, { after, before } from 'node:test';
-import type { LlmExchange, PracticeConversation, PracticeRun, StudioJob, WorkflowJob } from '../shared/types.ts';
+import type { LlmExchange, PracticeConversation, PracticeRun, StudioJob, WorkflowJob, WorkflowRepairResponse } from '../shared/types.ts';
 import { configureAudioSchedulerForTests, waitForAudioSchedulerIdle, waitForStudioJob } from './audioScheduler.ts';
 import { withGenerationSlot } from './generationGate.ts';
 import { configureRunStorageForTests, mutateRun, readRun, saveRun } from './storage.ts';
@@ -20,7 +20,7 @@ process.env.GEMINI_API_KEY = 'invalid-test-key';
 const storageRoot = await mkdtemp(path.join(os.tmpdir(), 'jlpt-studio-api-'));
 configureStudioJobStorageForTests(path.join(storageRoot, 'jobs'));
 configureRunStorageForTests(path.join(storageRoot, 'runs'));
-const { app } = await import('./index.ts');
+const { app, configureConversationJsonGeneratorForTests } = await import('./index.ts');
 
 let server: Server;
 let baseUrl = '';
@@ -89,6 +89,29 @@ function run(id: string, count: number): PracticeRun {
     createdAt: timestamp,
     updatedAt: timestamp,
     conversations: Array.from({ length: count }, (_, index) => conversation(index + 1))
+  };
+}
+
+function generatedPayload(japaneseLines: string[], declarations: unknown[][] = []): { conversations: unknown[] } {
+  return {
+    conversations: japaneseLines.map((japanese, index) => ({
+      title: `Generated ${index + 1}`,
+      scene: 'Test scene.',
+      sampleContext: 'Test context.',
+      text: [{ speaker: 'Speaker 1', tags: ['slow'], japanese }],
+      listeningQuestions: ['What is discussed?'],
+      answerKey: ['A test topic.'],
+      declaredNonVocabularyTerms: declarations[index] ?? [],
+      englishTranslation: [{ speaker: 'Speaker 1', english: 'Test line.' }]
+    }))
+  };
+}
+
+function generatorResult(payload: unknown, label = 'mock'): { parsed: unknown; output: string; stats: { label: string } } {
+  return {
+    parsed: payload,
+    output: JSON.stringify(payload),
+    stats: { label }
   };
 }
 
@@ -198,6 +221,169 @@ test('generation job commands pause before start, discard, and block revival', a
   assert.equal((await readStudioJob(job.id)).status, 'cancelled');
 });
 
+test('direct generation succeeds without repair when Set 3 output has no true OOV', async () => {
+  let calls = 0;
+  configureConversationJsonGeneratorForTests(async () => {
+    calls += 1;
+    return generatorResult(generatedPayload([
+    '学校です。',
+    '英語です。',
+    '銀行です。',
+    'ペンです。'
+  ], []), 'clean');
+  });
+  try {
+    const response = await api<{ run: PracticeRun }>('/api/generate', {
+      method: 'POST',
+      body: JSON.stringify({ setNumber: 3, conversationCount: 4, textModelId: 'gemini' })
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
+    assert.equal(response.body.run.llmExchanges?.length, 1);
+  } finally {
+    configureConversationJsonGeneratorForTests();
+  }
+});
+
+test('direct generation repairs true Set 3 OOV before saving', async () => {
+  let calls = 0;
+  configureConversationJsonGeneratorForTests(async () => {
+    calls += 1;
+    return calls === 1
+      ? generatorResult(generatedPayload(['学校は難しいです。', '英語です。', '銀行です。', 'ペンです。']), 'initial')
+      : generatorResult(generatedPayload(['学校です。', '英語です。', '銀行です。', 'ペンです。']), 'repair');
+  });
+  try {
+    const response = await api<{ run: PracticeRun }>('/api/generate', {
+      method: 'POST',
+      body: JSON.stringify({ setNumber: 3, conversationCount: 4, textModelId: 'gemini' })
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(calls, 2);
+    assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
+    assert.equal(response.body.run.llmExchanges?.length, 2);
+    assert.match(response.body.run.llmExchanges?.[1].prompt ?? '', /Audit issues to fix/);
+  } finally {
+    configureConversationJsonGeneratorForTests();
+  }
+});
+
+test('direct generation repairs true Set 2 OOV before saving', async () => {
+  let calls = 0;
+  configureConversationJsonGeneratorForTests(async () => {
+    calls += 1;
+    return calls === 1
+      ? generatorResult(generatedPayload(['\u5b66\u6821\u3067\u3059\u3002', '\u306f\u3044\u3002', '\u3044\u3044\u3048\u3002', '\u3053\u308c\u3002']), 'set2-initial')
+      : generatorResult(generatedPayload(['\u306f\u3044\u3002', '\u3044\u3044\u3048\u3002', '\u3053\u308c\u3002', '\u305d\u308c\u3002']), 'set2-repair');
+  });
+  try {
+    const response = await api<{ run: PracticeRun }>('/api/generate', {
+      method: 'POST',
+      body: JSON.stringify({ setNumber: 2, conversationCount: 4, textModelId: 'gemini' })
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(calls, 2);
+    assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
+    assert.equal(response.body.run.llmExchanges?.length, 2);
+    assert.match(response.body.run.llmExchanges?.[1].prompt ?? '', /Audit issues to fix/);
+  } finally {
+    configureConversationJsonGeneratorForTests();
+  }
+});
+
+test('direct generation accepts declared cultural references without repair', async () => {
+  let calls = 0;
+  configureConversationJsonGeneratorForTests(async () => {
+    calls += 1;
+    return generatorResult(generatedPayload([
+      '学校で寿司です。',
+      '英語です。',
+      '銀行です。',
+      'ペンです。'
+    ], [[{
+      surface: '寿司',
+      kind: 'cultural_reference',
+      category: 'food',
+      rationale: 'A common Japanese food.'
+    }]]), 'culture');
+  });
+  try {
+    const response = await api<{ run: PracticeRun }>('/api/generate', {
+      method: 'POST',
+      body: JSON.stringify({ setNumber: 3, conversationCount: 4, textModelId: 'gemini' })
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(calls, 1);
+    assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
+  } finally {
+    configureConversationJsonGeneratorForTests();
+  }
+});
+
+test('direct generation repairs rejected cultural-reference declarations', async () => {
+  let calls = 0;
+  configureConversationJsonGeneratorForTests(async () => {
+    calls += 1;
+    return calls === 1
+      ? generatorResult(generatedPayload([
+        '学校は難しいです。',
+        '英語です。',
+        '銀行です。',
+        'ペンです。'
+      ], [[{
+        surface: '難しい',
+        kind: 'cultural_reference',
+        category: 'cultural_item',
+        rationale: 'Incorrect ordinary adjective.'
+      }]]), 'bad-declaration')
+      : generatorResult(generatedPayload(['学校です。', '英語です。', '銀行です。', 'ペンです。']), 'repair');
+  });
+  try {
+    const response = await api<{ run: PracticeRun }>('/api/generate', {
+      method: 'POST',
+      body: JSON.stringify({ setNumber: 3, conversationCount: 4, textModelId: 'gemini' })
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(calls, 2);
+    assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
+  } finally {
+    configureConversationJsonGeneratorForTests();
+  }
+});
+
+test('direct generation proceeds with best available batch when repair does not improve OOV', async () => {
+  let calls = 0;
+  configureConversationJsonGeneratorForTests(async () => {
+    calls += 1;
+    return generatorResult(generatedPayload([
+    '学校は難しいです。',
+    '英語です。',
+    '銀行です。',
+    'ペンです。'
+    ]), calls === 1 ? 'initial-oov' : 'still-oov');
+  });
+  try {
+    const response = await api<{ run: PracticeRun }>('/api/generate', {
+      method: 'POST',
+      body: JSON.stringify({ setNumber: 3, conversationCount: 4, textModelId: 'gemini' })
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(calls, 2);
+    assert.ok(response.body.run.analytics.outOfAllowedCount > 0);
+    assert.equal(response.body.run.llmExchanges?.length, 2);
+    assert.match(response.body.run.llmExchanges?.[1].prompt ?? '', /Audit issues to fix/);
+    assert.equal((response.body.run.llmExchanges?.[1].stats as { repairOutcome?: string } | undefined)?.repairOutcome, 'not_improved');
+  } finally {
+    configureConversationJsonGeneratorForTests();
+  }
+});
+
 test('workflow start persists an immediately visible shell and lost-response retries attach to it', async () => {
   // Hold the generation slot so the queued runner can never reach a provider.
   let releaseSlot!: () => void;
@@ -235,6 +421,182 @@ test('workflow start persists an immediately visible shell and lost-response ret
   } finally {
     releaseSlot();
     await slotDone;
+  }
+});
+
+test('workflow generation quality warning preserves initial and repair LLM exchanges', async () => {
+  configureConversationJsonGeneratorForTests(async () => generatorResult(generatedPayload([
+    '学校は難しいです。',
+    '英語です。',
+    '銀行です。',
+    'ペンです。'
+  ]), 'workflow-still-oov'));
+  try {
+    const started = await api<{ job: StudioJob }>('/api/workflow/start', {
+      method: 'POST',
+      body: JSON.stringify({
+        setNumber: 3,
+        conversationCount: 6,
+        audioCount: 0,
+        audioMode: 'fixed',
+        textModelId: 'gemini',
+        idempotencyKey: 'api-workflow-auditable-quality-warning'
+      })
+    });
+    assert.equal(started.status, 202);
+
+    const completed = await waitForStudioJob(started.body.job.id);
+    assert.equal(completed.status, 'succeeded');
+    const generator = completed.workflow?.nodes.find((node) => node.id === 'generator');
+    const output = generator?.output as { exchanges?: LlmExchange[]; vocabularyQuality?: { issues?: unknown[] } } | undefined;
+    assert.equal(generator?.status, 'done');
+    assert.equal(output?.exchanges?.length, 2);
+    assert.match(output?.exchanges?.[1].prompt ?? '', /Audit issues to fix/);
+    assert.ok(output?.vocabularyQuality?.issues?.length);
+    const run = await readRun(completed.runId!);
+    assert.ok(run.analytics.outOfAllowedCount > 0);
+    assert.ok((run.llmExchanges?.length ?? 0) >= 4);
+  } finally {
+    configureConversationJsonGeneratorForTests();
+  }
+});
+
+test('workflow repair rerun updates saved audit and applies improved conversations', async () => {
+  const timestamp = new Date().toISOString();
+  const oovConversations = [1, 2, 3, 4].map((number) => ({
+    ...conversation(number),
+    text: [{ speaker: 'Speaker 1' as const, tags: ['slow'], japanese: '\u5b66\u6821\u306f\u96e3\u3057\u3044\u3067\u3059\u3002' }]
+  }));
+  const initialExchange: LlmExchange = {
+    id: 'repair-rerun-initial',
+    provider: 'gemini',
+    model: 'test',
+    label: 'Test',
+    prompt: 'original prompt',
+    output: JSON.stringify(generatedPayload(oovConversations.map((item) => item.text[0].japanese))),
+    requestedAt: timestamp,
+    receivedAt: timestamp,
+    status: 'complete'
+  };
+  const failedRepairExchange: LlmExchange = {
+    id: 'repair-rerun-failed',
+    provider: 'gemini',
+    model: 'test',
+    label: 'Test',
+    prompt: 'repair prompt',
+    requestedAt: timestamp,
+    receivedAt: timestamp,
+    status: 'failed',
+    error: 'provider unavailable',
+    stats: {
+      repairAttempt: 1,
+      repairOutcome: 'provider_failed',
+      selectedForFinal: false
+    }
+  };
+  const saved = run('run-workflow-repair-rerun', 4);
+  saved.setNumber = 3;
+  saved.conversations = oovConversations;
+  saved.workflowAudit = {
+    jobId: 'workflow-repair-rerun',
+    status: 'complete',
+    primaryConversationCount: 4,
+    balanceConversationCount: 0,
+    requestedTotalConversationCount: 4,
+    audioRequestedCount: 0,
+    audioGeneratedCount: 0,
+    audioErrors: [],
+    nodes: [{
+      id: 'generator',
+      kind: 'generator',
+      title: 'Generating Initial Set',
+      status: 'done',
+      startedAt: timestamp,
+      completedAt: timestamp,
+      input: {
+        prompt: initialExchange.prompt,
+        model: saved.textModel
+      },
+      output: {
+        exchange: initialExchange,
+        exchanges: [initialExchange, failedRepairExchange],
+        conversations: oovConversations
+      }
+    }],
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+  saved.llmExchanges = [initialExchange, failedRepairExchange];
+  await saveRun(saved);
+
+  let calls = 0;
+  configureConversationJsonGeneratorForTests(async () => {
+    calls += 1;
+    return generatorResult(generatedPayload([
+      '\u5b66\u6821\u3067\u3059\u3002',
+      '\u82f1\u8a9e\u3067\u3059\u3002',
+      '\u9280\u884c\u3067\u3059\u3002',
+      '\u30da\u30f3\u3067\u3059\u3002'
+    ]), 'rerun-repair');
+  });
+  try {
+    const response = await api<WorkflowRepairResponse>('/api/runs/run-workflow-repair-rerun/workflow-nodes/generator/repair', { method: 'POST' });
+    assert.equal(response.status, 200);
+    assert.equal(calls, 1);
+    assert.equal(response.body.repairApplied, true);
+    assert.equal(response.body.repairOutcome, 'improved');
+    assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
+    const generator = response.body.run.workflowAudit?.nodes.find((node) => node.id === 'generator');
+    const output = generator?.output as { exchanges?: LlmExchange[]; conversations?: PracticeConversation[] } | undefined;
+    assert.equal(output?.exchanges?.length, 2);
+    assert.equal((output?.exchanges?.[1].stats as { repairOutcome?: string; selectedForFinal?: boolean } | undefined)?.repairOutcome, 'improved');
+    assert.equal((output?.exchanges?.[1].stats as { repairOutcome?: string; selectedForFinal?: boolean } | undefined)?.selectedForFinal, true);
+    assert.equal(output?.conversations?.[0].id, 'convo-01');
+    assert.equal(output?.conversations?.[0].text[0].japanese, '\u5b66\u6821\u3067\u3059\u3002');
+    assert.equal(response.body.run.llmExchanges?.length, 2);
+  } finally {
+    configureConversationJsonGeneratorForTests();
+  }
+});
+
+test('workflow provider failure preserves partial LLM output and transport metadata', async () => {
+  configureConversationJsonGeneratorForTests(async () => {
+    const error = new Error('Codex stream terminated while reading the generation response.');
+    Object.assign(error, {
+      partialOutput: 'data: {"type":"response.output_text.delta","delta":"{\\"conversations\\":["}',
+      stats: {
+        transport: 'codex-stream',
+        streamTerminated: true,
+        partialResponseBytes: 72,
+        partialStreamEventCount: 1
+      }
+    });
+    throw error;
+  });
+  try {
+    const started = await api<{ job: StudioJob }>('/api/workflow/start', {
+      method: 'POST',
+      body: JSON.stringify({
+        setNumber: 3,
+        conversationCount: 6,
+        audioCount: 0,
+        audioMode: 'fixed',
+        textModelId: 'gemini',
+        idempotencyKey: 'api-workflow-auditable-provider-failure'
+      })
+    });
+    assert.equal(started.status, 202);
+
+    const failed = await waitForStudioJob(started.body.job.id);
+    assert.equal(failed.status, 'failed');
+    const generator = failed.workflow?.nodes.find((node) => node.id === 'generator');
+    const output = generator?.output as { exchanges?: LlmExchange[] } | undefined;
+    assert.equal(generator?.status, 'error');
+    assert.equal(output?.exchanges?.[0].status, 'failed');
+    assert.match(output?.exchanges?.[0].output ?? '', /response\.output_text\.delta/);
+    assert.equal((output?.exchanges?.[0].stats as { streamTerminated?: boolean } | undefined)?.streamTerminated, true);
+  } finally {
+    configureConversationJsonGeneratorForTests();
   }
 });
 
@@ -277,6 +639,9 @@ test('workflow resume reuses generator and balancer checkpoints and finishes aud
       createdAt: timestamp,
       updatedAt: timestamp
     };
+    const primaryExchange = exchange('primary');
+    const primaryRepairExchange = exchange('primary-repair');
+    const complementExchange = exchange('complement');
     await createStudioJob({
       id: 'workflow-resume-1',
       idempotencyKey: 'workflow-resume-1',
@@ -297,8 +662,8 @@ test('workflow resume reuses generator and balancer checkpoints and finishes aud
       request: { setNumber: 1, conversationCount: 6, audioCount: 2, audioMode: 'fixed', textModelId: 'gemini' },
       workflow,
       checkpoint: {
-        primary: { exchange: exchange('primary'), conversations: primaryConversations },
-        complement: { exchange: exchange('complement'), conversations: complementConversations }
+        primary: { exchange: primaryExchange, exchanges: [primaryExchange, primaryRepairExchange], conversations: primaryConversations },
+        complement: { exchange: complementExchange, exchanges: [complementExchange], conversations: complementConversations }
       },
       createdAt: timestamp,
       updatedAt: timestamp
@@ -325,7 +690,7 @@ test('workflow resume reuses generator and balancer checkpoints and finishes aud
     const run = await readRun('run-workflow-resume');
     assert.equal(run.conversations.length, 3);
     assert.equal(run.conversations.filter((item) => item.audioFileName).length, 2);
-    assert.equal(run.llmExchanges?.length, 2);
+    assert.equal(run.llmExchanges?.length, 3);
   } finally {
     configureAudioSchedulerForTests();
   }

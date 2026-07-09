@@ -25,6 +25,15 @@ const CONVERSATION_JSON_SHAPE = `{
       ],
       "listeningQuestions": [ "Question in English" ],
       "answerKey": [ "Answer in English" ],
+      "declaredNonVocabularyTerms": [
+        {
+          "surface": "Japanese term exactly as used",
+          "reading": "optional reading",
+          "kind": "proper_noun or cultural_reference",
+          "category": "person, place, city, region, landmark, institution, event, work_title, brand, food, or cultural_item",
+          "rationale": "Short English reason this is a proper noun or cultural reference"
+        }
+      ],
       "englishTranslation": [
         {
           "speaker": "Speaker 1",
@@ -34,6 +43,12 @@ const CONVERSATION_JSON_SHAPE = `{
     }
   ]
 }`;
+
+const CULTURAL_REFERENCE_GUIDANCE = `Cultural reference rules:
+1. You may use a small number of very common Japanese proper nouns or cultural references when they fit the scene naturally, such as common places, cities, landmarks, foods, institutions, events, works/titles, brands, or cultural items.
+2. These cultural references are for immersion only. They do not count as learned vocabulary and must not replace current-set vocabulary practice.
+3. Do not use this exception for ordinary grammar, adjectives, verbs, adverbs, classroom glue, or later-set vocabulary that is not functioning as a proper noun or cultural reference.
+4. Every proper noun or cultural reference outside the allowed vocabulary table must be listed in declaredNonVocabularyTerms for that conversation.`;
 
 export async function buildGenerationPrompt(setNumber: number, conversationCount: number, allowedVocabulary: VocabItem[]): Promise<string> {
   const template = await readFile(PROMPT_PATH, 'utf8');
@@ -102,14 +117,16 @@ ${formatBalanceWords(balance.overrepresentedWords)}
 
 ${formatLanguagePolicyForPrompt()}
 
+${CULTURAL_REFERENCE_GUIDANCE}
+
 Important rules:
 1. Prioritize zero-count and underused current-set words, but omit or redistribute a priority word if using it would make the dialogue unnatural or incoherent.
 2. Make selected priority words central and meaningful to their scenes rather than isolated mentions.
 3. Use the other priority underused words as often as natural, favoring words with the largest needed count.
 4. Keep the batch small and efficient: do not add filler conversations that do not improve useful coverage.
 5. Vary scenes and vocabulary combinations, and repeat focal words only where natural.
-6. Do not use Japanese content words outside the allowed vocabulary table.
-7. Do not introduce new words outside the vocabulary table unless necessary to keep a sentence natural.
+6. Do not use Japanese content words outside the allowed vocabulary table, even if they are common JLPT N5 words from later sets.
+7. If a natural sentence would require an unlisted Japanese content word, choose simpler wording or a different scene instead of using that word.
 8. Keep the Japanese natural but beginner-friendly and avoid advanced grammar.
 9. Speaker 1 is always female. If she is named, use only an approved female name from the language policy.
 10. Speaker 2 is always male. If he is named, use only an approved male name from the language policy.
@@ -159,6 +176,15 @@ Return only valid JSON with this exact top-level shape:
       ],
       "listeningQuestions": [ "Question in English" ],
       "answerKey": [ "Answer in English" ],
+      "declaredNonVocabularyTerms": [
+        {
+          "surface": "Japanese term exactly as used",
+          "reading": "optional reading",
+          "kind": "proper_noun or cultural_reference",
+          "category": "person, place, city, region, landmark, institution, event, work_title, brand, food, or cultural_item",
+          "rationale": "Short English reason this is a proper noun or cultural reference"
+        }
+      ],
       "englishTranslation": [
         {
           "speaker": "Speaker 1",
@@ -177,7 +203,8 @@ Final self-check before answering:
 5. Does every conversation have 6-10 spoken lines?
 6. Does every conversation have 4-6 listening questions and matching answers?
 7. Are Speaker 1 names/references female and Speaker 2 names/references male?
-8. Are the conversations natural and suitable for beginner listening practice?`;
+8. Are the conversations natural and suitable for beginner listening practice?
+9. Did you declare every out-of-table proper noun or cultural reference, and no ordinary vocabulary words?`;
 }
 
 export function buildAiLibraryBalancePrompt(
@@ -228,13 +255,15 @@ ${JSON.stringify(library)}
 
 ${formatLanguagePolicyForPrompt()}
 
+${CULTURAL_REFERENCE_GUIDANCE}
+
 Important rules:
 1. Prioritize zero-count and underused current-set words, but omit or redistribute a priority word if using it would make the dialogue unnatural or incoherent.
 2. Make selected priority words central and meaningful to their scenes rather than isolated mentions.
 3. Diversify scenes and situations away from those already in the existing library; do not retell or lightly reskin an existing conversation.
 4. Repeat focal words only where natural; do not pad a conversation by repeating a word many times to inflate coverage.
-5. Do not use Japanese content words outside the allowed vocabulary table.
-6. Do not introduce new words outside the vocabulary table unless necessary to keep a sentence natural.
+5. Do not use Japanese content words outside the allowed vocabulary table, even if they are common JLPT N5 words from later sets.
+6. If a natural sentence would require an unlisted Japanese content word, choose simpler wording or a different scene instead of using that word.
 7. Keep the Japanese natural but beginner-friendly and avoid advanced grammar.
 8. Speaker 1 is always female. If she is named, use only an approved female name from the language policy.
 9. Speaker 2 is always male. If he is named, use only an approved male name from the language policy.
@@ -272,5 +301,6 @@ Final self-check before answering:
 3. Are your scenes distinct from the existing library conversations rather than duplicates?
 4. Did every spoken line include delivery tags, and does every tag list end with slow?
 5. Does every conversation have 6-10 spoken lines and 4-6 listening questions with matching answers?
-6. Are Speaker 1 names/references female and Speaker 2 names/references male?`;
+6. Are Speaker 1 names/references female and Speaker 2 names/references male?
+7. Did you declare every out-of-table proper noun or cultural reference, and no ordinary vocabulary words?`;
 }

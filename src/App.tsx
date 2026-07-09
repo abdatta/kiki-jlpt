@@ -9,6 +9,7 @@ import {
   Disc3,
   Eye,
   Headphones,
+  Info,
   Languages,
   LoaderCircle,
   ListMusic,
@@ -22,6 +23,7 @@ import {
   Sparkles,
   Target,
   Trash2,
+  Wrench,
   X
 } from 'lucide-react';
 import type {
@@ -49,6 +51,7 @@ import type {
   TextModelInfo,
   WorkflowAuditNode,
   WorkflowJob,
+  WorkflowRepairResponse,
   WorkflowStartResponse
 } from '../shared/types.ts';
 import { BrandLogo } from './components/BrandLogo.tsx';
@@ -87,6 +90,7 @@ type BusyAction =
   | 'publish-library'
   | `delete-run:${string}`
   | `reanalyze-run:${string}`
+  | `repair-node:${string}:${string}`
   | `reanalyze-library:${number}`
   | null;
 type AudioPlaybackState = 'idle' | 'paused' | 'playing' | 'ended';
@@ -659,11 +663,11 @@ function shortModelLabel(model: TextModelInfo): string {
 }
 
 function runHistorySummary(run: PracticeRun): string {
-  return `${run.conversations.length} convos · ${run.analytics.currentSetMissingCount} Missing · ${run.analytics.allowedVocabUsedPercentage}% Used · ${run.analytics.outOfAllowedCount} New`;
+  return `${run.conversations.length} convos · ${run.analytics.currentSetMissingCount} Missing · ${run.analytics.allowedVocabUsedPercentage}% Used · ${run.analytics.outOfAllowedCount} OOV`;
 }
 
 function libraryHistorySummary(set: CuratedSet): string {
-  return `${set.conversations.length} convos · ${set.analytics.currentSetMissingCount} Missing · ${set.analytics.allowedVocabUsedPercentage}% Used · ${set.analytics.outOfAllowedCount} New`;
+  return `${set.conversations.length} convos · ${set.analytics.currentSetMissingCount} Missing · ${set.analytics.allowedVocabUsedPercentage}% Used · ${set.analytics.outOfAllowedCount} OOV`;
 }
 
 function formatAuditOutput(value?: string): string | undefined {
@@ -844,8 +848,18 @@ function workflowNodeDetail(node: WorkflowAuditNode): string {
   return 'Queued';
 }
 
+function RepairFailureIcon({ size = 18 }: { size?: number }) {
+  return (
+    <span className="repairFailureIcon" style={{ '--repair-icon-size': `${size}px` } as React.CSSProperties} aria-hidden="true">
+      <Wrench size={size} />
+      <CircleAlert className="repairFailureIconBadge" size={Math.max(10, Math.round(size * 0.62))} />
+    </span>
+  );
+}
+
 function WorkflowStatusIcon({ node, size = 18 }: { node: WorkflowAuditNode; size?: number }) {
   if (node.status === 'processing') return <RefreshCw className="spin" size={size} />;
+  if (workflowNodeHasRepairFailure(node)) return <RepairFailureIcon size={size} />;
   if (node.status === 'done') return <Check size={size} />;
   if (node.status === 'error') return <CircleAlert size={size} />;
   if (node.status === 'skipped') return <X size={size} />;
@@ -887,6 +901,91 @@ function isPracticeConversationList(value: unknown): value is PracticeConversati
 function workflowNodeConversations(node?: WorkflowAuditNode): PracticeConversation[] {
   const output = objectValue(node?.output);
   return isPracticeConversationList(output?.conversations) ? output.conversations : [];
+}
+
+function isLlmExchange(value: unknown): value is LlmExchange {
+  const record = objectValue(value);
+  return Boolean(record
+    && typeof record.id === 'string'
+    && typeof record.prompt === 'string'
+    && typeof record.requestedAt === 'string'
+    && (record.status === 'pending' || record.status === 'complete' || record.status === 'failed'));
+}
+
+function workflowNodeExchanges(node?: WorkflowAuditNode): LlmExchange[] {
+  const output = objectValue(node?.output);
+  const exchanges = Array.isArray(output?.exchanges)
+    ? output.exchanges.filter(isLlmExchange)
+    : [];
+  if (exchanges.length) return exchanges;
+  return isLlmExchange(output?.exchange) ? [output.exchange] : isLlmExchange(node?.output) ? [node.output] : [];
+}
+
+function llmExchangeStats(exchange: LlmExchange): Record<string, unknown> {
+  return exchange.stats && typeof exchange.stats === 'object' && !Array.isArray(exchange.stats)
+    ? exchange.stats as Record<string, unknown>
+    : {};
+}
+
+function isRepairExchange(exchange: LlmExchange): boolean {
+  return typeof llmExchangeStats(exchange).repairAttempt === 'number';
+}
+
+function repairOutcome(exchange: LlmExchange): string | undefined {
+  const outcome = llmExchangeStats(exchange).repairOutcome;
+  return typeof outcome === 'string' ? outcome : undefined;
+}
+
+function exchangeHasRepairFailure(exchange: LlmExchange): boolean {
+  if (!isRepairExchange(exchange)) return false;
+  const outcome = repairOutcome(exchange);
+  return exchange.status === 'failed' || outcome === 'provider_failed' || outcome === 'not_improved';
+}
+
+function workflowNodeHasRepairFailure(node?: WorkflowAuditNode): boolean {
+  const repairs = workflowNodeExchanges(node).filter(isRepairExchange);
+  const latestRepair = repairs.at(-1);
+  return latestRepair ? exchangeHasRepairFailure(latestRepair) : false;
+}
+
+function workflowNodeCanRerunRepair(node?: WorkflowAuditNode): boolean {
+  return Boolean(node
+    && (node.kind === 'generator' || node.kind === 'balancer')
+    && node.status === 'done'
+    && workflowNodeHasRepairFailure(node));
+}
+
+function exchangeAttemptTitle(exchange: LlmExchange, index: number): string {
+  const stats = llmExchangeStats(exchange);
+  return typeof stats.repairAttempt === 'number' ? 'Repair' : index === 0 ? 'Initial' : `Attempt ${index + 1}`;
+}
+
+function vocabularyQualitySummary(value: unknown): string | undefined {
+  const quality = objectValue(value);
+  const issues = Array.isArray(quality?.issues) ? quality.issues : [];
+  if (!quality || issues.length === 0) return quality?.passed === true ? '0 OOV' : undefined;
+  const words = new Set<string>();
+  let rejectedDeclarations = 0;
+  for (const issue of issues) {
+    const record = objectValue(issue);
+    const trueWords = Array.isArray(record?.trueOutOfVocabularyWords) ? record.trueOutOfVocabularyWords : [];
+    for (const word of trueWords) {
+      if (typeof word === 'string' && word.trim()) words.add(word.trim());
+    }
+    const rejected = Array.isArray(record?.rejectedDeclarations) ? record.rejectedDeclarations : [];
+    rejectedDeclarations += rejected.length;
+  }
+  const parts = [];
+  parts.push(`${words.size} OOV`);
+  if (rejectedDeclarations) parts.push(`${rejectedDeclarations} rejected`);
+  return parts.join(', ');
+}
+
+function exchangeAttemptDetail(exchange: LlmExchange): string {
+  const stats = llmExchangeStats(exchange);
+  if (typeof stats.repairOutcome === 'string') return stats.repairOutcome.replace(/_/g, ' ');
+  if (exchange.status === 'failed') return 'failed';
+  return vocabularyQualitySummary(stats.vocabularyQuality ?? stats.finalVocabularyQuality) ?? exchange.status;
 }
 
 interface WorkflowDistributionStats {
@@ -1274,6 +1373,98 @@ function WorkflowAudioResponse({ audioUrl }: { audioUrl: string }) {
   );
 }
 
+function WorkflowExchangeAttempts({
+  exchanges,
+  onRerunRepair,
+  rerunRepairDisabled
+}: {
+  exchanges: LlmExchange[];
+  onRerunRepair?: () => void;
+  rerunRepairDisabled?: boolean;
+}) {
+  if (!exchanges.length) return <EmptyAuditPane label="No LLM attempts were captured for this node." />;
+  const latestRepair = exchanges.filter(isRepairExchange).at(-1);
+  const hasRepairFailure = latestRepair ? exchangeHasRepairFailure(latestRepair) : false;
+
+  return (
+    <div className="workflowAttemptList">
+      {hasRepairFailure ? (
+        <div className="workflowRepairNotice" role="status">
+          <RepairFailureIcon size={18} />
+          <span>Repair failed or did not improve this batch.</span>
+        </div>
+      ) : null}
+      {exchanges.map((exchange, index) => {
+        const stats = llmExchangeStats(exchange);
+        const selected = stats.selectedForFinal === true;
+        const repair = isRepairExchange(exchange);
+        const repairWarning = exchangeHasRepairFailure(exchange);
+        const promptId = `${exchange.id}-prompt`;
+        const outputId = `${exchange.id}-output`;
+        const metadataId = `${exchange.id}-metadata`;
+        const output = formatAuditOutput(exchange.output);
+        const outputError = exchange.status === 'failed' ? exchange.error : undefined;
+        return (
+          <details className={`workflowAttempt ${selected ? 'selected' : ''} ${repairWarning ? 'repairWarning' : ''}`} key={`${exchange.id}-${index}`} open={selected || index === exchanges.length - 1}>
+            <summary>
+              <span>
+                <strong>
+                  {repairWarning ? <RepairFailureIcon size={14} /> : null}
+                  {exchangeAttemptTitle(exchange, index)}
+                  {repair ? (
+                    <Info
+                      className="workflowAttemptInfoIcon"
+                      size={14}
+                      aria-label="Repair block information"
+                      role="img"
+                    >
+                      <title>This repair block shows the prompt, output, and metadata for the model call that tried to fix vocabulary audit issues in this node's conversations. Rerun repair replaces this block with the latest repair attempt.</title>
+                    </Info>
+                  ) : null}
+                </strong>
+                <small>{exchangeAttemptDetail(exchange)}</small>
+              </span>
+              <span className="workflowAttemptBadges">
+                {repairWarning && onRerunRepair ? (
+                  <button className="workflowAttemptAction" disabled={rerunRepairDisabled} onClick={(event) => {
+                    event.preventDefault();
+                    onRerunRepair();
+                  }} type="button">
+                    {rerunRepairDisabled ? <RefreshCw className="spin" size={14} /> : <RotateCcw size={14} />}
+                    Rerun repair
+                  </button>
+                ) : null}
+                {selected ? <em>Final</em> : null}
+                <em>{exchange.status}</em>
+              </span>
+            </summary>
+            <div className="workflowAttemptBody">
+              <div className="workflowAttemptMeta">
+                <span>{exchange.label}</span>
+                <span>{formatAuditTime(exchange.requestedAt)} &rarr; {formatAuditTime(exchange.receivedAt)}</span>
+              </div>
+              <details className="workflowAttemptReveal">
+                <summary id={promptId}>Prompt</summary>
+                <pre aria-labelledby={promptId}>{exchange.prompt}</pre>
+              </details>
+              <details className="workflowAttemptReveal">
+                <summary id={outputId}>Output</summary>
+                <pre aria-labelledby={outputId}>{output ?? outputError ?? 'No output returned.'}</pre>
+              </details>
+              {exchange.stats ? (
+                <details className="workflowAttemptReveal">
+                  <summary id={metadataId}>Metadata</summary>
+                  <pre aria-labelledby={metadataId}>{formatAuditValue(exchange.stats)}</pre>
+                </details>
+              ) : null}
+            </div>
+          </details>
+        );
+      })}
+    </div>
+  );
+}
+
 function PendingAuditOutput({ label }: { label: string }) {
   return (
     <div className="workflowPendingOutput" role="status">
@@ -1298,7 +1489,7 @@ function WorkflowTabs<T extends string>({
 }: {
   active: T;
   onChange: (tab: T) => void;
-  tabs: Array<{ id: T; label: string }>;
+  tabs: Array<{ id: T; label: string; warning?: boolean }>;
 }) {
   return (
     <div className="workflowTabs" role="tablist">
@@ -1311,6 +1502,7 @@ function WorkflowTabs<T extends string>({
           role="tab"
           type="button"
         >
+          {tab.warning ? <RepairFailureIcon size={13} /> : null}
           {tab.label}
         </button>
       ))}
@@ -1336,8 +1528,9 @@ function WorkflowNodeButton({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const repairWarning = workflowNodeHasRepairFailure(node);
   return (
-    <button className={`workflowNode ${node.status} ${selected ? 'selected' : ''}`} onClick={onSelect} type="button">
+    <button className={`workflowNode ${node.status} ${repairWarning ? 'repairWarning' : ''} ${selected ? 'selected' : ''}`} onClick={onSelect} type="button">
       <span className="workflowNodeIcon">
         <WorkflowStatusIcon node={node} />
       </span>
@@ -1391,33 +1584,52 @@ function WorkflowAuditFlow({
   selectedNodeId,
   onSelectNode,
   onRegenerateAudio,
-  regenerateAudioDisabled
+  regenerateAudioDisabled,
+  onRerunRepair,
+  rerunRepairDisabled,
+  onDiscard
 }: {
   job: WorkflowJob;
   selectedNodeId?: string;
   onSelectNode: (nodeId: string) => void;
   onRegenerateAudio?: () => void;
   regenerateAudioDisabled?: boolean;
+  onRerunRepair?: (nodeId: string) => void;
+  rerunRepairDisabled?: boolean;
+  onDiscard?: () => void;
 }) {
   const [inputTab, setInputTab] = useState<'prompt' | 'settings'>('prompt');
-  const [outputTab, setOutputTab] = useState<'response' | 'metadata'>('response');
+  const [outputTab, setOutputTab] = useState<'response' | 'attempts' | 'metadata'>('response');
+  const outputDetailsRef = useRef<HTMLElement | null>(null);
   const generator = job.nodes.find((node) => node.id === 'generator');
   const balancer = job.nodes.find((node) => node.id === 'balancer');
   const audioNodes = job.nodes.filter((node) => node.kind === 'audio');
   const selectedNode = selectedNodeId ? job.nodes.find((node) => node.id === selectedNodeId) : undefined;
   const selectedInput = splitPromptFromAuditValue(selectedNode?.input);
   const selectedOutput = splitResponseFromAuditValue(selectedNode?.output);
+  const selectedExchanges = workflowNodeExchanges(selectedNode);
+  const selectedHasRepairFailure = workflowNodeHasRepairFailure(selectedNode);
+  const selectedCanRerunRepair = workflowNodeCanRerunRepair(selectedNode) && Boolean(onRerunRepair);
   const selectedAudioUrl = selectedNode?.kind === 'audio' ? workflowAudioUrl(selectedNode) : undefined;
   const selectedOutputMetadata = selectedNode?.kind === 'audio'
     ? omitStringPropertiesDeep(selectedNode.output, ['audioUrl'])
-    : selectedOutput.value;
+    : selectedNode?.error && selectedOutput.value !== undefined
+      ? { error: selectedNode.error, output: selectedOutput.value }
+      : selectedOutput.value;
   const selectedPrompt = selectedInput.prompt;
   const isOutputPending = selectedNode?.status === 'pending' || selectedNode?.status === 'processing';
 
   useEffect(() => {
     setInputTab('prompt');
-    setOutputTab('response');
-  }, [selectedNodeId]);
+    setOutputTab(selectedHasRepairFailure && selectedExchanges.length ? 'attempts' : 'response');
+  }, [selectedHasRepairFailure, selectedExchanges.length, selectedNodeId]);
+
+  function openRepairDetails() {
+    setOutputTab('attempts');
+    window.requestAnimationFrame(() => {
+      outputDetailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 
   return (
     <section className={`workflowPanel ${job.status}`} aria-label="End-to-end workflow audit">
@@ -1427,10 +1639,18 @@ function WorkflowAuditFlow({
           <h3>Initial set to balance to audio</h3>
           <p>{pluralize(job.primaryConversationCount, 'primary conversation')} + {pluralize(job.balanceConversationCount, 'balanced conversation')} - {workflowAudioSummary(job.audioRequestedCount)}</p>
         </div>
-        <span className={`workflowJobStatus ${job.status}`}>
-          {job.status === 'running' ? <LoaderCircle className="spin" size={15} /> : job.status === 'failed' ? <CircleAlert size={15} /> : <Sparkles size={15} />}
-          {job.status}
-        </span>
+        <div className="workflowHeaderActions">
+          {onDiscard ? (
+            <button className="auditToggle danger" onClick={onDiscard} type="button">
+              <Trash2 size={15} />
+              Discard
+            </button>
+          ) : null}
+          <span className={`workflowJobStatus ${job.status}`}>
+            {job.status === 'running' ? <LoaderCircle className="spin" size={15} /> : job.status === 'failed' ? <CircleAlert size={15} /> : <Sparkles size={15} />}
+            {job.status}
+          </span>
+        </div>
       </div>
 
       <div className="workflowGraph">
@@ -1454,6 +1674,20 @@ function WorkflowAuditFlow({
             <span>{workflowNodeTitle(selectedNode)}</span>
             <small>{workflowStatusText(selectedNode.status)}</small>
           </div>
+          {selectedHasRepairFailure ? (
+            <div className="workflowRepairInspectorNotice" role="status">
+              <RepairFailureIcon size={20} />
+              <div>
+                <strong>Repair failed</strong>
+                <span>The latest repair attempt failed or did not improve this batch. Check the Repair tab below for the model exchange, outcome, and rerun option.</span>
+              </div>
+              {selectedExchanges.length ? (
+                <button onClick={openRepairDetails} type="button">
+                  Open Repair
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <div className="auditGrid">
             <div className="auditMeta">
               <span>Started</span>
@@ -1500,7 +1734,7 @@ function WorkflowAuditFlow({
               )}
             </div>
           </section>
-          <section className="workflowTabbedBlock" aria-label="Output details">
+          <section className="workflowTabbedBlock" aria-label="Output details" ref={outputDetailsRef}>
             <div className="workflowTabbedHeader">
               <span>Output</span>
               <WorkflowTabs
@@ -1508,25 +1742,30 @@ function WorkflowAuditFlow({
                 onChange={setOutputTab}
                 tabs={[
                   { id: 'response', label: 'Response' },
+                  ...(selectedExchanges.length ? [{ id: 'attempts' as const, label: selectedHasRepairFailure ? 'Repair' : 'Attempts', warning: selectedHasRepairFailure }] : []),
                   { id: 'metadata', label: 'Metadata' }
                 ]}
               />
             </div>
             <div className="workflowTabPane">
               {outputTab === 'response' ? (
-                selectedNode.error ? (
-                  <pre>{selectedNode.error}</pre>
-                ) : selectedAudioUrl ? (
+                selectedAudioUrl ? (
                   <WorkflowAudioResponse audioUrl={selectedAudioUrl} />
                 ) : selectedOutput.response ? (
                   <pre className="workflowPromptText">{selectedOutput.response}</pre>
+                ) : selectedNode.error ? (
+                  <pre>{selectedNode.error}</pre>
                 ) : isOutputPending ? (
                   <PendingAuditOutput label="Waiting for model output" />
                 ) : (
                   <EmptyAuditPane label="No response text was returned for this node." />
                 )
-              ) : selectedNode.error ? (
-                <pre>{formatAuditValue({ error: selectedNode.error })}</pre>
+              ) : outputTab === 'attempts' ? (
+                <WorkflowExchangeAttempts
+                  exchanges={selectedExchanges}
+                  onRerunRepair={selectedNode && selectedCanRerunRepair ? () => onRerunRepair?.(selectedNode.id) : undefined}
+                  rerunRepairDisabled={rerunRepairDisabled}
+                />
               ) : selectedOutputMetadata === undefined && isOutputPending ? (
                 <PendingAuditOutput label="Waiting for output metadata" />
               ) : selectedOutputMetadata === undefined ? (
@@ -1928,9 +2167,9 @@ function AnalyticsPanel({ analytics, setNumber, label }: { analytics: PracticeRu
       </div>
 
       <div className="analyticsCard">
-        <span>New Words Introduced</span>
+        <span>Out-of-Allowed Vocabulary</span>
         <strong>{analytics.outOfAllowedCount}</strong>
-        <p>Words not found in allowed Sets 1-{setNumber}</p>
+        <p>True content words not found in allowed Sets 1-{setNumber}</p>
         <div className="miniChips warning">
           {analytics.outOfAllowedWords.length === 0 ? <span>None</span> : null}
           {analytics.outOfAllowedWords.map((word) => (
@@ -2092,6 +2331,10 @@ function StudioApp() {
       const payload = await api<{ job: StudioJob }>(`/api/studio/jobs/${encodeURIComponent(jobId)}/${command}`, { method: 'POST' });
       setStudioJobs((current) => [payload.job, ...current.filter((job) => job.id !== payload.job.id)]);
       applyJobToRunShells(payload.job);
+      if (command === 'cancel') {
+        if (focusedShellJobId === jobId) setFocusedShellJobId(null);
+        if (workflowJob?.id === jobId) setWorkflowJob(null);
+      }
       await refreshStudioSnapshot();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : String(caught);
@@ -2128,6 +2371,11 @@ function StudioApp() {
     }
     setFocusedShellJobId(shell.jobId);
     navigateToStudioRoute(studioRunsRoute());
+  }
+
+  function discardGenerationShell(jobId: string) {
+    if (!window.confirm('Discard this failed or paused generation? This removes the saved job shell and cannot be resumed afterward.')) return;
+    void commandStudioJob(jobId, 'cancel');
   }
 
   async function waitForStudioJobClient(jobId: string): Promise<StudioJob> {
@@ -3175,6 +3423,34 @@ function StudioApp() {
     }
   }
 
+  async function rerunWorkflowRepair(nodeId: string, runId = visibleWorkflowJob?.run?.id ?? currentRun?.id) {
+    if (!runId) return;
+    const marker = `repair-node:${runId}:${nodeId}` as BusyAction;
+    setBusy(marker);
+    setError(null);
+    try {
+      const payload = await api<WorkflowRepairResponse>(
+        `/api/runs/${encodeURIComponent(runId)}/workflow-nodes/${encodeURIComponent(nodeId)}/repair`,
+        { method: 'POST' }
+      );
+      setCurrentRun(payload.run);
+      setCurrentRunEvidence(payload.evidenceByConversationId);
+      setRuns((existing) => [payload.run, ...existing.filter((run) => run.id !== payload.run.id)].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+      setSelectedWorkflowNodeId(nodeId);
+      setAuditOpen(true);
+      if (!payload.repairApplied) {
+        setError(payload.repairOutcome === 'provider_failed'
+          ? 'Repair rerun failed at the provider. The failed attempt was saved in audit history.'
+          : 'Repair rerun completed, but it did not improve the vocabulary audit.');
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
+      await refreshRun(runId).catch(() => undefined);
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function reanalyzeCurrentLibrarySet() {
     const marker = `reanalyze-library:${setNumber}` as BusyAction;
     setBusy(marker);
@@ -3810,16 +4086,28 @@ function StudioApp() {
               </span>
               <small>{shell.stageLabel}</small>
               {shell.resumable ? (
-                <button
-                  className="runJobResume"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    void commandStudioJob(shell.jobId, 'resume');
-                  }}
-                  type="button"
-                >
-                  <Play size={13} /> Resume
-                </button>
+                <span className="runJobActions">
+                  <button
+                    className="runJobAction"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void commandStudioJob(shell.jobId, 'resume');
+                    }}
+                    type="button"
+                  >
+                    <Play size={13} /> Resume
+                  </button>
+                  <button
+                    className="runJobAction danger"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      discardGenerationShell(shell.jobId);
+                    }}
+                    type="button"
+                  >
+                    <Trash2 size={13} /> Discard
+                  </button>
+                </span>
               ) : null}
             </div>
           ))}
@@ -4056,6 +4344,9 @@ function StudioApp() {
             onSelectNode={setSelectedWorkflowNodeId}
             onRegenerateAudio={visibleWorkflowJob.run && visibleWorkflowJob.status !== 'running' ? () => regenerateAllAudio(visibleWorkflowJob.run?.id) : undefined}
             regenerateAudioDisabled={Boolean(visibleWorkflowJob.run && busy === `audio-all:${visibleWorkflowJob.run.id}`)}
+            onRerunRepair={visibleWorkflowJob.run && visibleWorkflowJob.status !== 'running' ? (nodeId) => rerunWorkflowRepair(nodeId, visibleWorkflowJob.run?.id) : undefined}
+            rerunRepairDisabled={Boolean(visibleWorkflowJob.run && selectedWorkflowNodeId && busy === `repair-node:${visibleWorkflowJob.run.id}:${selectedWorkflowNodeId}`)}
+            onDiscard={!visibleWorkflowJob.run && visibleWorkflowJob.status === 'failed' ? () => discardGenerationShell(visibleWorkflowJob.id) : undefined}
           />
         ) : null}
 

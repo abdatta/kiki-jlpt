@@ -21,11 +21,17 @@ Important rules:
 3. Use earlier-set vocabulary as natural supporting language, not as a substitute for meaningful current-set exposure.
 4. Give focal current-set words useful context and repeat them only where the repetition sounds natural.
 5. Vary situations and vocabulary combinations across conversations so the batch is not repetitive.
-6. Do not use Japanese content words outside the allowed vocabulary table.
-7. Do not introduce new words outside the vocabulary table unless necessary to keep a sentence natural.
+6. Do not use Japanese content words outside the allowed vocabulary table, even if they are common JLPT N5 words from later sets.
+7. If a natural sentence would require an unlisted Japanese content word, choose simpler wording or a different scene instead of using that word.
 8. Keep the Japanese natural but beginner-friendly and avoid advanced grammar.
 9. Speaker 1 is always female. If she is named, use only an approved female name from the language policy.
 10. Speaker 2 is always male. If he is named, use only an approved male name from the language policy.
+
+Cultural reference rules:
+1. You may use a small number of very common Japanese proper nouns or cultural references when they fit the scene naturally, such as common places, cities, landmarks, foods, institutions, events, works/titles, brands, or cultural items.
+2. These cultural references are for immersion only. They do not count as learned vocabulary and must not replace current-set vocabulary practice.
+3. Do not use this exception for ordinary grammar, adjectives, verbs, adverbs, classroom glue, or later-set vocabulary that is not functioning as a proper noun or cultural reference.
+4. Every proper noun or cultural reference outside the allowed vocabulary table must be listed in declaredNonVocabularyTerms for that conversation.
 
 
 Delivery tag rules:
@@ -73,6 +79,15 @@ Return only valid JSON with this exact top-level shape:
       ],
       "listeningQuestions": [ "Question in English" ] /* array of 4-6 questions */,
       "answerKey": [ "Answer in English" ] /* answer for each question */,
+      "declaredNonVocabularyTerms": [
+        {
+          "surface": "Japanese term exactly as used",
+          "reading": "optional reading",
+          "kind": "proper_noun or cultural_reference",
+          "category": "person, place, city, region, landmark, institution, event, work_title, brand, food, or cultural_item",
+          "rationale": "Short English reason this is a proper noun or cultural reference"
+        }
+      ],
       "englishTranslation": [
         {
           "speaker": "Speaker 1",
@@ -92,3 +107,4 @@ Final self-check before answering:
 6. Are the conversations natural and suitable for beginner listening practice?
 7. Are current-set words meaningful to the scenes rather than inserted only for coverage?
 8. Did the batch vary situations and avoid awkward word stuffing?
+9. Did you declare every out-of-table proper noun or cultural reference, and no ordinary vocabulary words?

@@ -402,7 +402,14 @@ textarea:focus {
   gap: 6px;
 }
 
-.runJobResume {
+.runJobActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.runJobAction {
   align-items: center;
   background: transparent;
   border: 0;
@@ -411,8 +418,18 @@ textarea:focus {
   display: inline-flex;
   font: inherit;
   gap: 5px;
-  margin-top: 6px;
   padding: 0;
+}
+
+.runJobAction.danger {
+  color: var(--studio-danger);
+}
+
+.workflowHeaderActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex: 0 0 auto;
 }
 
 .backgroundJobTray,
@@ -1407,6 +1424,38 @@ textarea:focus {
   color: #2f6835;
 }
 
+.workflowNode.repairWarning {
+  background: #fff7e8;
+  border-color: #d9a441;
+  color: #8a5a06;
+}
+
+.workflowNode.repairWarning .workflowNodeIcon {
+  background: #fff1cf;
+}
+
+.repairFailureIcon {
+  width: var(--repair-icon-size, 18px);
+  height: var(--repair-icon-size, 18px);
+  display: inline-grid;
+  place-items: center;
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.repairFailureIcon > svg:first-child {
+  grid-area: 1 / 1;
+}
+
+.repairFailureIconBadge {
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  border-radius: 999px;
+  background: #fff8ec;
+  color: #a33f14;
+}
+
 .workflowNode.error {
   background: var(--studio-danger-soft);
   border-color: var(--studio-danger-border);
@@ -1474,6 +1523,45 @@ textarea:focus {
   font-weight: 650;
 }
 
+.workflowRepairInspectorNotice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #e4c98c;
+  background: #fff8ec;
+  color: #7a4e05;
+  padding: 12px 14px;
+}
+
+.workflowRepairInspectorNotice > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.workflowRepairInspectorNotice strong {
+  font-size: 14px;
+}
+
+.workflowRepairInspectorNotice span {
+  color: #7f6333;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.workflowRepairInspectorNotice button {
+  min-height: 30px;
+  border: 1px solid #d9a441;
+  border-radius: 6px;
+  background: var(--studio-surface-raised);
+  color: #7a4e05;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
 .workflowPromptText {
   white-space: pre-wrap;
 }
@@ -1514,6 +1602,10 @@ textarea:focus {
 
 .workflowTabs button {
   min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -1579,6 +1671,160 @@ textarea:focus {
 .workflowAudioResponse audio {
   width: 100%;
   max-width: 520px;
+}
+
+.workflowAttemptList {
+  display: grid;
+  gap: 8px;
+}
+
+.workflowAttempt {
+  border: 1px solid var(--studio-border-muted);
+  border-radius: 8px;
+  background: var(--studio-surface-muted);
+  overflow: hidden;
+}
+
+.workflowAttempt.selected {
+  border-color: #9cc59a;
+  background: #f3faf1;
+}
+
+.workflowAttempt.repairWarning {
+  border-color: #d9a441;
+  background: #fff8ec;
+}
+
+.workflowAttempt summary {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  padding: 0 12px;
+}
+
+.workflowAttempt summary > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.workflowAttempt summary strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--studio-text-soft);
+  font-size: 14px;
+}
+
+.workflowAttempt summary small,
+.workflowAttemptMeta {
+  color: var(--studio-text-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.workflowAttemptBadges {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.workflowAttemptInfoIcon {
+  color: var(--studio-text-muted);
+}
+
+.workflowAttemptBadges em {
+  border: 1px solid var(--studio-border-soft);
+  border-radius: 999px;
+  background: var(--studio-surface-raised);
+  color: var(--studio-text-muted);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 850;
+  text-transform: capitalize;
+}
+
+.workflowAttempt.selected .workflowAttemptBadges em:first-child {
+  border-color: #9cc59a;
+  background: #eef7ed;
+  color: #2f6835;
+}
+
+.workflowAttemptAction {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #d9a441;
+  border-radius: 6px;
+  background: var(--studio-surface-raised);
+  color: #7a4e05;
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.workflowAttemptAction:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.workflowRepairNotice {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d9a441;
+  border-radius: 8px;
+  background: #fff8ec;
+  color: #8a5a06;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.workflowAttemptBody {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--studio-divider-muted);
+  padding: 10px;
+}
+
+.workflowAttemptMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workflowAttemptReveal {
+  border: 1px solid var(--studio-border-soft);
+  border-radius: 8px;
+  background: var(--studio-surface-raised);
+  overflow: hidden;
+}
+
+.workflowAttemptReveal summary {
+  min-height: 34px;
+  padding: 0 10px;
+  color: var(--studio-text-subtle);
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.workflowAttemptReveal pre {
+  border: 0;
+  border-top: 1px solid var(--studio-divider-muted);
+  border-radius: 0;
+  max-height: 280px;
 }
 
 .workflowStatsBlock {

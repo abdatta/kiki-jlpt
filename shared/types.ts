@@ -55,6 +55,49 @@ export interface EnglishLine {
   english: string;
 }
 
+export type DeclaredNonVocabularyKind = 'proper_noun' | 'cultural_reference';
+
+export type DeclaredNonVocabularyCategory =
+  | 'person'
+  | 'place'
+  | 'city'
+  | 'region'
+  | 'landmark'
+  | 'institution'
+  | 'event'
+  | 'work_title'
+  | 'brand'
+  | 'food'
+  | 'cultural_item';
+
+export interface DeclaredNonVocabularyTerm {
+  surface: string;
+  reading?: string;
+  kind: DeclaredNonVocabularyKind;
+  category: DeclaredNonVocabularyCategory;
+  rationale?: string;
+}
+
+export type VocabularyExemptionKind =
+  | 'proper_noun'
+  | 'cultural_reference'
+  | 'approved_name'
+  | 'language_policy';
+
+export interface VocabularyAuditExemption {
+  surface: string;
+  kind: VocabularyExemptionKind;
+  category?: DeclaredNonVocabularyCategory;
+  rationale?: string;
+}
+
+export interface VocabularyAuditRejectedDeclaration {
+  surface: string;
+  kind: DeclaredNonVocabularyKind;
+  category: DeclaredNonVocabularyCategory;
+  reason: string;
+}
+
 export interface PracticeConversation {
   id: string;
   number: number;
@@ -65,6 +108,7 @@ export interface PracticeConversation {
   listeningQuestions: string[];
   answerKey: string[];
   englishTranslation: EnglishLine[];
+  declaredNonVocabularyTerms?: DeclaredNonVocabularyTerm[];
   vocabularyUsed: string[];
   outOfVocabularyAudit: string[];
   simplerReplacementSuggestions: string[];
@@ -91,6 +135,8 @@ export interface ConversationCurationEvidence {
   outOfVocabularyUniqueCount: number;
   outOfVocabularyUniqueWords: string[];
   outOfVocabularyOccurrenceCount: number;
+  vocabularyExemptions?: VocabularyAuditExemption[];
+  rejectedVocabularyDeclarations?: VocabularyAuditRejectedDeclaration[];
 }
 
 export type ConversationCurationEvidenceMap = Record<string, ConversationCurationEvidence>;
@@ -446,6 +492,14 @@ export interface WorkflowStartResponse {
 
 export interface WorkflowStatusResponse {
   job: WorkflowJob;
+}
+
+export interface WorkflowRepairResponse {
+  run: PracticeRun;
+  repairApplied: boolean;
+  repairOutcome: 'improved' | 'not_improved' | 'provider_failed';
+  exchange: LlmExchange;
+  evidenceByConversationId: ConversationCurationEvidenceMap;
 }
 
 export type StudioJobKind =

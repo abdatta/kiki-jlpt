@@ -31,6 +31,10 @@ test('standard prompt emphasizes natural current-set focus and shared language p
   assert.match(prompt, /current Set 2 is the primary learning focus/i);
   assert.match(prompt, /never force a word into an unnatural line/i);
   assert.match(prompt, /earlier-set vocabulary as natural supporting language/i);
+  assert.match(prompt, /even if they are common JLPT N5 words from later sets/i);
+  assert.match(prompt, /choose simpler wording or a different scene/i);
+  assert.match(prompt, /declaredNonVocabularyTerms/);
+  assert.match(prompt, /common Japanese proper nouns or cultural references/i);
   assert.match(prompt, /Conversation fillers:/);
   assert.match(prompt, /Speaker 1 female names: さくら/);
   assert.doesNotMatch(prompt, /\{\{languagePolicy\}\}/);
@@ -42,6 +46,9 @@ test('complement prompt preserves priorities while allowing natural omissions', 
   assert.match(prompt, /strong coverage priority/i);
   assert.match(prompt, /do not force an awkward use/i);
   assert.match(prompt, /omit or redistribute a priority word/i);
+  assert.match(prompt, /even if they are common JLPT N5 words from later sets/i);
+  assert.match(prompt, /declaredNonVocabularyTerms/);
+  assert.match(prompt, /common Japanese proper nouns or cultural references/i);
   assert.match(prompt, /Conversation fillers:/);
   assert.match(prompt, /読む/);
 });
@@ -73,6 +80,8 @@ test('AI balance prompt grounds on gaps, library content, exposure, variety, and
   // Variety / non-redundancy guidance.
   assert.match(prompt, /diversify scenes/i);
   assert.match(prompt, /do not retell or lightly reskin an existing conversation/i);
+  assert.match(prompt, /even if they are common JLPT N5 words from later sets/i);
+  assert.match(prompt, /declaredNonVocabularyTerms/);
   // Authoritative-counts instruction.
   assert.match(prompt, /never recompute or alter them/i);
   // Shared language policy is included.

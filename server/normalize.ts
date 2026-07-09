@@ -1,4 +1,11 @@
-import type { EnglishLine, PracticeConversation, ConversationLine } from '../shared/types.ts';
+import type {
+  DeclaredNonVocabularyCategory,
+  DeclaredNonVocabularyKind,
+  DeclaredNonVocabularyTerm,
+  EnglishLine,
+  PracticeConversation,
+  ConversationLine
+} from '../shared/types.ts';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -25,6 +32,57 @@ function asStringArray(value: unknown): string[] {
       .filter(Boolean);
   }
   return [];
+}
+
+const DECLARED_NON_VOCABULARY_KINDS = new Set<DeclaredNonVocabularyKind>(['proper_noun', 'cultural_reference']);
+const DECLARED_NON_VOCABULARY_CATEGORIES = new Set<DeclaredNonVocabularyCategory>([
+  'person',
+  'place',
+  'city',
+  'region',
+  'landmark',
+  'institution',
+  'event',
+  'work_title',
+  'brand',
+  'food',
+  'cultural_item'
+]);
+
+function normalizeDeclaredKind(value: unknown, fallback: DeclaredNonVocabularyKind): DeclaredNonVocabularyKind {
+  const normalized = asString(value).toLowerCase().replace(/[\s-]+/g, '_');
+  return DECLARED_NON_VOCABULARY_KINDS.has(normalized as DeclaredNonVocabularyKind)
+    ? normalized as DeclaredNonVocabularyKind
+    : fallback;
+}
+
+function normalizeDeclaredCategory(value: unknown, fallback: DeclaredNonVocabularyCategory): DeclaredNonVocabularyCategory {
+  const normalized = asString(value).toLowerCase().replace(/[\s-]+/g, '_');
+  return DECLARED_NON_VOCABULARY_CATEGORIES.has(normalized as DeclaredNonVocabularyCategory)
+    ? normalized as DeclaredNonVocabularyCategory
+    : fallback;
+}
+
+function normalizeDeclaredTerm(value: unknown, fallbackKind: DeclaredNonVocabularyKind): DeclaredNonVocabularyTerm | null {
+  const record = asRecord(value);
+  const surface = asString(record.surface ?? record.japanese ?? record.term ?? record.word ?? record.name);
+  if (!surface) return null;
+  const kind = normalizeDeclaredKind(record.kind ?? record.type, fallbackKind);
+  const defaultCategory: DeclaredNonVocabularyCategory = kind === 'proper_noun' ? 'person' : 'cultural_item';
+  return {
+    surface,
+    reading: asString(record.reading) || undefined,
+    kind,
+    category: normalizeDeclaredCategory(record.category, defaultCategory),
+    rationale: asString(record.rationale ?? record.reason ?? record.note) || undefined
+  };
+}
+
+function normalizeDeclaredTerms(value: unknown, fallbackKind: DeclaredNonVocabularyKind): DeclaredNonVocabularyTerm[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => normalizeDeclaredTerm(item, fallbackKind))
+    .filter((item): item is DeclaredNonVocabularyTerm => Boolean(item));
 }
 
 function normalizeSpeaker(value: unknown): 'Speaker 1' | 'Speaker 2' {
@@ -72,6 +130,11 @@ export function normalizeGeneratedConversations(payload: unknown, expectedCount:
     const englishTranslation = Array.isArray(conversation.englishTranslation)
       ? conversation.englishTranslation.map(normalizeEnglishLine).filter((line): line is EnglishLine => Boolean(line))
       : [];
+    const declaredNonVocabularyTerms = [
+      ...normalizeDeclaredTerms(conversation.declaredNonVocabularyTerms ?? conversation.declared_non_vocabulary_terms, 'cultural_reference'),
+      ...normalizeDeclaredTerms(conversation.properNouns ?? conversation.proper_nouns, 'proper_noun'),
+      ...normalizeDeclaredTerms(conversation.culturalReferences ?? conversation.cultural_references, 'cultural_reference')
+    ];
 
     return {
       id: `convo-${String(index + 1).padStart(2, '0')}`,
@@ -83,6 +146,7 @@ export function normalizeGeneratedConversations(payload: unknown, expectedCount:
       listeningQuestions: asStringArray(conversation.listeningQuestions ?? conversation.listening_questions),
       answerKey: asStringArray(conversation.answerKey ?? conversation.answer_key),
       englishTranslation,
+      declaredNonVocabularyTerms,
       vocabularyUsed: asStringArray(conversation.vocabularyUsed ?? conversation.vocabulary_used),
       outOfVocabularyAudit: asStringArray(conversation.outOfVocabularyAudit ?? conversation.out_of_vocabulary_audit),
       simplerReplacementSuggestions: asStringArray(conversation.simplerReplacementSuggestions ?? conversation.simpler_replacement_suggestions),

@@ -4,17 +4,17 @@ import express from 'express';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { mkdir, readFile, unlink } from 'node:fs/promises';
-import type { AiCurationRequest, GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, RunAudioGenerateRequest, StudioJob, StudioRunSummary, StudioSnapshot, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRunAudit } from '../shared/types.ts';
+import type { AiCurationRequest, GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, RunAudioGenerateRequest, StudioJob, StudioRunSummary, StudioSnapshot, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRepairResponse, WorkflowRunAudit } from '../shared/types.ts';
 import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR, STUDIO_JOBS_DIR } from './paths.ts';
 import { buildAiLibraryBalancePrompt, buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
 import { buildTtsPrompt, generateConversationAudio, generateConversationJson } from './gemini.ts';
 import { CODEX_TEXT_INSTRUCTIONS, generateCodexConversationJson } from './codexText.ts';
-import { getAllowedVocabulary, getSetSummaries } from './vocab.ts';
+import { getAllowedVocabulary, getSetSummaries, readVocabulary } from './vocab.ts';
 import { deleteRun, listRuns, makeRunId, mutateRun, readRun, reanalyzeRun, runAudioDir, saveRun, touchConversation, unlockCuratedSource, updateConversation } from './storage.ts';
 import { normalizeGeneratedConversations, parseTranscriptText } from './normalize.ts';
 import { calculateRunAnalytics } from './analytics.ts';
 import { getTextModelOptions, resolveTextModel } from './textModels.ts';
-import { auditConversationsWithVocabulary } from './vocabAudit.ts';
+import { analyzeConversationsWithVocabulary } from './vocabAudit.ts';
 import { addConversationToLibrary, listCuratedSets, readCuratedSet, reanalyzeCuratedSet, removeConversationFromLibrary } from './library.ts';
 import { recommendLibraryConversations } from './recommendations.ts';
 import { buildGeneratedRunBalancePlan, buildLibraryBalancePlan } from './libraryBalance.ts';
@@ -146,7 +146,7 @@ function validateSetNumber(value: unknown): { setNumber: number } | { error: str
 }
 
 async function getGenerateContext(body: GenerateRequest): Promise<
-  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string }
+  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string }
   | { error: string; status: number }
 > {
   const validated = validateGenerateRequest(body);
@@ -158,12 +158,13 @@ async function getGenerateContext(body: GenerateRequest): Promise<
   }
 
   const textModel = await resolveTextModel(body.textModelId);
+  const knownVocabulary = await readVocabulary();
   const prompt = await buildGenerationPrompt(validated.setNumber, validated.conversationCount, allowedVocabulary);
-  return { ...validated, allowedVocabulary, textModel, prompt };
+  return { ...validated, allowedVocabulary, knownVocabulary, textModel, prompt };
 }
 
 async function getWorkflowGenerateContext(body: WorkflowGenerateRequest): Promise<
-  | { setNumber: number; conversationCount: number; balanceConversationCount: number; audioCount: number; audioMode: WorkflowAudioMode; allowedVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string }
+  | { setNumber: number; conversationCount: number; balanceConversationCount: number; audioCount: number; audioMode: WorkflowAudioMode; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string }
   | { error: string; status: number }
 > {
   const validated = validateWorkflowGenerateRequest(body);
@@ -175,15 +176,16 @@ async function getWorkflowGenerateContext(body: WorkflowGenerateRequest): Promis
   }
 
   const textModel = await resolveTextModel(body.textModelId);
+  const knownVocabulary = await readVocabulary();
   const prompt = await buildGenerationPrompt(validated.setNumber, validated.conversationCount, allowedVocabulary);
-  return { ...validated, allowedVocabulary, textModel, prompt };
+  return { ...validated, allowedVocabulary, knownVocabulary, textModel, prompt };
 }
 
 async function getLibraryComplementContext(
   setNumberValue: unknown,
   body: LibraryComplementGenerateRequest | undefined
 ): Promise<
-  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string; balance: Awaited<ReturnType<typeof buildLibraryBalancePlan>>; balanceMode: 'stats' | 'ai'; librarySnapshotContext?: AiCurationLibraryContext }
+  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string; balance: Awaited<ReturnType<typeof buildLibraryBalancePlan>>; balanceMode: 'stats' | 'ai'; librarySnapshotContext?: AiCurationLibraryContext }
   | { error: string; status: number }
 > {
   const validated = validateSetNumber(setNumberValue);
@@ -196,6 +198,7 @@ async function getLibraryComplementContext(
 
   const balanceMode = body?.balanceMode === 'ai' ? 'ai' : 'stats';
   const textModel = await resolveTextModel(body?.textModelId);
+  const knownVocabulary = await readVocabulary();
   const planned = await buildLibraryBalancePlan(validated.setNumber);
 
   // The plan suggests a count; the operator may override it before generating.
@@ -216,6 +219,7 @@ async function getLibraryComplementContext(
       setNumber: validated.setNumber,
       conversationCount,
       allowedVocabulary,
+      knownVocabulary,
       textModel,
       prompt: buildAiLibraryBalancePrompt(validated.setNumber, allowedVocabulary, balance, librarySnapshotContext),
       balance,
@@ -228,6 +232,7 @@ async function getLibraryComplementContext(
     setNumber: validated.setNumber,
     conversationCount,
     allowedVocabulary,
+    knownVocabulary,
     textModel,
     prompt: buildLibraryComplementPrompt(validated.setNumber, allowedVocabulary, balance),
     balance,
@@ -250,6 +255,291 @@ function makeLlmExchange(
     requestedAt,
     status: 'pending'
   };
+}
+
+type ConversationJsonGenerator = (
+  prompt: string,
+  textModel: TextModelInfo
+) => Promise<{ parsed: unknown; output: string; stats?: unknown }>;
+
+let conversationJsonGenerator: ConversationJsonGenerator = async (prompt, textModel) => (
+  textModel.provider === 'codex'
+    ? generateCodexConversationJson(prompt, textModel.model)
+    : generateConversationJson(prompt)
+);
+
+export function configureConversationJsonGeneratorForTests(generator?: ConversationJsonGenerator): void {
+  conversationJsonGenerator = generator ?? (async (prompt, textModel) => (
+    textModel.provider === 'codex'
+      ? generateCodexConversationJson(prompt, textModel.model)
+      : generateConversationJson(prompt)
+  ));
+}
+
+interface VocabularyQualityIssue {
+  conversationId: string;
+  number: number;
+  title: string;
+  trueOutOfVocabularyWords: string[];
+  rejectedDeclarations: unknown[];
+  lines: Array<{ speaker: string; japanese: string }>;
+}
+
+interface VocabularyQualityResult {
+  threshold: number;
+  passed: boolean;
+  issues: VocabularyQualityIssue[];
+}
+
+class AuditableGenerationError extends Error {
+  exchanges: LlmExchange[];
+  conversations?: PracticeConversation[];
+  quality?: VocabularyQualityResult;
+
+  constructor(
+    message: string,
+    details: {
+      exchanges: LlmExchange[];
+      conversations?: PracticeConversation[];
+      quality?: VocabularyQualityResult;
+      cause?: unknown;
+    }
+  ) {
+    super(message);
+    this.name = 'AuditableGenerationError';
+    this.exchanges = details.exchanges;
+    this.conversations = details.conversations;
+    this.quality = details.quality;
+    if (details.cause) this.cause = details.cause;
+  }
+}
+
+function vocabularyQualityThreshold(setNumber: number): number {
+  return setNumber >= 2 ? 0 : Number.POSITIVE_INFINITY;
+}
+
+function objectStats(stats: unknown): Record<string, unknown> {
+  if (stats && typeof stats === 'object' && !Array.isArray(stats)) return stats as Record<string, unknown>;
+  return stats === undefined ? {} : { rawStats: stats };
+}
+
+function errorAuditDetails(error: unknown): { message: string; output?: string; stats?: Record<string, unknown> } {
+  const message = error instanceof Error ? error.message : String(error);
+  const record = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+  const partialOutput = typeof record.partialOutput === 'string' ? record.partialOutput : undefined;
+  const stats = record.stats !== undefined ? objectStats(record.stats) : {};
+  const cause = error instanceof Error && error.cause instanceof Error
+    ? { causeName: error.cause.name, causeMessage: error.cause.message }
+    : error instanceof Error && error.cause
+      ? { cause: String(error.cause) }
+      : {};
+  return {
+    message,
+    output: partialOutput,
+    stats: {
+      ...stats,
+      errorName: error instanceof Error ? error.name : undefined,
+      errorMessage: message,
+      ...cause
+    }
+  };
+}
+
+function qualityIssueScore(quality: VocabularyQualityResult): number {
+  const trueOovWords = uniqueStrings(quality.issues.flatMap((issue) => issue.trueOutOfVocabularyWords));
+  const rejectedDeclarationCount = quality.issues.reduce((total, issue) => total + issue.rejectedDeclarations.length, 0);
+  return trueOovWords.length + rejectedDeclarationCount;
+}
+
+async function evaluateVocabularyQuality(
+  setNumber: number,
+  allowedVocabulary: VocabItem[],
+  knownVocabulary: VocabItem[],
+  conversations: PracticeConversation[]
+): Promise<{ conversations: PracticeConversation[]; quality: VocabularyQualityResult }> {
+  const analysis = await analyzeConversationsWithVocabulary(setNumber, allowedVocabulary, conversations, knownVocabulary);
+  const threshold = vocabularyQualityThreshold(setNumber);
+  const issues = analysis.conversations
+    .map((conversation): VocabularyQualityIssue | null => {
+      const evidence = analysis.evidenceByConversationId[conversation.id];
+      const trueOutOfVocabularyWords = evidence?.outOfVocabularyUniqueWords ?? conversation.outOfVocabularyAudit;
+      const rejectedDeclarations = evidence?.rejectedVocabularyDeclarations ?? [];
+      if (trueOutOfVocabularyWords.length <= threshold && rejectedDeclarations.length === 0) return null;
+      return {
+        conversationId: conversation.id,
+        number: conversation.number,
+        title: conversation.title,
+        trueOutOfVocabularyWords,
+        rejectedDeclarations,
+        lines: conversation.text.map((line) => ({ speaker: line.speaker, japanese: line.japanese }))
+      };
+    })
+    .filter((issue): issue is VocabularyQualityIssue => Boolean(issue));
+
+  return {
+    conversations: analysis.conversations,
+    quality: {
+      threshold,
+      passed: issues.length === 0,
+      issues
+    }
+  };
+}
+
+function auditableGenerationFailureOutput(error: unknown): unknown | undefined {
+  if (!(error instanceof AuditableGenerationError)) return undefined;
+  return {
+    exchanges: error.exchanges,
+    conversations: error.conversations,
+    vocabularyQuality: error.quality
+  };
+}
+
+function recordValue(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function isLlmExchange(value: unknown): value is LlmExchange {
+  const record = recordValue(value);
+  return Boolean(record
+    && typeof record.id === 'string'
+    && typeof record.prompt === 'string'
+    && typeof record.requestedAt === 'string'
+    && (record.status === 'pending' || record.status === 'complete' || record.status === 'failed'));
+}
+
+function nodeOutputExchanges(node: WorkflowAuditNode): LlmExchange[] {
+  const output = recordValue(node.output);
+  const exchanges = Array.isArray(output?.exchanges)
+    ? output.exchanges.filter(isLlmExchange)
+    : [];
+  if (exchanges.length) return exchanges;
+  if (isLlmExchange(output?.exchange)) return [output.exchange];
+  if (isLlmExchange(node.output)) return [node.output];
+  return [];
+}
+
+function workflowLlmExchanges(nodes: WorkflowAuditNode[]): LlmExchange[] {
+  return nodes
+    .filter((node) => node.kind === 'generator' || node.kind === 'balancer')
+    .flatMap(nodeOutputExchanges);
+}
+
+function replaceRepairExchange(exchanges: LlmExchange[], repairExchange: LlmExchange): LlmExchange[] {
+  return [
+    ...exchanges.filter((exchange) => typeof objectStats(exchange.stats).repairAttempt !== 'number'),
+    repairExchange
+  ];
+}
+
+function preserveConversationIdentity(repaired: PracticeConversation[], originals: PracticeConversation[]): PracticeConversation[] {
+  return repaired.map((conversation, index) => ({
+    ...conversation,
+    id: originals[index]?.id ?? conversation.id,
+    number: originals[index]?.number ?? conversation.number
+  }));
+}
+
+function replaceConversationsById(run: PracticeRun, replacements: PracticeConversation[]): PracticeConversation[] {
+  const replacementById = new Map(replacements.map((conversation) => [conversation.id, conversation]));
+  return run.conversations.map((conversation) => {
+    const replacement = replacementById.get(conversation.id);
+    if (!replacement) return conversation;
+    return touchConversation({
+      ...replacement,
+      status: 'draft',
+      audioFileName: undefined,
+      audioUrl: undefined,
+      error: undefined,
+      curatedId: conversation.curatedId,
+      curatedAt: conversation.curatedAt
+    });
+  });
+}
+
+function workflowAuditWithUpdatedTextNode(
+  run: PracticeRun,
+  nodeId: string,
+  nodeOutput: Record<string, unknown>,
+  changedConversationIds = new Set<string>()
+): WorkflowRunAudit | undefined {
+  if (!run.workflowAudit) return undefined;
+  const updatedNodes = run.workflowAudit.nodes.map((node) => {
+    if (node.id === nodeId) {
+      return {
+        ...node,
+        completedAt: nowIso(),
+        output: nodeOutput
+      };
+    }
+
+    if (node.kind !== 'audio') return node;
+    const input = recordValue(node.input);
+    const conversationId = typeof input?.conversationId === 'string' ? input.conversationId : undefined;
+    return conversationId && changedConversationIds.has(conversationId)
+      ? {
+        ...node,
+        status: 'pending' as const,
+        output: undefined,
+        error: undefined,
+        completedAt: undefined
+      }
+      : node;
+  });
+  const audioGeneratedCount = updatedNodes.filter((node) => node.kind === 'audio' && node.status === 'done').length;
+  const audioErrors = updatedNodes
+    .filter((node) => node.kind === 'audio' && node.status === 'error')
+    .map((node) => ({
+      conversationId: String(recordValue(node.input)?.conversationId ?? node.id),
+      error: node.error ?? 'Audio generation failed.'
+    }));
+  return {
+    ...run.workflowAudit,
+    status: audioErrors.length || updatedNodes.some((node) => node.kind === 'audio' && node.status !== 'done') ? 'failed' : run.workflowAudit.status,
+    audioGeneratedCount,
+    audioErrors,
+    nodes: updatedNodes,
+    updatedAt: nowIso()
+  };
+}
+
+function buildRepairPrompt(
+  originalPrompt: string,
+  allowedVocabulary: VocabItem[],
+  conversations: PracticeConversation[],
+  quality: VocabularyQualityResult
+): string {
+  return `Repair the generated JLPT listening-practice conversations below.
+
+Goal:
+Remove every true out-of-vocabulary Japanese content word and fix rejected proper-noun/cultural-reference declarations.
+
+Hard rules:
+1. Use only the allowed vocabulary table for Japanese content words.
+2. If a sentence needs an unlisted Japanese content word, rewrite it with simpler allowed wording or change the scene.
+3. You may keep or choose restrained common Japanese proper nouns or cultural references only when they fit naturally and are declared in declaredNonVocabularyTerms.
+4. Do not declare ordinary grammar, adjectives, verbs, adverbs, classroom glue, or later-set vocabulary as cultural references.
+5. Return exactly the same number of conversations as supplied, with the same JSON shape.
+
+Allowed vocabulary table:
+${allowedVocabulary.map((item) => `Set ${item.set} | ${item.japanese} | ${item.meaning}`).join('\n')}
+
+Original generation prompt:
+${originalPrompt}
+
+Audit issues to fix:
+${JSON.stringify(quality.issues, null, 2)}
+
+Conversations to repair:
+${JSON.stringify({ conversations }, null, 2)}
+
+Return only valid JSON with a top-level "conversations" array.`;
+}
+
+function uniqueStrings(values: Iterable<string>): string[] {
+  return [...new Set([...values].map((value) => value.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
 }
 
 function makeWorkflowJobId(setNumber: number): string {
@@ -386,7 +676,7 @@ async function assertConversationHasNoActiveAudio(runId: string, conversationId:
 async function assertRunHasNoActiveJobs(runId: string): Promise<void> {
   const jobs = await listStudioJobs();
   if (jobs.some((job) => job.runId === runId && ['queued', 'running', 'pausing', 'paused', 'interrupted'].includes(job.status))) {
-    throw new Error('This run has unfinished background work. Resume and finish it before deleting the run.');
+    throw new Error('This run has unfinished background work. Resume and finish it before changing the run.');
   }
 }
 
@@ -522,28 +812,131 @@ async function generateTextBatch(
   textModel: TextModelInfo,
   prompt: string,
   allowedVocabulary: VocabItem[],
+  knownVocabulary: VocabItem[],
+  setNumber: number,
   expectedCount: number
-): Promise<{ conversations: PracticeConversation[]; exchange: LlmExchange }> {
+): Promise<{ conversations: PracticeConversation[]; exchange: LlmExchange; exchanges: LlmExchange[]; quality: VocabularyQualityResult }> {
   const requestedAt = new Date().toISOString();
+  const exchanges: LlmExchange[] = [];
   const exchange = makeLlmExchange(textModel, prompt, requestedAt);
-  const generation = textModel.provider === 'codex'
-    ? await generateCodexConversationJson(prompt, textModel.model)
-    : await generateConversationJson(prompt);
-  const conversations = await auditConversationsWithVocabulary(
+  let generation: Awaited<ReturnType<ConversationJsonGenerator>>;
+  try {
+    generation = await conversationJsonGenerator(prompt, textModel);
+  } catch (error) {
+    const failure = errorAuditDetails(error);
+    exchanges.push({
+      ...exchange,
+      output: failure.output,
+      stats: failure.stats,
+      receivedAt: new Date().toISOString(),
+      status: 'failed',
+      error: failure.message
+    });
+    throw new AuditableGenerationError(failure.message, { exchanges, cause: error });
+  }
+  let timestamp = new Date().toISOString();
+  exchanges.push({
+    ...exchange,
+    output: generation.output,
+    stats: generation.stats,
+    receivedAt: timestamp,
+    status: 'complete'
+  });
+  let evaluated = await evaluateVocabularyQuality(
+    setNumber,
     allowedVocabulary,
+    knownVocabulary,
     normalizeGeneratedConversations(generation.parsed, expectedCount)
   );
-  const timestamp = new Date().toISOString();
+  exchanges[0] = {
+    ...exchanges[0],
+    stats: {
+      ...objectStats(exchanges[0].stats),
+      vocabularyQuality: evaluated.quality,
+      vocabularyQualityStage: 'initial',
+      selectedForFinal: evaluated.quality.passed
+    }
+  };
 
-  return {
-    conversations,
-    exchange: {
-      ...exchange,
-      output: generation.output,
-      stats: generation.stats,
+  let selectedExchangeIndex = 0;
+  const maxRepairAttempts = evaluated.quality.passed ? 0 : 1;
+  for (let attempt = 1; !evaluated.quality.passed && attempt <= maxRepairAttempts; attempt += 1) {
+    const repairPrompt = buildRepairPrompt(prompt, allowedVocabulary, evaluated.conversations, evaluated.quality);
+    const repairRequestedAt = new Date().toISOString();
+    const repairExchange = makeLlmExchange(textModel, repairPrompt, repairRequestedAt);
+    const qualityBeforeRepair = evaluated.quality;
+    let repair: Awaited<ReturnType<ConversationJsonGenerator>>;
+    try {
+      repair = await conversationJsonGenerator(repairPrompt, textModel);
+    } catch (error) {
+      const failure = errorAuditDetails(error);
+      exchanges.push({
+        ...repairExchange,
+        output: failure.output,
+        stats: {
+          ...failure.stats,
+          repairAttempt: attempt,
+          vocabularyQualityBeforeRepair: qualityBeforeRepair,
+          repairOutcome: 'provider_failed',
+          selectedForFinal: false
+        },
+        receivedAt: new Date().toISOString(),
+        status: 'failed',
+        error: failure.message
+      });
+      break;
+    }
+    timestamp = new Date().toISOString();
+    const repaired = await evaluateVocabularyQuality(
+      setNumber,
+      allowedVocabulary,
+      knownVocabulary,
+      normalizeGeneratedConversations(repair.parsed, expectedCount)
+    );
+    const improved = repaired.conversations.length > 0 && qualityIssueScore(repaired.quality) < qualityIssueScore(qualityBeforeRepair);
+    const repairExchangeIndex = exchanges.length;
+    exchanges.push({
+      ...repairExchange,
+      output: repair.output,
+      stats: {
+        ...objectStats(repair.stats),
+        repairAttempt: attempt,
+        vocabularyQualityBeforeRepair: qualityBeforeRepair,
+        vocabularyQuality: repaired.quality,
+        repairOutcome: improved ? 'improved' : 'not_improved',
+        selectedForFinal: improved
+      },
       receivedAt: timestamp,
       status: 'complete'
+    });
+
+    if (improved) {
+      exchanges[selectedExchangeIndex] = {
+        ...exchanges[selectedExchangeIndex],
+        stats: {
+          ...objectStats(exchanges[selectedExchangeIndex].stats),
+          selectedForFinal: false
+        }
+      };
+      selectedExchangeIndex = repairExchangeIndex;
+      evaluated = repaired;
     }
+  }
+
+  exchanges[selectedExchangeIndex] = {
+    ...exchanges[selectedExchangeIndex],
+    stats: {
+      ...objectStats(exchanges[selectedExchangeIndex].stats),
+      selectedForFinal: true,
+      finalVocabularyQuality: evaluated.quality
+    }
+  };
+
+  return {
+    conversations: evaluated.conversations,
+    exchange: exchanges[selectedExchangeIndex],
+    exchanges,
+    quality: evaluated.quality
   };
 }
 
@@ -709,6 +1102,8 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
         context.textModel,
         context.prompt,
         context.allowedVocabulary,
+        context.knownVocabulary,
+        context.setNumber,
         context.conversationCount
       );
     }
@@ -720,7 +1115,9 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
       completedAt: nowIso(),
       output: {
         exchange: primary.exchange,
+        exchanges: primary.exchanges,
         conversations: primary.conversations,
+        vocabularyQuality: primary.quality,
         analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, primary.conversations),
         distributionStats: calculateWorkflowDistributionStats(context.setNumber, context.allowedVocabulary, primary.conversations)
       }
@@ -760,6 +1157,8 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
         context.textModel,
         complementPrompt,
         context.allowedVocabulary,
+        context.knownVocabulary,
+        context.setNumber,
         context.balanceConversationCount
       );
     }
@@ -784,11 +1183,19 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
         exchange: {
           ...complement.exchange,
           stats: {
-            ...(complement.exchange.stats && typeof complement.exchange.stats === 'object' ? complement.exchange.stats : { rawStats: complement.exchange.stats }),
+            ...objectStats(complement.exchange.stats),
             generatedBatchBalance: balance
           }
         },
+        exchanges: complement.exchanges.map((exchange) => ({
+          ...exchange,
+          stats: {
+            ...objectStats(exchange.stats),
+            generatedBatchBalance: balance
+          }
+        })),
         conversations: complementConversations,
+        vocabularyQuality: complement.quality,
         analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
         distributionStats: calculateWorkflowDistributionStats(context.setNumber, context.allowedVocabulary, conversations)
       }
@@ -806,14 +1213,15 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
       analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
       status: 'generated',
       llmExchanges: [
-        primary.exchange,
-        {
+        ...(primary.exchanges ?? [primary.exchange]),
+        ...(complement.exchanges ?? [complement.exchange]).map((exchange) => ({
           ...complement.exchange,
+          ...exchange,
           stats: {
-            ...(complement.exchange.stats && typeof complement.exchange.stats === 'object' ? complement.exchange.stats : { rawStats: complement.exchange.stats }),
+            ...objectStats(exchange.stats),
             generatedBatchBalance: balance
           }
-        }
+        }))
       ],
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -900,12 +1308,13 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
   } catch (error) {
     if (error instanceof GenerationHalted) return;
     const message = error instanceof Error ? error.message : String(error);
+    const failureOutput = auditableGenerationFailureOutput(error);
     updateWorkflowJob(jobId, (job) => ({
       ...job,
       status: 'failed',
       error: message,
       nodes: job.nodes.map((node) => node.status === 'processing'
-        ? { ...node, status: 'error' as WorkflowNodeStatus, completedAt: nowIso(), error: message }
+        ? { ...node, status: 'error' as WorkflowNodeStatus, completedAt: nowIso(), error: message, output: failureOutput ?? node.output }
         : node)
     }));
   }
@@ -923,7 +1332,7 @@ async function runStandardGenerationJob(jobId: string): Promise<void> {
       stageLabel: 'Generating initial set',
       stages: current.stages.map((stage) => ({ ...stage, status: 'running', startedAt: nowIso() }))
     }));
-    const generated = await generateTextBatch(context.textModel, context.prompt, context.allowedVocabulary, context.conversationCount);
+    const generated = await generateTextBatch(context.textModel, context.prompt, context.allowedVocabulary, context.knownVocabulary, context.setNumber, context.conversationCount);
     if (!generated.conversations.length) throw new Error('The generation response did not include any usable conversations.');
     await generationCheckpoint(jobId);
     const timestamp = nowIso();
@@ -935,7 +1344,7 @@ async function runStandardGenerationJob(jobId: string): Promise<void> {
       textModel: context.textModel,
       analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
       status: 'generated',
-      llmExchanges: [generated.exchange],
+      llmExchanges: generated.exchanges,
       createdAt: job.createdAt,
       updatedAt: timestamp,
       conversations: generated.conversations
@@ -952,11 +1361,13 @@ async function runStandardGenerationJob(jobId: string): Promise<void> {
   } catch (error) {
     if (error instanceof GenerationHalted) return;
     const message = error instanceof Error ? error.message : String(error);
+    const generationFailure = auditableGenerationFailureOutput(error);
     await updateStudioJob(jobId, (current) => ({
       ...current,
       status: 'failed',
       stageLabel: 'Generation failed',
       error: message,
+      checkpoint: generationFailure ? { ...(current.checkpoint as Record<string, unknown> | undefined), generationFailure } : current.checkpoint,
       completedAt: nowIso(),
       stages: current.stages.map((stage) => stage.status === 'running' ? { ...stage, status: 'failed', completedAt: nowIso(), error: message } : stage)
     }));
@@ -970,40 +1381,37 @@ async function runLibraryComplementJob(jobId: string): Promise<void> {
     const context = await getLibraryComplementContext(request.setNumber, request);
     if ('error' in context) throw new Error(context.error);
     await updateStudioJob(jobId, (current) => ({ ...current, status: 'running', stageLabel: 'Generating balanced set' }));
-    const requestedAt = nowIso();
-    const exchange = makeLlmExchange(context.textModel, context.prompt, requestedAt);
-    const generation = context.textModel.provider === 'codex'
-      ? await generateCodexConversationJson(context.prompt, context.textModel.model)
-      : await generateConversationJson(context.prompt);
-    const conversations = await auditConversationsWithVocabulary(
+    const generated = await generateTextBatch(
+      context.textModel,
+      context.prompt,
       context.allowedVocabulary,
-      normalizeGeneratedConversations(generation.parsed, context.conversationCount)
+      context.knownVocabulary,
+      context.setNumber,
+      context.conversationCount
     );
-    if (!conversations.length) throw new Error('The generation response did not include any usable conversations.');
+    if (!generated.conversations.length) throw new Error('The generation response did not include any usable conversations.');
     await generationCheckpoint(jobId);
     const timestamp = nowIso();
+    const exchanges = generated.exchanges.map((exchange) => ({
+      ...exchange,
+      stats: {
+        ...(exchange.stats && typeof exchange.stats === 'object' ? exchange.stats : { rawStats: exchange.stats }),
+        libraryBalance: context.balance,
+        libraryBalanceMode: context.balanceMode
+      }
+    }));
     const run = await saveRun({
       id: job.runId ?? makeRunId(context.setNumber),
       setNumber: context.setNumber,
       conversationCount: context.conversationCount,
       allowedVocabCount: context.allowedVocabulary.length,
       textModel: context.textModel,
-      analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
+      analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
       status: 'generated',
-      llmExchanges: [{
-        ...exchange,
-        output: generation.output,
-        stats: {
-          ...(generation.stats && typeof generation.stats === 'object' ? generation.stats : { rawStats: generation.stats }),
-          libraryBalance: context.balance,
-          libraryBalanceMode: context.balanceMode
-        },
-        receivedAt: timestamp,
-        status: 'complete'
-      }],
+      llmExchanges: exchanges,
       createdAt: job.createdAt,
       updatedAt: timestamp,
-      conversations
+      conversations: generated.conversations
     });
     await updateStudioJob(jobId, (current) => ({
       ...current,
@@ -1017,7 +1425,15 @@ async function runLibraryComplementJob(jobId: string): Promise<void> {
   } catch (error) {
     if (error instanceof GenerationHalted) return;
     const message = error instanceof Error ? error.message : String(error);
-    await updateStudioJob(jobId, (current) => ({ ...current, status: 'failed', stageLabel: 'Balance generation failed', error: message, completedAt: nowIso() }));
+    const generationFailure = auditableGenerationFailureOutput(error);
+    await updateStudioJob(jobId, (current) => ({
+      ...current,
+      status: 'failed',
+      stageLabel: 'Balance generation failed',
+      error: message,
+      checkpoint: generationFailure ? { ...(current.checkpoint as Record<string, unknown> | undefined), generationFailure } : current.checkpoint,
+      completedAt: nowIso()
+    }));
   }
 }
 
@@ -1210,6 +1626,192 @@ app.post('/api/runs/:runId/reanalyze', asyncHandler(async (req, res) => {
     run,
     evidenceByConversationId: await getConversationCurationEvidence(run.setNumber, run.conversations)
   });
+}));
+
+app.post('/api/runs/:runId/workflow-nodes/:nodeId/repair', asyncHandler(async (req, res) => {
+  const runId = routeParam(req.params.runId);
+  const nodeId = routeParam(req.params.nodeId);
+  await assertRunHasNoActiveJobs(runId);
+
+  const run = await readRun(runId);
+  const node = run.workflowAudit?.nodes.find((item) => item.id === nodeId);
+  if (!run.workflowAudit || !node) {
+    res.status(404).json({ error: 'Workflow audit node not found for this run.' });
+    return;
+  }
+  if (node.kind !== 'generator' && node.kind !== 'balancer') {
+    res.status(409).json({ error: 'Only text-generation workflow nodes can be repaired.' });
+    return;
+  }
+  if (node.status !== 'done') {
+    res.status(409).json({ error: 'Repair can only be rerun after the text node has completed.' });
+    return;
+  }
+
+  const input = recordValue(node.input);
+  const output = recordValue(node.output);
+  const originalPrompt = typeof input?.prompt === 'string' ? input.prompt : undefined;
+  const conversations = Array.isArray(output?.conversations)
+    ? output.conversations.filter((item): item is PracticeConversation => {
+      const record = recordValue(item);
+      return Boolean(record && Array.isArray(record.vocabularyUsed) && Array.isArray(record.text));
+    })
+    : [];
+  if (!originalPrompt || !output || conversations.length === 0) {
+    res.status(409).json({ error: 'This workflow node does not have enough saved prompt and conversation data to rerun repair.' });
+    return;
+  }
+
+  const targetIds = new Set(conversations.map((conversation) => conversation.id));
+  if (run.conversations.some((conversation) => targetIds.has(conversation.id) && conversation.curatedId)) {
+    res.status(409).json({ error: 'Remove repaired conversations from the curated library before changing their generated text.' });
+    return;
+  }
+
+  const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
+  const knownVocabulary = await readVocabulary();
+  const evaluated = await evaluateVocabularyQuality(run.setNumber, allowedVocabulary, knownVocabulary, conversations);
+  if (evaluated.quality.passed) {
+    res.status(409).json({ error: 'This node has no repairable vocabulary findings.' });
+    return;
+  }
+
+  const existingExchanges = nodeOutputExchanges(node);
+  const repairPrompt = buildRepairPrompt(originalPrompt, allowedVocabulary, evaluated.conversations, evaluated.quality);
+  const repairExchange = makeLlmExchange(run.textModel, repairPrompt);
+
+  async function persistNodeOutput(nodeOutput: Record<string, unknown>, response: Omit<WorkflowRepairResponse, 'run' | 'evidenceByConversationId'>): Promise<void> {
+    const updated = await mutateRun(run.id, (current) => {
+      const workflowAudit = workflowAuditWithUpdatedTextNode(current, nodeId, nodeOutput);
+      if (!workflowAudit) return current;
+      const updatedRun = {
+        ...current,
+        workflowAudit,
+        llmExchanges: workflowLlmExchanges(workflowAudit.nodes),
+        updatedAt: nowIso()
+      };
+      return updatedRun;
+    });
+    res.json({
+      ...response,
+      run: updated,
+      evidenceByConversationId: await getConversationCurationEvidence(updated.setNumber, updated.conversations)
+    } satisfies WorkflowRepairResponse);
+  }
+
+  let repair: Awaited<ReturnType<ConversationJsonGenerator>>;
+  try {
+    repair = await conversationJsonGenerator(repairPrompt, run.textModel);
+  } catch (error) {
+    const failure = errorAuditDetails(error);
+    const failedExchange: LlmExchange = {
+      ...repairExchange,
+      output: failure.output,
+      stats: {
+        ...failure.stats,
+        repairAttempt: 1,
+        vocabularyQualityBeforeRepair: evaluated.quality,
+        repairOutcome: 'provider_failed',
+        selectedForFinal: false
+      },
+      receivedAt: nowIso(),
+      status: 'failed',
+      error: failure.message
+    };
+    await persistNodeOutput({
+      ...output,
+      exchange: output.exchange,
+      exchanges: replaceRepairExchange(existingExchanges, failedExchange),
+      vocabularyQuality: evaluated.quality
+    }, {
+      repairApplied: false,
+      repairOutcome: 'provider_failed',
+      exchange: failedExchange
+    });
+    return;
+  }
+
+  const repairedConversations = preserveConversationIdentity(
+    normalizeGeneratedConversations(repair.parsed, conversations.length),
+    conversations
+  );
+  const repaired = await evaluateVocabularyQuality(run.setNumber, allowedVocabulary, knownVocabulary, repairedConversations);
+  const improved = repaired.conversations.length > 0 && qualityIssueScore(repaired.quality) < qualityIssueScore(evaluated.quality);
+  const completedExchange: LlmExchange = {
+    ...repairExchange,
+    output: repair.output,
+    stats: {
+      ...objectStats(repair.stats),
+      repairAttempt: 1,
+      vocabularyQualityBeforeRepair: evaluated.quality,
+      vocabularyQuality: repaired.quality,
+      repairOutcome: improved ? 'improved' : 'not_improved',
+      selectedForFinal: improved
+    },
+    receivedAt: nowIso(),
+    status: 'complete'
+  };
+  const exchanges = improved
+    ? replaceRepairExchange([
+      ...existingExchanges.map((exchange) => ({
+        ...exchange,
+        stats: {
+          ...objectStats(exchange.stats),
+          selectedForFinal: false
+        }
+      }))
+    ], completedExchange)
+    : replaceRepairExchange(existingExchanges, completedExchange);
+
+  if (!improved) {
+    await persistNodeOutput({
+      ...output,
+      exchange: output.exchange,
+      exchanges,
+      vocabularyQuality: evaluated.quality
+    }, {
+      repairApplied: false,
+      repairOutcome: 'not_improved',
+      exchange: completedExchange
+    });
+    return;
+  }
+
+  const updated = await mutateRun(run.id, async (current) => {
+    await Promise.all(current.conversations.map((conversation) => targetIds.has(conversation.id) && conversation.audioFileName
+      ? deleteAudioFile(current.id, conversation.audioFileName)
+      : Promise.resolve()));
+    const updatedConversations = replaceConversationsById(current, repaired.conversations);
+    const nodeAnalyticsConversations = node.kind === 'balancer' ? updatedConversations : repaired.conversations;
+    const nodeOutput = {
+      ...output,
+      exchange: completedExchange,
+      exchanges,
+      conversations: repaired.conversations,
+      vocabularyQuality: repaired.quality,
+      analytics: calculateRunAnalytics(current.setNumber, allowedVocabulary, nodeAnalyticsConversations),
+      distributionStats: calculateWorkflowDistributionStats(current.setNumber, allowedVocabulary, nodeAnalyticsConversations)
+    };
+    const workflowAudit = workflowAuditWithUpdatedTextNode(current, nodeId, nodeOutput, targetIds);
+    if (!workflowAudit) return current;
+    const updatedRun = {
+      ...current,
+      conversations: updatedConversations,
+      analytics: calculateRunAnalytics(current.setNumber, allowedVocabulary, updatedConversations),
+      workflowAudit,
+      llmExchanges: workflowLlmExchanges(workflowAudit.nodes),
+      updatedAt: nowIso()
+    };
+    updatedRun.status = runStatusFor(updatedRun.conversations);
+    return updatedRun;
+  });
+  res.json({
+    run: updated,
+    repairApplied: true,
+    repairOutcome: 'improved',
+    exchange: completedExchange,
+    evidenceByConversationId: await getConversationCurationEvidence(updated.setNumber, updated.conversations)
+  } satisfies WorkflowRepairResponse);
 }));
 
 app.get('/api/library', asyncHandler(async (_req, res) => {
@@ -1512,17 +2114,16 @@ app.post('/api/generate', asyncHandler(async (req: express.Request<unknown, unkn
     return;
   }
 
-  const requestedAt = new Date().toISOString();
-  const exchange = makeLlmExchange(context.textModel, context.prompt, requestedAt);
-  const generation = context.textModel.provider === 'codex'
-    ? await generateCodexConversationJson(context.prompt, context.textModel.model)
-    : await generateConversationJson(context.prompt);
-  const conversations = await auditConversationsWithVocabulary(
+  const generated = await generateTextBatch(
+    context.textModel,
+    context.prompt,
     context.allowedVocabulary,
-    normalizeGeneratedConversations(generation.parsed, context.conversationCount)
+    context.knownVocabulary,
+    context.setNumber,
+    context.conversationCount
   );
 
-  if (!conversations.length) {
+  if (!generated.conversations.length) {
     res.status(502).json({ error: 'The generation response did not include any usable conversations.' });
     return;
   }
@@ -1534,20 +2135,12 @@ app.post('/api/generate', asyncHandler(async (req: express.Request<unknown, unkn
     conversationCount: context.conversationCount,
     allowedVocabCount: context.allowedVocabulary.length,
     textModel: context.textModel,
-    analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
+    analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
     status: 'generated',
-    llmExchanges: [
-      {
-        ...exchange,
-        output: generation.output,
-        stats: generation.stats,
-        receivedAt: timestamp,
-        status: 'complete'
-      }
-    ],
+    llmExchanges: generated.exchanges,
     createdAt: timestamp,
     updatedAt: timestamp,
-    conversations
+    conversations: generated.conversations
   });
 
   res.json({ run });
@@ -1564,6 +2157,8 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
     context.textModel,
     context.prompt,
     context.allowedVocabulary,
+    context.knownVocabulary,
+    context.setNumber,
     context.conversationCount
   );
 
@@ -1588,6 +2183,8 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
     context.textModel,
     complementPrompt,
     context.allowedVocabulary,
+    context.knownVocabulary,
+    context.setNumber,
     context.balanceConversationCount
   );
   const complementConversations = renumberConversations(complement.conversations, primary.conversations.length + 1);
@@ -1608,14 +2205,14 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
     analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
     status: 'generated',
     llmExchanges: [
-      primary.exchange,
-      {
-        ...complement.exchange,
+      ...primary.exchanges,
+      ...complement.exchanges.map((exchange) => ({
+        ...exchange,
         stats: {
-          ...(complement.exchange.stats && typeof complement.exchange.stats === 'object' ? complement.exchange.stats : { rawStats: complement.exchange.stats }),
+          ...objectStats(exchange.stats),
           generatedBatchBalance: balance
         }
-      }
+      }))
     ],
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -1681,55 +2278,50 @@ app.post('/api/library/sets/:setNumber/complement', asyncHandler(async (req: exp
     return;
   }
 
-  const requestedAt = new Date().toISOString();
-  const exchange = makeLlmExchange(context.textModel, context.prompt, requestedAt);
-  const generation = context.textModel.provider === 'codex'
-    ? await generateCodexConversationJson(context.prompt, context.textModel.model)
-    : await generateConversationJson(context.prompt);
-  const conversations = await auditConversationsWithVocabulary(
+  const generated = await generateTextBatch(
+    context.textModel,
+    context.prompt,
     context.allowedVocabulary,
-    normalizeGeneratedConversations(generation.parsed, context.conversationCount)
+    context.knownVocabulary,
+    context.setNumber,
+    context.conversationCount
   );
 
-  if (!conversations.length) {
+  if (!generated.conversations.length) {
     res.status(502).json({ error: 'The generation response did not include any usable conversations.' });
     return;
   }
 
   const timestamp = new Date().toISOString();
+  const exchanges = generated.exchanges.map((exchange) => ({
+    ...exchange,
+    stats: {
+      ...(exchange.stats && typeof exchange.stats === 'object' ? exchange.stats : { rawStats: exchange.stats }),
+      libraryBalance: context.balance,
+      libraryBalanceMode: context.balanceMode,
+      ...(context.balanceMode === 'ai' && context.librarySnapshotContext
+        ? {
+            libraryBalanceContext: {
+              mode: 'ai',
+              libraryConversationCount: context.librarySnapshotContext.conversationCount,
+              wordExposure: context.librarySnapshotContext.wordExposure
+            }
+          }
+        : {})
+    }
+  }));
   const run = await saveRun({
     id: makeRunId(context.setNumber),
     setNumber: context.setNumber,
     conversationCount: context.conversationCount,
     allowedVocabCount: context.allowedVocabulary.length,
     textModel: context.textModel,
-    analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
+    analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
     status: 'generated',
-    llmExchanges: [
-      {
-        ...exchange,
-        output: generation.output,
-        stats: {
-          ...(generation.stats && typeof generation.stats === 'object' ? generation.stats : { rawStats: generation.stats }),
-          libraryBalance: context.balance,
-          libraryBalanceMode: context.balanceMode,
-          ...(context.balanceMode === 'ai' && context.librarySnapshotContext
-            ? {
-                libraryBalanceContext: {
-                  mode: 'ai',
-                  libraryConversationCount: context.librarySnapshotContext.conversationCount,
-                  wordExposure: context.librarySnapshotContext.wordExposure
-                }
-              }
-            : {})
-        },
-        receivedAt: timestamp,
-        status: 'complete'
-      }
-    ],
+    llmExchanges: exchanges,
     createdAt: timestamp,
     updatedAt: timestamp,
-    conversations
+    conversations: generated.conversations
   });
 
   res.json({ run, balance: context.balance });

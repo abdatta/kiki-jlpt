@@ -77,3 +77,55 @@ test('curation evidence excludes prompt allowances and proper names but counts t
   assert.equal(evidence.outOfVocabularyUniqueCount, 1);
   assert.equal(evidence.outOfVocabularyOccurrenceCount, 2);
 });
+
+test('audit exempts approved kana names with honorific suffixes', async () => {
+  const vocabulary = [vocab(1, '英語', 'えいご'), vocab(1, '意味', 'いみ')];
+  const source = conversation('けんさん、英語の意味です。');
+
+  const analysis = await analyzeConversationsWithVocabulary(1, vocabulary, [source]);
+  const evidence = analysis.evidenceByConversationId[source.id];
+
+  assert.deepEqual(analysis.conversations[0].outOfVocabularyAudit, []);
+  assert.ok(evidence.vocabularyExemptions?.some((item) => item.surface === 'けんさん' && item.kind === 'approved_name'));
+});
+
+test('audit accepts declared cultural references without vocabulary coverage credit', async () => {
+  const vocabulary = [vocab(3, '学校', 'がっこう')];
+  const source = {
+    ...conversation('学校で寿司です。'),
+    declaredNonVocabularyTerms: [{
+      surface: '寿司',
+      reading: 'すし',
+      kind: 'cultural_reference' as const,
+      category: 'food' as const,
+      rationale: 'A common Japanese food.'
+    }]
+  };
+
+  const analysis = await analyzeConversationsWithVocabulary(3, vocabulary, [source]);
+  const evidence = analysis.evidenceByConversationId[source.id];
+
+  assert.deepEqual(analysis.conversations[0].outOfVocabularyAudit, []);
+  assert.deepEqual(evidence.allowedVocabUniqueWords, ['学校']);
+  assert.ok(evidence.vocabularyExemptions?.some((item) => item.surface === '寿司' && item.kind === 'cultural_reference'));
+});
+
+test('audit rejects ordinary content declarations and keeps later-set words OOV', async () => {
+  const allowedVocabulary = [vocab(3, '学校', 'がっこう')];
+  const knownVocabulary = [...allowedVocabulary, vocab(6, '難しい', 'むずかしい')];
+  const source = {
+    ...conversation('学校は難しいです。'),
+    declaredNonVocabularyTerms: [{
+      surface: '難しい',
+      kind: 'cultural_reference' as const,
+      category: 'cultural_item' as const,
+      rationale: 'Incorrectly declared ordinary adjective.'
+    }]
+  };
+
+  const analysis = await analyzeConversationsWithVocabulary(3, allowedVocabulary, [source], knownVocabulary);
+  const evidence = analysis.evidenceByConversationId[source.id];
+
+  assert.deepEqual(analysis.conversations[0].outOfVocabularyAudit, ['難しい']);
+  assert.ok(evidence.rejectedVocabularyDeclarations?.some((item) => item.surface === '難しい'));
+});
