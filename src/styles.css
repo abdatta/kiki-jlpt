@@ -105,7 +105,8 @@ button {
   overflow: hidden;
 }
 
-.brandLogo svg {
+.brandLogo svg,
+.brandLogo img {
   width: 100%;
   height: 100%;
   scale: 1.25;
@@ -1157,6 +1158,102 @@ textarea:focus {
   background: var(--studio-danger-soft);
   color: var(--studio-danger);
 }
+
+.workflowPanel.paused { border-color: #d9a441; background: #fffaf0; }
+.workflowJobStatus.paused { border-color: #d9a441; background: #fff1cf; color: #7a4e05; }
+
+.workflowAuditGraph { display: grid; gap: 14px; }
+.workflowConversationRail { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; }
+.workflowConversationRail button { min-height: 36px; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--studio-border-soft); border-radius: 999px; background: var(--studio-surface-raised); color: var(--studio-text-muted); padding: 4px 10px 4px 5px; }
+.workflowConversationRail button.selected { outline: 3px solid var(--studio-focus-ring); color: var(--studio-text-soft); }
+.workflowConversationRail b { min-width: 25px; height: 25px; display: grid; place-items: center; border-radius: 999px; background: var(--studio-code-bg); font-size: 11px; }
+.workflowConversationRail em,
+.conversationQualityChip { border: 1px solid currentColor; border-radius: 999px; padding: 2px 7px; font-size: 10px; font-style: normal; font-weight: 900; text-transform: uppercase; }
+.workflowConversationRail em.good,
+.conversationQualityChip.good { color: #2f6835; background: #eef7ed; }
+.workflowConversationRail em.okay,
+.conversationQualityChip.okay { color: #8a5a06; background: #fff8ec; }
+.workflowConversationRail button.dropped { color: var(--studio-danger); border-style: dashed; }
+.workflowConversationRail button.dropped span { text-decoration: line-through; }
+.conversationQualityChip { min-height: 27px; cursor: pointer; }
+
+.workflowStageLane { display: grid; gap: 12px; border: 1px solid var(--studio-border-soft); border-radius: 10px; background: var(--studio-surface); padding: 14px; overflow-x: auto; }
+.workflowStageLane > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--studio-divider-muted); padding-bottom: 10px; }
+.workflowStageLane > header strong { color: var(--studio-text-muted); font-size: 12px; }
+.workflowPassRow { min-width: 980px; display: grid; gap: 7px; }
+.workflowPassRow.pass2 { margin-left: 28px; border-left: 2px solid var(--studio-border-muted); padding-left: 14px; }
+.workflowPassLabel,
+.workflowRepairFork > span,
+.workflowNodeEyebrow { color: var(--studio-text-subtle); font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.workflowStageSequence { display: flex; align-items: center; gap: 8px; }
+.workflowStageSequence > .workflowNode { width: 150px; flex: 0 0 150px; }
+.workflowRepairFork { width: 170px; flex: 0 0 170px; display: grid; gap: 6px; }
+.workflowRepairFork .workflowNode { min-height: 74px; }
+.workflowNode.deterministic { background: var(--studio-code-bg); box-shadow: none; }
+.workflowNode.dimmed { opacity: .35; filter: grayscale(.45); }
+.workflowNodeBody { min-width: 0; }
+.workflowNodeMeta { display: block; margin-top: 5px; color: var(--studio-text-subtle); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.workflowFinalAuditBand,
+.workflowAudioLane,
+.workflowJourney,
+.workflowLegacyNotice { border: 1px solid var(--studio-border-soft); border-radius: 10px; background: var(--studio-surface); padding: 14px; }
+.workflowFinalAuditBand { display: grid; grid-template-columns: minmax(240px, 340px) minmax(0, 1fr); gap: 14px; }
+.workflowFinalAuditBand.pause { border-color: #d9a441; background: #fff8ec; }
+.workflowFinalAuditBand.fail { border-color: var(--studio-danger-border); background: var(--studio-danger-soft); }
+.workflowReviewGate { display: grid; gap: 10px; }
+.workflowReviewGate strong { display: block; margin-top: 4px; }
+.workflowReviewThresholds,
+.workflowReviewActions { display: flex; flex-wrap: wrap; gap: 7px; }
+.workflowReviewThresholds span { border: 1px solid var(--studio-border-soft); border-radius: 999px; padding: 4px 8px; font-size: 11px; font-weight: 800; }
+.workflowReviewThresholds .tripped { border-color: #d9a441; color: #7a4e05; }
+.workflowReviewActions button,
+.workflowScopedRepairAction button { min-height: 32px; border: 1px solid var(--studio-info-border); border-radius: 7px; background: var(--studio-info); color: white; padding: 0 10px; font-weight: 850; }
+.workflowReviewActions button.danger { border-color: var(--studio-danger-border); background: var(--studio-danger); }
+.workflowAudioLane.awaitingReview { border-style: dashed; opacity: .75; }
+.workflowAwaitingReview { display: block; margin-bottom: 9px; color: #7a4e05; font-weight: 900; }
+.workflowLegacyNotice { display: flex; align-items: center; gap: 8px; border-style: dashed; color: var(--studio-text-muted); font-size: 12px; }
+.workflowLegacySequence { grid-column: span 3; display: flex; align-items: center; gap: 8px; overflow-x: auto; }
+.workflowLegacySequence .workflowNode { min-width: 170px; }
+
+.workflowJourney { display: grid; gap: 8px; }
+.workflowJourney h4,
+.workflowKindDetails h4 { margin: 2px 0 8px; }
+.workflowJourney button { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 10px; text-align: left; border: 1px solid var(--studio-border-muted); border-radius: 8px; background: var(--studio-surface-raised); padding: 9px 10px; }
+.workflowJourney button span { color: var(--studio-text-subtle); font-size: 10px; font-weight: 900; text-transform: uppercase; }
+.workflowJourney button small { grid-column: 2; color: var(--studio-text-muted); }
+.workflowJourneyStep { display: grid; }
+.workflowJourneyDiff { display: grid; gap: 4px; margin: -2px 8px 0; border: 1px solid var(--studio-border-muted); border-top: 0; border-radius: 0 0 8px 8px; padding: 7px; }
+.workflowJourneyDiff p { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin: 0; }
+.workflowJourneyDiff del,
+.workflowJourneyDiff ins { border-radius: 5px; padding: 5px 7px; text-decoration: none; }
+.workflowJourneyDiff del { background: var(--studio-danger-soft); color: var(--studio-danger); }
+.workflowJourneyDiff ins { background: #eef7ed; color: #2f6835; }
+.workflowKindDetails { display: grid; gap: 8px; border-top: 1px solid var(--studio-divider-muted); padding: 14px; }
+.workflowKindDetails pre { margin: 0; max-height: 340px; overflow: auto; white-space: pre-wrap; border: 1px solid var(--studio-code-border); border-radius: 8px; background: var(--studio-code-bg); padding: 10px; }
+.workflowDecisionTable { display: grid; gap: 7px; }
+.workflowDecisionTable > div,
+.workflowDecisionTable details > summary { display: grid; grid-template-columns: minmax(130px, .5fr) minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 1px solid var(--studio-border-muted); border-radius: 8px; padding: 9px 10px; }
+.workflowDecisionTable details pre { border-radius: 0 0 8px 8px; }
+.workflowDecisionTable em { font-style: normal; font-weight: 900; text-transform: uppercase; }
+.workflowDiffList { display: grid; gap: 8px; }
+.workflowDiffList details { border: 1px solid var(--studio-border-muted); border-radius: 8px; overflow: hidden; }
+.workflowDiffList summary { cursor: pointer; padding: 9px 10px; font-weight: 850; }
+.workflowDiffList details > div { display: grid; gap: 5px; border-top: 1px solid var(--studio-divider-muted); padding: 9px; }
+.workflowDiffList p { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.workflowDiffList del,
+.workflowDiffList ins { border-radius: 6px; padding: 6px 8px; text-decoration: none; }
+.workflowDiffList del { background: var(--studio-danger-soft); color: var(--studio-danger); }
+.workflowDiffList ins { background: #eef7ed; color: #2f6835; }
+.workflowDiffList p.unchanged ins { grid-column: 1 / -1; background: var(--studio-code-bg); color: var(--studio-text-muted); }
+.workflowParsedConversations { display: grid; gap: 8px; }
+.workflowParsedConversations details { border: 1px solid var(--studio-border-muted); border-radius: 8px; overflow: hidden; }
+.workflowParsedConversations summary { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 8px; padding: 9px 10px; cursor: pointer; }
+.workflowParsedConversations summary em { font-style: normal; color: var(--studio-text-muted); }
+.workflowParsedConversations details > div { display: grid; gap: 5px; border-top: 1px solid var(--studio-divider-muted); padding: 9px; }
+.workflowParsedConversations p { display: grid; grid-template-columns: 86px minmax(0, 1fr); gap: 8px; margin: 0; }
+.workflowParsedConversations mark { border-radius: 3px; background: #ffd7c2; color: #8a3b13; padding: 0 2px; }
+.workflowScopedRepairAction { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--studio-divider-muted); padding: 10px 14px; color: var(--studio-text-muted); font-size: 12px; }
 
 .workflowGraph {
   display: grid;
@@ -3546,6 +3643,17 @@ audio {
     align-items: stretch;
   }
 
+  .workflowStageLane { overflow: visible; }
+  .workflowLegacySequence { grid-column: auto; display: grid; grid-template-columns: 1fr; }
+  .workflowPassRow { min-width: 0; }
+  .workflowPassRow.pass2 { margin-left: 10px; }
+  .workflowStageSequence { display: grid; grid-template-columns: 1fr; align-items: stretch; }
+  .workflowStageSequence > .workflowNode,
+  .workflowRepairFork { width: 100%; min-width: 0; }
+  .workflowStageSequence .workflowArrow { transform: rotate(90deg); justify-self: center; }
+  .workflowRepairFork::before { content: "parallel repair candidates"; color: var(--studio-text-subtle); font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+  .workflowFinalAuditBand { grid-template-columns: 1fr; }
+
   .workflowMetricGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3574,6 +3682,13 @@ audio {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .workflowStageLane { padding: 10px; }
+  .workflowStageLane > header { align-items: flex-start; flex-direction: column; }
+  .workflowNode.deterministic { min-height: 46px; }
+  .workflowDecisionTable > div,
+  .workflowDecisionTable details > summary { grid-template-columns: 1fr; }
+  .workflowJourney button { grid-template-columns: 1fr; }
 
   .sourceRunLink,
   .sourceRunLabel {

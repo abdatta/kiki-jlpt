@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App.tsx';
 import './styles.css';
+import './consumer/consumer.css';
 
 // The Studio must never be served from an offline cache: evict any service
 // worker previously registered on this origin (the Studio was briefly built

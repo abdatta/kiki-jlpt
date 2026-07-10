@@ -49,7 +49,6 @@ import type {
   StatsMap,
   VocabCard
 } from './types.ts';
-import './consumer.css';
 
 type VocabPracticeCard = VocabCard & PracticeCard;
 const LEVEL_LISTENING_TARGET = 20;

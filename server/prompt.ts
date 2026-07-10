@@ -1,7 +1,15 @@
 import { readFile } from 'node:fs/promises';
 import { PROMPT_PATH } from './paths.ts';
 import { formatVocabForPrompt } from './vocab.ts';
-import type { LibraryBalancePlan, LibraryBalanceWord, VocabItem } from '../shared/types.ts';
+import type {
+  ConversationCurationEvidenceMap,
+  ConversationQualityVerdict,
+  LibraryBalancePlan,
+  LibraryBalanceWord,
+  PracticeConversation,
+  QualityVersionSource,
+  VocabItem
+} from '../shared/types.ts';
 import type { AiCurationLibraryContext } from './aiCuration.ts';
 import { formatLanguagePolicyForPrompt } from './languagePolicy.ts';
 
@@ -49,6 +57,149 @@ const CULTURAL_REFERENCE_GUIDANCE = `Cultural reference rules:
 2. These cultural references are for immersion only. They do not count as learned vocabulary and must not replace current-set vocabulary practice.
 3. Do not use this exception for ordinary grammar, adjectives, verbs, adverbs, classroom glue, or later-set vocabulary that is not functioning as a proper noun or cultural reference.
 4. Every proper noun or cultural reference outside the allowed vocabulary table must be listed in declaredNonVocabularyTerms for that conversation.`;
+
+export interface QualityTriagePromptInput {
+  setNumber: number;
+  conversations: PracticeConversation[];
+  evidenceByConversationId: ConversationCurationEvidenceMap;
+  libraryContext?: AiCurationLibraryContext;
+}
+
+export interface BalancedRepairFinding {
+  conversationId: string;
+  trueOutOfVocabularyWords: string[];
+  rejectedDeclarations?: unknown[];
+}
+
+export interface PickerPromptVersion {
+  source: QualityVersionSource;
+  conversation: PracticeConversation;
+  evidence: ConversationCurationEvidenceMap[string];
+  flags: string[];
+}
+
+export interface PickerPromptSet {
+  conversationId: string;
+  triageRationale: string;
+  versions: PickerPromptVersion[];
+}
+
+export function buildQualityTriagePrompt(input: QualityTriagePromptInput): string {
+  const exemplars = input.libraryContext?.conversations.slice(0, 3) ?? [];
+  const conversations = input.conversations.map((conversation) => ({
+    conversationId: conversation.id,
+    title: conversation.title,
+    scene: conversation.scene,
+    sampleContext: conversation.sampleContext,
+    text: conversation.text,
+    listeningQuestions: conversation.listeningQuestions,
+    answerKey: conversation.answerKey,
+    authoritativeVocabularyEvidence: input.evidenceByConversationId[conversation.id]
+  }));
+
+  return `Review every supplied Set ${input.setNumber} JLPT listening-practice conversation for subjective quality.
+
+Authoritative evidence:
+The server-calculated vocabulary evidence attached to each conversation is authoritative. Never recalculate, contradict, or override it. Vocabulary findings alone may require repair, but MUST NOT be used as a reason to regenerate.
+
+Verdict rubric:
+- pass: natural, coherent, realistic, level-appropriate, and suitable for listening practice.
+- repair: usable structure with fixable naturalness, clarity, question-quality, level-fit, or vocabulary issues.
+- regenerate: structural defects only, such as an unrealistic scenario, vocabulary-list feel, forced unrelated word groupings, severe topic jumps, or clearly above-level grammar.
+
+Return exactly one verdict for every supplied conversationId and no unknown IDs. Include a concise rationale and zero or more machine-readable flags.
+
+Curated quality-bar exemplars${exemplars.length ? '' : ' (none available)'}:
+${exemplars.length ? JSON.stringify(exemplars, null, 2) : 'No curated library conversations are available for this set.'}
+
+Conversations with authoritative evidence:
+${JSON.stringify(conversations, null, 2)}
+
+Return only valid JSON with this shape:
+{
+  "verdicts": [
+    {
+      "conversationId": "convo-01",
+      "verdict": "pass | repair | regenerate",
+      "rationale": "short explanation",
+      "flags": ["optional_flag"]
+    }
+  ]
+}`;
+}
+
+export function buildBalancedRepairPrompt(
+  originalPrompt: string,
+  allowedVocabulary: VocabItem[],
+  conversations: PracticeConversation[],
+  findings: BalancedRepairFinding[],
+  verdicts: ConversationQualityVerdict[]
+): string {
+  const allowedIds = new Set(conversations.map((conversation) => conversation.id));
+  const relevantVerdicts = verdicts.filter((verdict) => allowedIds.has(verdict.conversationId));
+  const relevantFindings = findings.filter((finding) => allowedIds.has(finding.conversationId));
+
+  return `Repair only the supplied flagged JLPT listening-practice conversations.
+
+Balanced objective:
+Improve naturalness and realism, preserve a coherent everyday scene, keep grammar appropriate for the target JLPT level, remove true out-of-vocabulary content words, preserve current-set vocabulary where it fits naturally, and keep the result useful for listening practice. Do not optimize one goal by degrading another.
+
+Hard rules:
+1. Return exactly ${conversations.length} conversations, in the supplied order, with the same JSON shape.
+2. Preserve each conversationId conceptually; do not merge, add, or drop conversations.
+3. Treat the audit findings as authoritative lexical facts.
+4. Use only the allowed vocabulary table for Japanese content words, except valid declared proper nouns or cultural references.
+5. Keep 6-10 spoken lines, delivery tags ending in "slow", aligned translations, and 4-6 useful listening questions with matching answers.
+6. This is one balanced repair attempt. Do not describe alternatives or request another round.
+
+Allowed vocabulary table:
+${formatVocabForPrompt(allowedVocabulary)}
+
+Original generation objective (context only):
+${originalPrompt}
+
+Authoritative per-conversation audit findings:
+${JSON.stringify(relevantFindings, null, 2)}
+
+Quality-triage rationales:
+${JSON.stringify(relevantVerdicts, null, 2)}
+
+Flagged conversations only:
+${JSON.stringify({ conversations }, null, 2)}
+
+Return only valid JSON matching this exact top-level shape:
+${CONVERSATION_JSON_SHAPE}`;
+}
+
+export function buildPickerPrompt(versionSets: PickerPromptSet[]): string {
+  return `Choose exactly one admissible version for every supplied JLPT listening-practice conversation.
+
+Authoritative evidence:
+All deterministic vocabulary evidence and gate flags are server-calculated and authoritative. Do not recalculate lexical facts. Judge only naturalness, coherence, realism, JLPT level fit, and listening-question quality.
+
+Forced-choice rules:
+1. Select one supplied source for every conversationId and no unknown IDs.
+2. You may not reject all versions, request regeneration, or request another repair.
+3. Return selectedQuality "good" for a genuinely satisfactory result and "okay" for a usable result with mild residual issues.
+4. Return confidence "high", "medium", or "low", a concise rationale, and zero or more flags.
+
+Admissible version sets:
+${JSON.stringify(versionSets, null, 2)}
+
+Return only valid JSON with this shape:
+{
+  "picks": [
+    {
+      "conversationId": "convo-01",
+      "selected": "original | candidate1 | candidate2",
+      "selectedQuality": "good | okay",
+      "confidence": "high | medium | low",
+      "rationale": "short explanation",
+      "flags": ["optional_flag"]
+    }
+  ]
+}`;
+}
 
 export async function buildGenerationPrompt(setNumber: number, conversationCount: number, allowedVocabulary: VocabItem[]): Promise<string> {
   const template = await readFile(PROMPT_PATH, 'utf8');

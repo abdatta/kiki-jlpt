@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { LibraryBalancePlan, VocabItem } from '../shared/types.ts';
+import type { ConversationCurationEvidenceMap, ConversationQualityVerdict, LibraryBalancePlan, PracticeConversation, VocabItem } from '../shared/types.ts';
 import type { AiCurationLibraryContext } from './aiCuration.ts';
-import { buildAiLibraryBalancePrompt, buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
+import {
+  buildAiLibraryBalancePrompt,
+  buildBalancedRepairPrompt,
+  buildGenerationPrompt,
+  buildLibraryComplementPrompt,
+  buildPickerPrompt,
+  buildQualityTriagePrompt
+} from './prompt.ts';
 
 const vocabulary: VocabItem[] = [
   { set: 1, setTheme: 'Basics', withinSetNumber: 1, japanese: '本', reading: 'ほん', meaning: 'book', partOfSpeech: 'noun', category: 'object' },
@@ -86,4 +93,81 @@ test('AI balance prompt grounds on gaps, library content, exposure, variety, and
   assert.match(prompt, /never recompute or alter them/i);
   // Shared language policy is included.
   assert.match(prompt, /Conversation fillers:/);
+});
+
+function conversation(id: string, number: number): PracticeConversation {
+  const timestamp = '2026-01-01T00:00:00.000Z';
+  return {
+    id,
+    number,
+    title: `Conversation ${number}`,
+    scene: 'Two friends talk.',
+    sampleContext: 'They speak slowly.',
+    text: [{ speaker: 'Speaker 1', tags: ['friendly', 'slow'], japanese: 'æœ¬ã‚’èª­ã¿ã¾ã™ã€‚' }],
+    listeningQuestions: ['What happens?'],
+    answerKey: ['A book is read.'],
+    englishTranslation: [{ speaker: 'Speaker 1', english: 'I read a book.' }],
+    vocabularyUsed: ['æœ¬'],
+    outOfVocabularyAudit: [],
+    simplerReplacementSuggestions: [],
+    status: 'draft',
+    createdAt: timestamp,
+    updatedAt: timestamp
+  };
+}
+
+const promptConversations = [conversation('convo-01', 1), conversation('convo-02', 2)];
+const promptEvidence: ConversationCurationEvidenceMap = Object.fromEntries(promptConversations.map((item) => [item.id, {
+  evidenceVersion: 'test',
+  setNumber: 2,
+  currentSetTotal: 1,
+  currentSetUniqueCount: 0,
+  currentSetUniqueWords: [],
+  allowedVocabTotal: 2,
+  allowedVocabUniqueCount: 1,
+  allowedVocabUniqueWords: ['æœ¬'],
+  vocabularyOccurrences: { 'æœ¬': 1 },
+  outOfVocabularyUniqueCount: 0,
+  outOfVocabularyUniqueWords: [],
+  outOfVocabularyOccurrenceCount: 0
+}]));
+
+test('quality triage prompt marks deterministic evidence authoritative and includes curated exemplars', () => {
+  const prompt = buildQualityTriagePrompt({
+    setNumber: 2,
+    conversations: promptConversations,
+    evidenceByConversationId: promptEvidence,
+    libraryContext
+  });
+  assert.match(prompt, /authoritative/i);
+  assert.match(prompt, /MUST NOT be used as a reason to regenerate/i);
+  assert.match(prompt, /At the library/);
+  assert.match(prompt, /exactly one verdict for every supplied conversationId/i);
+});
+
+test('balanced repair prompt contains flagged conversations only and uses a balanced objective', () => {
+  const verdicts: ConversationQualityVerdict[] = [
+    { conversationId: 'convo-01', verdict: 'repair', rationale: 'Stilted.', flags: ['stilted'] },
+    { conversationId: 'convo-02', verdict: 'pass', rationale: 'Natural.', flags: [] }
+  ];
+  const prompt = buildBalancedRepairPrompt('Original objective', vocabulary, [promptConversations[0]], [{
+    conversationId: 'convo-01',
+    trueOutOfVocabularyWords: ['å›°ã‚‹']
+  }], verdicts);
+  assert.match(prompt, /naturalness and realism/i);
+  assert.match(prompt, /convo-01/);
+  assert.doesNotMatch(prompt, /convo-02/);
+  assert.match(prompt, /Return exactly 1 conversations/i);
+});
+
+test('picker prompt is forced-choice and attaches authoritative re-audit evidence', () => {
+  const prompt = buildPickerPrompt([{
+    conversationId: 'convo-01',
+    triageRationale: 'Stilted.',
+    versions: [{ source: 'original', conversation: promptConversations[0], evidence: promptEvidence['convo-01'], flags: [] }]
+  }]);
+  assert.match(prompt, /forced-choice/i);
+  assert.match(prompt, /may not reject all versions/i);
+  assert.match(prompt, /selectedQuality/);
+  assert.match(prompt, /outOfVocabularyUniqueCount/);
 });

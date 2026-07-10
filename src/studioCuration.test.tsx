@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { AiCurationRecommendation, AiCurationReviewReconciliation, ConversationCurationEvidence, PracticeConversation, StudioJob } from '../shared/types.ts';
+import type { AiCurationRecommendation, AiCurationReviewReconciliation, ConversationCurationEvidence, FinalTextAuditReport, PracticeConversation, StudioJob, WorkflowJob } from '../shared/types.ts';
+import { parseStudioRoute, WorkflowAuditFlow } from './App.tsx';
 import { AddAllProgressModal } from './components/AddAllProgressModal.tsx';
 import { AiCurationReconciliationPanel } from './components/AiCurationReconciliationPanel.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
@@ -599,4 +600,104 @@ test('job notification policy toasts top-level terminal jobs only, for live and 
   assert.equal(shouldNotifyJobEvent({ ...base, status: 'running' }, 'live'), false);
   assert.equal(shouldNotifyJobEvent({ ...base, status: 'cancelled' }, 'live'), true);
   assert.equal(shouldNotifyJobEvent({ ...base, status: 'cancelled' }, 'hydration'), false);
+});
+
+function auditReport(outcome: FinalTextAuditReport['outcome'] = 'pass'): FinalTextAuditReport {
+  const stage = {
+    stage: 'initial' as const,
+    requestedCount: 1,
+    generatedCount: 1,
+    acceptedCount: outcome === 'pause' ? 0 : 1,
+    regenerateCount: 0,
+    rerollRequestedCount: 0,
+    rerollGeneratedCount: 0,
+    dropped: [],
+    verdicts: [],
+    picks: [],
+    failures: []
+  };
+  return {
+    requestedCount: 1,
+    acceptedCount: outcome === 'pause' ? 0 : 1,
+    shortfallCount: outcome === 'pause' ? 1 : 0,
+    stages: { initial: stage },
+    qualityLabels: { good: outcome === 'pause' ? 0 : 1, okay: 0 },
+    remainingOutOfVocabulary: [],
+    uncoveredCurrentSetWords: [],
+    coverageLosses: [],
+    modelCallFailures: [],
+    pickStatistics: { original: 0, candidate1: 1, candidate2: 0, gateDecided: 0, tieBreakDecided: 1, fallbackDecided: 0 },
+    thresholds: [{ id: 'total-shortfall', outcome: outcome === 'pause' ? 'tripped' : 'met', measured: outcome === 'pause' ? 1 : 0, limit: .2, unit: 'rate', action: 'pause', detail: 'Accepted count threshold.' }],
+    outcome,
+    createdAt: '2026-01-01T00:00:00.000Z'
+  };
+}
+
+function perCallJob(status: WorkflowJob['status'] = 'complete'): WorkflowJob {
+  const runConversation = { ...conversation, quality: 'good' as const, qualityDecision: 'repair' as const, pickerSelected: 'candidate1' as const };
+  const finalTextAudit = auditReport(status === 'paused' ? 'pause' : 'pass');
+  const summary = (statLine: string, factsByConversationId?: Record<string, unknown>) => ({ summary: { statLine }, factsByConversationId });
+  const nodes: WorkflowJob['nodes'] = [
+    { id: 'initial:generation', kind: 'generation', callKind: 'generation', stage: 'initial', pass: 1, sequence: 0, title: 'Initial generation', status: 'done', output: summary('1 conversation generated', { 'convo-01': { version: 'original' } }) },
+    { id: 'initial:vocab-audit', kind: 'vocab-audit', callKind: 'vocab-audit', stage: 'initial', pass: 1, sequence: 1, title: 'Vocabulary audit', status: 'done', output: summary('1 conversation · 0 findings', { 'convo-01': { outOfVocabularyUniqueCount: 0 } }) },
+    { id: 'initial:triage', kind: 'triage', callKind: 'triage', stage: 'initial', pass: 1, sequence: 2, title: 'Quality triage', status: 'done', output: { ...summary('0 pass · 1 repair · 0 regen', { 'convo-01': { conversationId: 'convo-01', verdict: 'repair', rationale: 'Stilted.' } }), details: { verdicts: [{ conversationId: 'convo-01', verdict: 'repair', rationale: 'Stilted.', flags: [] }] } } },
+    { id: 'initial:repair-1', kind: 'repair-candidate', callKind: 'repair-candidate', stage: 'initial', pass: 1, candidateIndex: 1, sequence: 3, title: 'Repair candidate 1', status: 'done', output: summary('1 conversation · 1 selected', { 'convo-01': { oovBefore: 0, oovAfter: 0 } }) },
+    { id: 'initial:repair-2', kind: 'repair-candidate', callKind: 'repair-candidate', stage: 'initial', pass: 1, candidateIndex: 2, sequence: 4, title: 'Repair candidate 2', status: 'done', output: summary('1 conversation · 0 selected', { 'convo-01': { oovBefore: 0, oovAfter: 0 } }) },
+    { id: 'initial:dominance-gates', kind: 'dominance-gates', callKind: 'dominance-gates', stage: 'initial', pass: 1, sequence: 5, title: 'Dominance gates', status: 'done', output: summary('0 eliminated', { 'convo-01': { admissible: ['original', 'candidate1', 'candidate2'] } }) },
+    { id: 'initial:pick', kind: 'pick', callKind: 'pick', stage: 'initial', pass: 1, sequence: 6, title: 'Pick', status: 'done', output: { ...summary('orig 0 · c1 1 · c2 0', { 'convo-01': { conversationId: 'convo-01', selected: 'candidate1', selectedQuality: 'good' } }), details: { picks: [{ conversationId: 'convo-01', selected: 'candidate1', selectedQuality: 'good' }] } } },
+    { id: 'final-audit', kind: 'final-audit', callKind: 'final-audit', sequence: 200, title: 'Final text audit', status: 'done', output: { summary: { statLine: `1/1 accepted · ${finalTextAudit.outcome.toUpperCase()}` }, details: finalTextAudit } },
+    { id: 'audio-1', kind: 'audio', callKind: 'audio', sequence: 300, title: 'Conversation 1', status: status === 'paused' ? 'pending' : 'done' }
+  ];
+  return {
+    id: 'workflow-per-call', status, setNumber: 2, primaryConversationCount: 1, balanceConversationCount: 0,
+    requestedTotalConversationCount: 1, audioRequestedCount: 1, audioGeneratedCount: status === 'paused' ? 0 : 1, audioErrors: [], nodes,
+    run: {
+      id: 'run-per-call', setNumber: 2, conversationCount: 1, allowedVocabCount: 2,
+      textModel: { id: 'test', provider: 'gemini', model: 'test', label: 'Test' },
+      analytics: { currentSetTotal: 1, currentSetUsedCount: 1, currentSetMissingCount: 0, currentSetMissingWords: [], allowedVocabTotal: 2, allowedVocabUsedCount: 1, allowedVocabUsedPercentage: 50, outOfAllowedCount: 0, outOfAllowedWords: [] },
+      status: 'generated', finalTextAudit, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z', conversations: [runConversation]
+    },
+    createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z'
+  };
+}
+
+test('per-call audit renders lanes, parallel repairs, stat lines, and conversation trace facts', () => {
+  const html = renderToStaticMarkup(<WorkflowAuditFlow job={perCallJob()} selectedNodeId="initial:pick" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
+  const traceHtml = renderToStaticMarkup(<WorkflowAuditFlow job={perCallJob()} selectedNodeId="initial:pick" selectedConversationId="convo-01" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
+  assert.match(html, /Stage 1 · initial/i);
+  assert.match(html, /parallel/i);
+  assert.match(html, /orig 0 · c1 1 · c2 0/i);
+  assert.match(traceHtml, /Conversation trace/i);
+  assert.match(traceHtml, /candidate1 · good/i);
+  assert.doesNotMatch(html, />Attempts</);
+});
+
+test('paused final audit renders threshold review actions and awaiting-audio state', () => {
+  const html = renderToStaticMarkup(<WorkflowAuditFlow job={perCallJob('paused')} selectedNodeId="final-audit" onSelectNode={() => undefined} onSelectConversation={() => undefined} onApprove={() => undefined} onDiscard={() => undefined} />);
+  assert.match(html, /Paused for review/i);
+  assert.match(html, /Approve &amp; generate audio/i);
+  assert.match(html, /Discard run/i);
+  assert.match(html, /Awaiting review/i);
+  assert.match(html, /total shortfall: tripped/i);
+});
+
+test('legacy workflow rendering keeps the pre-quality-control notice and Attempts tab', () => {
+  const exchange = { id: 'legacy-exchange', provider: 'gemini' as const, model: 'test', label: 'Test', prompt: 'prompt', output: 'output', requestedAt: '2026-01-01T00:00:00.000Z', receivedAt: '2026-01-01T00:00:01.000Z', status: 'complete' as const };
+  const job: WorkflowJob = {
+    id: 'legacy', status: 'complete', setNumber: 2, primaryConversationCount: 1, balanceConversationCount: 1, requestedTotalConversationCount: 2,
+    audioRequestedCount: 0, audioGeneratedCount: 0, audioErrors: [],
+    nodes: [
+      { id: 'generator', kind: 'generator', title: 'Generate', status: 'done', output: { exchanges: [exchange] } },
+      { id: 'balancer', kind: 'balancer', title: 'Balance', status: 'done', output: exchange }
+    ],
+    createdAt: exchange.requestedAt, updatedAt: exchange.receivedAt
+  };
+  const html = renderToStaticMarkup(<WorkflowAuditFlow job={job} selectedNodeId="generator:generate" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
+  assert.match(html, /Recorded before per-call quality auditing/i);
+  assert.match(html, />Attempts</);
+});
+
+test('audit deep links restore node and conversation selection', () => {
+  const route = parseStudioRoute('#/studio/runs/run-1/audit/n/initial%3Apick/c/convo-01');
+  assert.deepEqual(route, { boardMode: 'runs', runId: 'run-1', auditOpen: true, nodeId: 'initial:pick', conversationId: 'convo-01' });
 });

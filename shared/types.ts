@@ -112,6 +112,11 @@ export interface PracticeConversation {
   vocabularyUsed: string[];
   outOfVocabularyAudit: string[];
   simplerReplacementSuggestions: string[];
+  quality?: 'good' | 'okay';
+  qualityDecision?: 'pass' | 'repair';
+  pickerSelected?: QualityVersionSource;
+  pickerConfidence?: PickerConfidence;
+  qualityFlags?: string[];
   status: ConversationStatus;
   audioFileName?: string;
   audioUrl?: string;
@@ -137,6 +142,102 @@ export interface ConversationCurationEvidence {
   outOfVocabularyOccurrenceCount: number;
   vocabularyExemptions?: VocabularyAuditExemption[];
   rejectedVocabularyDeclarations?: VocabularyAuditRejectedDeclaration[];
+}
+
+export type ConversationQualityVerdictValue = 'pass' | 'repair' | 'regenerate';
+export type QualityVersionSource = 'original' | 'candidate1' | 'candidate2';
+export type PickerConfidence = 'high' | 'medium' | 'low';
+
+export interface ConversationQualityVerdict {
+  conversationId: string;
+  verdict: ConversationQualityVerdictValue;
+  rationale: string;
+  flags: string[];
+}
+
+export interface ConversationPickOutcome {
+  conversationId: string;
+  selected: QualityVersionSource;
+  selectedQuality: 'good' | 'okay';
+  decidedBy: 'gate' | 'tie-break' | 'fallback';
+  confidence?: PickerConfidence;
+  rationale: string;
+  flags: string[];
+  eliminated: Array<{
+    source: QualityVersionSource;
+    reason: string;
+  }>;
+}
+
+export interface QualityControlFailure {
+  stage: 'initial' | 'balance';
+  pass: 1 | 2;
+  callKind: 'triage' | 'repair-candidate' | 'pick' | 'reroll';
+  candidateIndex?: 1 | 2;
+  error: string;
+  fallback: string;
+}
+
+export interface DroppedConversationAudit {
+  conversationId: string;
+  number: number;
+  title: string;
+  stage: 'initial' | 'balance';
+  pass: 1 | 2;
+  rationale: string;
+  flags: string[];
+}
+
+export interface QualityStageAudit {
+  stage: 'initial' | 'balance';
+  requestedCount: number;
+  generatedCount: number;
+  acceptedCount: number;
+  regenerateCount: number;
+  rerollRequestedCount: number;
+  rerollGeneratedCount: number;
+  dropped: DroppedConversationAudit[];
+  verdicts: ConversationQualityVerdict[];
+  picks: ConversationPickOutcome[];
+  failures: QualityControlFailure[];
+}
+
+export interface FinalTextAuditThreshold {
+  id: 'initial-regenerate-rate' | 'total-shortfall' | 'balance-post-reroll-drop';
+  outcome: 'met' | 'tripped';
+  measured: number;
+  limit: number;
+  unit: 'count' | 'rate';
+  action: 'fail' | 'pause';
+  detail: string;
+}
+
+export interface FinalTextAuditReport {
+  requestedCount: number;
+  acceptedCount: number;
+  shortfallCount: number;
+  stages: {
+    initial: QualityStageAudit;
+    balance?: QualityStageAudit;
+  };
+  qualityLabels: { good: number; okay: number };
+  remainingOutOfVocabulary: Array<{ conversationId: string; words: string[] }>;
+  uncoveredCurrentSetWords: string[];
+  coverageLosses: Array<{ conversationId: string; words: string[] }>;
+  modelCallFailures: QualityControlFailure[];
+  pickStatistics: {
+    original: number;
+    candidate1: number;
+    candidate2: number;
+    gateDecided: number;
+    tieBreakDecided: number;
+    fallbackDecided: number;
+  };
+  distributionStats?: Record<string, number>;
+  thresholds: FinalTextAuditThreshold[];
+  outcome: 'pass' | 'pause' | 'fail';
+  guidance?: string;
+  createdAt: string;
 }
 
 export type ConversationCurationEvidenceMap = Record<string, ConversationCurationEvidence>;
@@ -393,6 +494,7 @@ export interface PracticeRun {
   analytics: RunAnalytics;
   status: 'generated' | 'partial_audio' | 'complete';
   llmExchanges?: LlmExchange[];
+  finalTextAudit?: FinalTextAuditReport;
   workflowAudit?: WorkflowRunAudit;
   createdAt: string;
   updatedAt: string;
@@ -425,13 +527,60 @@ export interface WorkflowGenerateRequest extends GenerateRequest {
   audioMode?: WorkflowAudioMode;
 }
 
-export type WorkflowNodeStatus = 'pending' | 'processing' | 'done' | 'error' | 'skipped';
-export type WorkflowJobStatus = 'running' | 'complete' | 'failed';
-export type WorkflowNodeKind = 'generator' | 'balancer' | 'audio';
+export type WorkflowNodeStatus = 'pending' | 'processing' | 'done' | 'repairWarning' | 'error' | 'skipped';
+export type WorkflowJobStatus = 'running' | 'paused' | 'complete' | 'failed';
+export type WorkflowAuditCallKind =
+  | 'generation'
+  | 'vocab-audit'
+  | 'triage'
+  | 'repair-candidate'
+  | 'dominance-gates'
+  | 'pick'
+  | 'reroll'
+  | 'final-audit'
+  | 'audio';
+export type WorkflowNodeKind = 'generator' | 'balancer' | WorkflowAuditCallKind;
+
+export interface WorkflowNodeOutputSummary {
+  statLine: string;
+  conversationCount?: number;
+  passCount?: number;
+  repairCount?: number;
+  regenerateCount?: number;
+  acceptedCount?: number;
+  requestedCount?: number;
+  oovBefore?: number;
+  oovAfter?: number;
+  eliminatedCount?: number;
+  coverageLossCount?: number;
+  originalWins?: number;
+  candidate1Wins?: number;
+  candidate2Wins?: number;
+  goodCount?: number;
+  okayCount?: number;
+  replacementCount?: number;
+  droppedCount?: number;
+  thresholdOutcome?: 'pass' | 'pause' | 'fail';
+  durationMs?: number;
+}
+
+export interface WorkflowAuditNodeOutput {
+  summary: WorkflowNodeOutputSummary;
+  exchange?: LlmExchange;
+  conversations?: PracticeConversation[];
+  factsByConversationId?: Record<string, unknown>;
+  details?: unknown;
+  [key: string]: unknown;
+}
 
 export interface WorkflowAuditNode {
   id: string;
   kind: WorkflowNodeKind;
+  callKind?: WorkflowAuditCallKind;
+  stage?: 'initial' | 'balance';
+  pass?: 1 | 2;
+  candidateIndex?: 1 | 2;
+  sequence?: number;
   title: string;
   status: WorkflowNodeStatus;
   startedAt?: string;
@@ -443,6 +592,7 @@ export interface WorkflowAuditNode {
 
 export interface WorkflowJob {
   id: string;
+  runId?: string;
   status: WorkflowJobStatus;
   setNumber: number;
   primaryConversationCount: number;
@@ -467,6 +617,7 @@ export interface WorkflowRunAudit {
   audioRequestedCount: number;
   audioGeneratedCount: number;
   audioErrors: Array<{ conversationId: string; error: string }>;
+  finalTextAudit?: FinalTextAuditReport;
   nodes: WorkflowAuditNode[];
   createdAt: string;
   updatedAt: string;

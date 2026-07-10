@@ -20,7 +20,7 @@ process.env.GEMINI_API_KEY = 'invalid-test-key';
 const storageRoot = await mkdtemp(path.join(os.tmpdir(), 'jlpt-studio-api-'));
 configureStudioJobStorageForTests(path.join(storageRoot, 'jobs'));
 configureRunStorageForTests(path.join(storageRoot, 'runs'));
-const { app, configureConversationJsonGeneratorForTests } = await import('./index.ts');
+const { app, configureConversationJsonGeneratorForTests, configureQualityStructuredJsonInvokerForTests } = await import('./index.ts');
 
 let server: Server;
 let baseUrl = '';
@@ -240,7 +240,8 @@ test('direct generation succeeds without repair when Set 3 output has no true OO
 
     assert.equal(response.status, 200);
     assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
-    assert.equal(response.body.run.llmExchanges?.length, 1);
+    assert.equal(response.body.run.llmExchanges?.length, 2);
+    assert.equal(response.body.run.conversations.every((item) => item.quality === 'good'), true);
   } finally {
     configureConversationJsonGeneratorForTests();
   }
@@ -261,10 +262,10 @@ test('direct generation repairs true Set 3 OOV before saving', async () => {
     });
 
     assert.equal(response.status, 200);
-    assert.equal(calls, 2);
+    assert.equal(calls, 3);
     assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
-    assert.equal(response.body.run.llmExchanges?.length, 2);
-    assert.match(response.body.run.llmExchanges?.[1].prompt ?? '', /Audit issues to fix/);
+    assert.equal(response.body.run.llmExchanges?.filter((item) => (item.stats as { repairCandidate?: number } | undefined)?.repairCandidate).length, 2);
+    assert.match(response.body.run.llmExchanges?.find((item) => (item.stats as { repairCandidate?: number } | undefined)?.repairCandidate === 1)?.prompt ?? '', /Authoritative per-conversation audit findings/);
   } finally {
     configureConversationJsonGeneratorForTests();
   }
@@ -285,10 +286,9 @@ test('direct generation repairs true Set 2 OOV before saving', async () => {
     });
 
     assert.equal(response.status, 200);
-    assert.equal(calls, 2);
+    assert.equal(calls, 3);
     assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
-    assert.equal(response.body.run.llmExchanges?.length, 2);
-    assert.match(response.body.run.llmExchanges?.[1].prompt ?? '', /Audit issues to fix/);
+    assert.equal(response.body.run.llmExchanges?.filter((item) => (item.stats as { repairCandidate?: number } | undefined)?.repairCandidate).length, 2);
   } finally {
     configureConversationJsonGeneratorForTests();
   }
@@ -349,7 +349,7 @@ test('direct generation repairs rejected cultural-reference declarations', async
     });
 
     assert.equal(response.status, 200);
-    assert.equal(calls, 2);
+    assert.equal(calls, 3);
     assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
   } finally {
     configureConversationJsonGeneratorForTests();
@@ -374,11 +374,12 @@ test('direct generation proceeds with best available batch when repair does not 
     });
 
     assert.equal(response.status, 200);
-    assert.equal(calls, 2);
+    assert.equal(calls, 3);
     assert.ok(response.body.run.analytics.outOfAllowedCount > 0);
-    assert.equal(response.body.run.llmExchanges?.length, 2);
-    assert.match(response.body.run.llmExchanges?.[1].prompt ?? '', /Audit issues to fix/);
-    assert.equal((response.body.run.llmExchanges?.[1].stats as { repairOutcome?: string } | undefined)?.repairOutcome, 'not_improved');
+    const repairExchanges = response.body.run.llmExchanges?.filter((item) => (item.stats as { repairCandidate?: number } | undefined)?.repairCandidate) ?? [];
+    assert.equal(repairExchanges.length, 2);
+    assert.match(repairExchanges[0]?.prompt ?? '', /Authoritative per-conversation audit findings/);
+    assert.equal((repairExchanges[0]?.stats as { repairOutcome?: string } | undefined)?.repairOutcome, 'not_improved');
   } finally {
     configureConversationJsonGeneratorForTests();
   }
@@ -447,17 +448,78 @@ test('workflow generation quality warning preserves initial and repair LLM excha
 
     const completed = await waitForStudioJob(started.body.job.id);
     assert.equal(completed.status, 'succeeded');
-    const generator = completed.workflow?.nodes.find((node) => node.id === 'generator');
-    const output = generator?.output as { exchanges?: LlmExchange[]; vocabularyQuality?: { issues?: unknown[] } } | undefined;
-    assert.equal(generator?.status, 'done');
-    assert.equal(output?.exchanges?.length, 2);
-    assert.match(output?.exchanges?.[1].prompt ?? '', /Audit issues to fix/);
-    assert.ok(output?.vocabularyQuality?.issues?.length);
+    const generation = completed.workflow?.nodes.find((node) => node.id === 'initial:generation');
+    const repairOne = completed.workflow?.nodes.find((node) => node.id === 'initial:repair-1');
+    const audit = completed.workflow?.nodes.find((node) => node.id === 'initial:vocab-audit');
+    assert.equal(generation?.status, 'done');
+    assert.equal(repairOne?.status, 'done');
+    assert.match(((repairOne?.output as { exchange?: LlmExchange } | undefined)?.exchange?.prompt) ?? '', /Authoritative per-conversation audit findings/);
+    assert.ok((audit?.output as { summary?: { statLine?: string } } | undefined)?.summary?.statLine);
     const run = await readRun(completed.runId!);
     assert.ok(run.analytics.outOfAllowedCount > 0);
     assert.ok((run.llmExchanges?.length ?? 0) >= 4);
   } finally {
     configureConversationJsonGeneratorForTests();
+  }
+});
+
+test('final-audit warning pauses before audio and resume approves the checkpoint without repeating text calls', async () => {
+  let textCalls = 0;
+  let triageCalls = 0;
+  configureConversationJsonGeneratorForTests(async () => {
+    textCalls += 1;
+    return generatorResult(generatedPayload(['\u306f\u3044\u3002', '\u3044\u3044\u3048\u3002', '\u3053\u308c\u3002', '\u305d\u308c\u3002']), `shortfall-${textCalls}`);
+  });
+  configureQualityStructuredJsonInvokerForTests(async (prompt) => {
+    triageCalls += 1;
+    const json = prompt.split('Conversations with authoritative evidence:\n')[1]?.split('\n\nReturn only valid JSON')[0] ?? '[]';
+    const conversations = JSON.parse(json) as Array<{ conversationId: string }>;
+    const droppedId = conversations.at(-1)?.conversationId;
+    const verdicts = conversations.map((conversation) => ({
+      conversationId: conversation.conversationId,
+      verdict: conversation.conversationId === droppedId ? 'regenerate' : 'pass',
+      rationale: conversation.conversationId === droppedId ? 'Structurally unusable test fixture.' : 'Natural test fixture.',
+      flags: conversation.conversationId === droppedId ? ['structural'] : []
+    }));
+    return { parsed: { verdicts }, output: JSON.stringify({ verdicts }) };
+  });
+  configureAudioSchedulerForTests({
+    concurrency: 2,
+    executor: async (_runId, item) => ({ fileName: `${item.id}.wav`, filePath: `${item.id}.wav` })
+  });
+  try {
+    const started = await api<{ job: StudioJob }>('/api/workflow/start', {
+      method: 'POST',
+      body: JSON.stringify({ setNumber: 1, conversationCount: 6, audioCount: 2, audioMode: 'fixed', textModelId: 'gemini', idempotencyKey: 'api-workflow-final-audit-pause' })
+    });
+    const paused = await waitForStudioJob(started.body.job.id);
+    assert.equal(paused.status, 'paused');
+    assert.match(paused.stageLabel, /accepted 4 of 6 requested/i);
+    assert.equal(paused.workflow?.nodes.find((node) => node.id === 'final-audit')?.status, 'done');
+    assert.equal(paused.workflow?.nodes.filter((node) => node.kind === 'audio').every((node) => node.status === 'pending'), true);
+    assert.equal((paused.workflow?.run?.finalTextAudit?.outcome), 'pause');
+
+    const beforeResumeTextCalls = textCalls;
+    const resumed = await api<{ job: StudioJob }>(`/api/studio/jobs/${paused.id}/resume`, { method: 'POST' });
+    assert.equal(resumed.status, 202);
+    const completed = await waitForStudioJob(paused.id);
+    await waitForAudioSchedulerIdle();
+    assert.equal(completed.status, 'succeeded');
+    assert.equal(textCalls, beforeResumeTextCalls);
+    assert.equal(triageCalls, 4);
+    let finalized = await readStudioJob(paused.id);
+    for (let attempt = 0; attempt < 50 && finalized.workflow?.status !== 'complete'; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      finalized = await readStudioJob(paused.id);
+    }
+    assert.equal(finalized.workflow?.status, 'complete');
+    const saved = await readRun(finalized.runId!);
+    assert.equal(saved.conversations.length, 4);
+    assert.equal(saved.conversations.filter((item) => item.audioFileName).length, 2);
+  } finally {
+    configureAudioSchedulerForTests();
+    configureConversationJsonGeneratorForTests();
+    configureQualityStructuredJsonInvokerForTests();
   }
 });
 
@@ -589,12 +651,14 @@ test('workflow provider failure preserves partial LLM output and transport metad
 
     const failed = await waitForStudioJob(started.body.job.id);
     assert.equal(failed.status, 'failed');
-    const generator = failed.workflow?.nodes.find((node) => node.id === 'generator');
-    const output = generator?.output as { exchanges?: LlmExchange[] } | undefined;
+    const generator = failed.workflow?.nodes.find((node) => node.id === 'initial:generation');
+    const output = generator?.output as { exchange?: LlmExchange } | undefined;
     assert.equal(generator?.status, 'error');
-    assert.equal(output?.exchanges?.[0].status, 'failed');
-    assert.match(output?.exchanges?.[0].output ?? '', /response\.output_text\.delta/);
-    assert.equal((output?.exchanges?.[0].stats as { streamTerminated?: boolean } | undefined)?.streamTerminated, true);
+    assert.equal(output?.exchange?.status, 'failed');
+    assert.match(output?.exchange?.output ?? '', /response\.output_text\.delta/);
+    assert.equal((output?.exchange?.stats as { streamTerminated?: boolean } | undefined)?.streamTerminated, true);
+    assert.equal(failed.workflow?.nodes.some((node) => node.status === 'pending'), false);
+    assert.ok((failed.workflow?.nodes.filter((node) => node.status === 'skipped').length ?? 0) > 0);
   } finally {
     configureConversationJsonGeneratorForTests();
   }

@@ -15,7 +15,7 @@
     "build:practice": "npm run library:build && tsc --noEmit -p tsconfig.practice.json && vite build --config vite.practice.config.ts",
     "start": "tsx server/index.ts",
     "tts": "tsx generate-audio.ts",
-    "test:unit": "tsx --test src/addAllAudio.test.ts src/consumer/conversationOrdering.test.ts src/studioRunSelection.test.ts src/studioCuration.test.tsx server/vocabAudit.test.ts server/prompt.test.ts server/aiCuration.test.ts server/studioJobs.test.ts server/studioApi.test.ts",
+    "test:unit": "tsx --test src/addAllAudio.test.ts src/consumer/conversationOrdering.test.ts src/studioRunSelection.test.ts src/studioCuration.test.tsx server/vocabAudit.test.ts server/prompt.test.ts server/qualityControl.test.ts server/aiCuration.test.ts server/studioJobs.test.ts server/studioApi.test.ts",
     "test": "npm run test:unit && npm run build"
   },
   "keywords": [],

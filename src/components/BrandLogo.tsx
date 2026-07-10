@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from 'react';
-import brandLogoSvg from '../assets/brand-mark.svg?raw';
+
+const brandLogoUrl = new URL('../assets/brand-mark.svg', import.meta.url).href;
 
 interface BrandLogoProps extends HTMLAttributes<HTMLSpanElement> {
   title?: string;
@@ -11,8 +12,9 @@ export function BrandLogo({ title, ...props }: BrandLogoProps) {
       aria-hidden={title ? undefined : true}
       aria-label={title}
       role={title ? 'img' : undefined}
-      dangerouslySetInnerHTML={{ __html: brandLogoSvg }}
       {...props}
-    />
+    >
+      <img alt="" src={brandLogoUrl} />
+    </span>
   );
 }

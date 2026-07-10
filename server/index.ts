@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { mkdir, readFile, unlink } from 'node:fs/promises';
 import type { AiCurationRequest, GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, RunAudioGenerateRequest, StudioJob, StudioRunSummary, StudioSnapshot, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRepairResponse, WorkflowRunAudit } from '../shared/types.ts';
 import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR, STUDIO_JOBS_DIR } from './paths.ts';
-import { buildAiLibraryBalancePrompt, buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
+import { buildAiLibraryBalancePrompt, buildBalancedRepairPrompt, buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
 import { buildTtsPrompt, generateConversationAudio, generateConversationJson } from './gemini.ts';
 import { CODEX_TEXT_INSTRUCTIONS, generateCodexConversationJson } from './codexText.ts';
 import { getAllowedVocabulary, getSetSummaries, readVocabulary } from './vocab.ts';
@@ -25,6 +25,13 @@ import type { AiCurationLibraryContext } from './aiCuration.ts';
 import { cancelAudioParent, cancelUnresolvedAudioChildren, createAudioBatch, createCrossRunAudioBatch, enqueueConversationAudio, hasActiveConversationAudio, pauseAudioParent, resumeAudioParent, resumeConversationAudioJob, waitForStudioJob } from './audioScheduler.ts';
 import { isGenerationSlotBusy, withGenerationSlot } from './generationGate.ts';
 import { createStudioJob, currentStudioEventRevision, findStudioJobByIdempotencyKey, interruptActiveStudioJobs, listStudioJobs, makeStudioJobId, readStudioJob, subscribeStudioEvents, updateStudioJob } from './studioJobs.ts';
+import {
+  INITIAL_REGENERATE_FAILURE_RATE,
+  buildFinalTextAudit,
+  runQualityControl,
+  type QualityNodeEvent
+} from './qualityControl.ts';
+import { invokeStructuredJson, type StructuredJsonInvoker } from './structuredText.ts';
 
 const app = express();
 const port = Number.parseInt(process.env.API_PORT || '8787', 10);
@@ -146,7 +153,7 @@ function validateSetNumber(value: unknown): { setNumber: number } | { error: str
 }
 
 async function getGenerateContext(body: GenerateRequest): Promise<
-  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string }
+  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string; qualityLibraryContext: AiCurationLibraryContext }
   | { error: string; status: number }
 > {
   const validated = validateGenerateRequest(body);
@@ -160,11 +167,12 @@ async function getGenerateContext(body: GenerateRequest): Promise<
   const textModel = await resolveTextModel(body.textModelId);
   const knownVocabulary = await readVocabulary();
   const prompt = await buildGenerationPrompt(validated.setNumber, validated.conversationCount, allowedVocabulary);
-  return { ...validated, allowedVocabulary, knownVocabulary, textModel, prompt };
+  const qualityLibraryContext = await getQualityLibraryContext(validated.setNumber);
+  return { ...validated, allowedVocabulary, knownVocabulary, textModel, prompt, qualityLibraryContext };
 }
 
 async function getWorkflowGenerateContext(body: WorkflowGenerateRequest): Promise<
-  | { setNumber: number; conversationCount: number; balanceConversationCount: number; audioCount: number; audioMode: WorkflowAudioMode; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string }
+  | { setNumber: number; conversationCount: number; balanceConversationCount: number; audioCount: number; audioMode: WorkflowAudioMode; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string; qualityLibraryContext: AiCurationLibraryContext }
   | { error: string; status: number }
 > {
   const validated = validateWorkflowGenerateRequest(body);
@@ -178,7 +186,29 @@ async function getWorkflowGenerateContext(body: WorkflowGenerateRequest): Promis
   const textModel = await resolveTextModel(body.textModelId);
   const knownVocabulary = await readVocabulary();
   const prompt = await buildGenerationPrompt(validated.setNumber, validated.conversationCount, allowedVocabulary);
-  return { ...validated, allowedVocabulary, knownVocabulary, textModel, prompt };
+  const qualityLibraryContext = await getQualityLibraryContext(validated.setNumber);
+  return { ...validated, allowedVocabulary, knownVocabulary, textModel, prompt, qualityLibraryContext };
+}
+
+async function getQualityLibraryContext(setNumber: number): Promise<AiCurationLibraryContext> {
+  const set = await readCuratedSet(setNumber);
+  const wordExposure: Record<string, number> = {};
+  for (const conversation of set.conversations) {
+    for (const word of new Set(conversation.vocabularyUsed)) {
+      wordExposure[word] = (wordExposure[word] ?? 0) + 1;
+    }
+  }
+  return {
+    conversationCount: set.conversations.length,
+    wordExposure,
+    conversations: set.conversations.map((conversation) => ({
+      id: conversation.id,
+      title: conversation.title,
+      scene: conversation.scene,
+      text: conversation.text,
+      listeningQuestions: conversation.listeningQuestions
+    }))
+  };
 }
 
 async function getLibraryComplementContext(
@@ -236,7 +266,8 @@ async function getLibraryComplementContext(
     textModel,
     prompt: buildLibraryComplementPrompt(validated.setNumber, allowedVocabulary, balance),
     balance,
-    balanceMode
+    balanceMode,
+    librarySnapshotContext: await getQualityLibraryContext(validated.setNumber)
   };
 }
 
@@ -268,12 +299,44 @@ let conversationJsonGenerator: ConversationJsonGenerator = async (prompt, textMo
     : generateConversationJson(prompt)
 );
 
+let qualityStructuredInvokerForTests: StructuredJsonInvoker | undefined;
+
 export function configureConversationJsonGeneratorForTests(generator?: ConversationJsonGenerator): void {
   conversationJsonGenerator = generator ?? (async (prompt, textModel) => (
     textModel.provider === 'codex'
       ? generateCodexConversationJson(prompt, textModel.model)
       : generateConversationJson(prompt)
   ));
+  qualityStructuredInvokerForTests = generator
+    ? async (prompt) => {
+        if (prompt.includes('Admissible version sets:')) {
+          const json = prompt.split('Admissible version sets:\n')[1]?.split('\n\nReturn only valid JSON')[0] ?? '[]';
+          const sets = JSON.parse(json) as Array<{ conversationId: string; versions: Array<{ source: string }> }>;
+          const picks = sets.map((set) => ({
+            conversationId: set.conversationId,
+            selected: set.versions[0]?.source ?? 'original',
+            selectedQuality: 'good',
+            confidence: 'medium',
+            rationale: 'Deterministic test picker selected the first admissible version.',
+            flags: []
+          }));
+          return { parsed: { picks }, output: JSON.stringify({ picks }) };
+        }
+        const json = prompt.split('Conversations with authoritative evidence:\n')[1]?.split('\n\nReturn only valid JSON')[0] ?? '[]';
+        const conversations = JSON.parse(json) as Array<{ conversationId: string }>;
+        const verdicts = conversations.map((conversation) => ({
+          conversationId: conversation.conversationId,
+          verdict: 'pass',
+          rationale: 'Deterministic test triage found no subjective issue.',
+          flags: []
+        }));
+        return { parsed: { verdicts }, output: JSON.stringify({ verdicts }) };
+      }
+    : undefined;
+}
+
+export function configureQualityStructuredJsonInvokerForTests(invoker?: StructuredJsonInvoker): void {
+  qualityStructuredInvokerForTests = invoker;
 }
 
 interface VocabularyQualityIssue {
@@ -423,7 +486,7 @@ function nodeOutputExchanges(node: WorkflowAuditNode): LlmExchange[] {
 
 function workflowLlmExchanges(nodes: WorkflowAuditNode[]): LlmExchange[] {
   return nodes
-    .filter((node) => node.kind === 'generator' || node.kind === 'balancer')
+    .filter((node) => node.kind === 'generator' || node.kind === 'balancer' || ['generation', 'triage', 'repair-candidate', 'pick', 'reroll'].includes(node.callKind ?? ''))
     .flatMap(nodeOutputExchanges);
 }
 
@@ -549,22 +612,51 @@ function makeWorkflowJobId(setNumber: number): string {
 }
 
 function makeWorkflowNodes(audioCount: number): WorkflowAuditNode[] {
+  const stageNodes = (stage: 'initial' | 'balance', offset: number): WorkflowAuditNode[] => {
+    const titlePrefix = stage === 'initial' ? 'Initial' : 'Balance';
+    const definitions: Array<{
+      id: string;
+      kind: WorkflowAuditNode['kind'];
+      pass: 1 | 2;
+      title: string;
+      candidateIndex?: 1 | 2;
+    }> = [
+      { id: `${stage}:generation`, kind: 'generation', pass: 1, title: `${titlePrefix} generation` },
+      { id: `${stage}:vocab-audit`, kind: 'vocab-audit', pass: 1, title: 'Vocabulary audit' },
+      { id: `${stage}:triage`, kind: 'triage', pass: 1, title: 'Quality triage' },
+      { id: `${stage}:repair-1`, kind: 'repair-candidate', pass: 1, title: 'Repair candidate 1', candidateIndex: 1 },
+      { id: `${stage}:repair-2`, kind: 'repair-candidate', pass: 1, title: 'Repair candidate 2', candidateIndex: 2 },
+      { id: `${stage}:dominance-gates`, kind: 'dominance-gates', pass: 1, title: 'Dominance gates' },
+      { id: `${stage}:pick`, kind: 'pick', pass: 1, title: 'Pick' },
+      { id: `${stage}:pass2:reroll`, kind: 'reroll', pass: 2, title: 'Re-roll' },
+      { id: `${stage}:pass2:vocab-audit`, kind: 'vocab-audit', pass: 2, title: 'Re-roll vocabulary audit' },
+      { id: `${stage}:pass2:triage`, kind: 'triage', pass: 2, title: 'Re-roll quality triage' },
+      { id: `${stage}:pass2:repair-1`, kind: 'repair-candidate', pass: 2, title: 'Re-roll repair candidate 1', candidateIndex: 1 },
+      { id: `${stage}:pass2:repair-2`, kind: 'repair-candidate', pass: 2, title: 'Re-roll repair candidate 2', candidateIndex: 2 },
+      { id: `${stage}:pass2:dominance-gates`, kind: 'dominance-gates', pass: 2, title: 'Re-roll dominance gates' },
+      { id: `${stage}:pass2:pick`, kind: 'pick', pass: 2, title: 'Re-roll pick' }
+    ];
+    return definitions.map((definition, index) => ({
+      id: definition.id,
+      kind: definition.kind,
+      callKind: definition.kind as NonNullable<WorkflowAuditNode['callKind']>,
+      stage,
+      pass: definition.pass,
+      candidateIndex: definition.candidateIndex,
+      sequence: offset + index,
+      title: definition.title,
+      status: 'pending'
+    }));
+  };
   return [
-    {
-      id: 'generator',
-      kind: 'generator',
-      title: 'Generating Initial Set',
-      status: 'pending'
-    },
-    {
-      id: 'balancer',
-      kind: 'balancer',
-      title: 'Balancing Set',
-      status: 'pending'
-    },
+    ...stageNodes('initial', 0),
+    ...stageNodes('balance', 100),
+    { id: 'final-audit', kind: 'final-audit', callKind: 'final-audit', sequence: 200, title: 'Final text audit', status: 'pending' },
     ...Array.from({ length: audioCount }, (_, index) => ({
       id: `audio-${index + 1}`,
       kind: 'audio' as const,
+      callKind: 'audio' as const,
+      sequence: 300 + index,
       title: `Conversation ${index + 1}`,
       status: 'pending' as const
     }))
@@ -589,12 +681,17 @@ function updateWorkflowJob(jobId: string, updater: (job: WorkflowJob) => Workflo
     // is progress reporting rather than an operator resume.
     status: updated.status === 'complete' ? 'succeeded'
       : updated.status === 'failed' ? 'failed'
+      : updated.status === 'paused' ? 'paused'
       : ['pausing', 'paused', 'queued'].includes(studioJob.status) ? studioJob.status
       : 'running',
-    stageLabel: activeNode?.kind === 'generator'
+    stageLabel: updated.status === 'paused' && updated.run?.finalTextAudit
+      ? `Review final audit: accepted ${updated.run.finalTextAudit.acceptedCount} of ${updated.run.finalTextAudit.requestedCount} requested`
+      : activeNode?.stage === 'initial' || activeNode?.kind === 'generator'
       ? 'Generating initial set'
-      : activeNode?.kind === 'balancer'
+      : activeNode?.stage === 'balance' || activeNode?.kind === 'balancer'
         ? 'Balancing set'
+        : activeNode?.callKind === 'final-audit'
+          ? 'Reviewing final text audit'
         : updated.audioRequestedCount > 0
           ? `${completedAudio}/${updated.audioRequestedCount} audio generated`
           : updated.status === 'complete' ? 'Complete' : 'Finishing',
@@ -606,11 +703,15 @@ function updateWorkflowJob(jobId: string, updater: (job: WorkflowJob) => Workflo
       queued: updated.nodes.filter((node) => node.kind === 'audio' && node.status === 'pending').length
     },
     stages: studioJob.stages.map((stage) => {
-      const nodes = stage.id === 'audio' ? updated.nodes.filter((node) => node.kind === 'audio') : updated.nodes.filter((node) => node.id === stage.id);
+      const nodes = stage.id === 'audio' ? updated.nodes.filter((node) => node.kind === 'audio')
+        : stage.id === 'generator' ? updated.nodes.filter((node) => node.stage === 'initial' || node.id === 'generator')
+        : stage.id === 'balancer' ? updated.nodes.filter((node) => node.stage === 'balance' || node.id === 'balancer')
+        : stage.id === 'final-audit' ? updated.nodes.filter((node) => node.callKind === 'final-audit')
+        : updated.nodes.filter((node) => node.id === stage.id);
       if (!nodes.length) return stage;
       const status = nodes.some((node) => node.status === 'processing') ? 'running'
         : nodes.some((node) => node.status === 'error') ? 'failed'
-        : nodes.every((node) => node.status === 'done' || node.status === 'skipped') ? 'succeeded'
+        : nodes.every((node) => node.status === 'done' || node.status === 'repairWarning' || node.status === 'skipped') ? 'succeeded'
         : 'pending';
       return { ...stage, status };
     }),
@@ -687,8 +788,56 @@ function updateWorkflowNode(
 ): void {
   updateWorkflowJob(jobId, (job) => ({
     ...job,
-    nodes: job.nodes.map((node) => node.id === nodeId ? { ...node, ...patch } : node)
+    nodes: job.nodes.some((node) => node.id === nodeId)
+      ? job.nodes.map((node) => node.id === nodeId ? {
+          ...node,
+          ...patch,
+          output: patch.output && recordValue(node.output) && recordValue(patch.output)
+            ? { ...recordValue(node.output), ...recordValue(patch.output) }
+            : patch.output ?? node.output
+        } : node)
+      : [...job.nodes, {
+          id: nodeId,
+          kind: (patch.callKind ?? 'generation') as WorkflowAuditNode['kind'],
+          callKind: patch.callKind,
+          stage: patch.stage,
+          pass: patch.pass,
+          candidateIndex: patch.candidateIndex,
+          sequence: patch.sequence ?? job.nodes.length,
+          title: nodeId,
+          status: patch.status ?? 'pending',
+          ...patch
+        }]
   }));
+}
+
+function publishWorkflowQualityNode(jobId: string, event: QualityNodeEvent): void {
+  const sequenceBase = event.stage === 'initial' ? 0 : 100;
+  const passOffset = event.pass === 1 ? 0 : 7;
+  const kindOffset: Record<QualityNodeEvent['callKind'], number> = {
+    generation: 0,
+    'vocab-audit': 1,
+    triage: 2,
+    'repair-candidate': 2 + (event.candidateIndex ?? 1),
+    'dominance-gates': 5,
+    pick: 6,
+    reroll: 0,
+    'final-audit': 0,
+    audio: 0
+  };
+  updateWorkflowNode(jobId, event.id, {
+    callKind: event.callKind,
+    stage: event.stage,
+    pass: event.pass,
+    candidateIndex: event.candidateIndex,
+    sequence: sequenceBase + passOffset + kindOffset[event.callKind],
+    status: event.status,
+    startedAt: event.status === 'processing' ? nowIso() : undefined,
+    completedAt: ['done', 'repairWarning', 'error', 'skipped'].includes(event.status) ? nowIso() : undefined,
+    input: event.input,
+    output: event.output,
+    error: event.error
+  });
 }
 
 function runStatusFor(conversations: PracticeConversation[]): PracticeRun['status'] {
@@ -747,6 +896,7 @@ function workflowAuditForJob(job: WorkflowJob): WorkflowRunAudit {
     audioRequestedCount: job.audioRequestedCount,
     audioGeneratedCount: job.audioGeneratedCount,
     audioErrors: job.audioErrors,
+    finalTextAudit: job.run?.finalTextAudit,
     nodes: job.nodes,
     createdAt: job.createdAt,
     updatedAt: job.updatedAt
@@ -814,129 +964,142 @@ async function generateTextBatch(
   allowedVocabulary: VocabItem[],
   knownVocabulary: VocabItem[],
   setNumber: number,
-  expectedCount: number
-): Promise<{ conversations: PracticeConversation[]; exchange: LlmExchange; exchanges: LlmExchange[]; quality: VocabularyQualityResult }> {
+  expectedCount: number,
+  options: {
+    stage?: 'initial' | 'balance';
+    startNumber?: number;
+    libraryContext?: AiCurationLibraryContext;
+    onNode?: (event: QualityNodeEvent) => void | Promise<void>;
+  } = {}
+): Promise<{
+  conversations: PracticeConversation[];
+  exchange: LlmExchange;
+  exchanges: LlmExchange[];
+  quality: VocabularyQualityResult;
+  stageAudit: Awaited<ReturnType<typeof runQualityControl>>['stageAudit'];
+}> {
+  const stage = options.stage ?? 'initial';
   const requestedAt = new Date().toISOString();
-  const exchanges: LlmExchange[] = [];
   const exchange = makeLlmExchange(textModel, prompt, requestedAt);
+  await options.onNode?.({
+    id: `${stage}:generation`,
+    callKind: 'generation',
+    stage,
+    pass: 1,
+    status: 'processing',
+    title: stage === 'initial' ? 'Generate initial set' : 'Generate balance set',
+    input: { prompt, model: textModel, requestedConversationCount: expectedCount }
+  });
   let generation: Awaited<ReturnType<ConversationJsonGenerator>>;
   try {
     generation = await conversationJsonGenerator(prompt, textModel);
   } catch (error) {
     const failure = errorAuditDetails(error);
-    exchanges.push({
+    const failed = {
       ...exchange,
       output: failure.output,
       stats: failure.stats,
       receivedAt: new Date().toISOString(),
-      status: 'failed',
+      status: 'failed' as const,
       error: failure.message
+    };
+    await options.onNode?.({
+      id: `${stage}:generation`, callKind: 'generation', stage, pass: 1, status: 'error',
+      title: stage === 'initial' ? 'Generate initial set' : 'Generate balance set', error: failure.message,
+      output: { summary: { statLine: 'Generation call failed' }, exchange: failed }
     });
-    throw new AuditableGenerationError(failure.message, { exchanges, cause: error });
+    throw new AuditableGenerationError(failure.message, { exchanges: [failed], cause: error });
   }
-  let timestamp = new Date().toISOString();
-  exchanges.push({
+  const normalized = renumberConversations(normalizeGeneratedConversations(generation.parsed, expectedCount), options.startNumber ?? 1);
+  if (!normalized.length) {
+    throw new AuditableGenerationError('The generation response did not include any usable conversations.', { exchanges: [{
+      ...exchange,
+      output: generation.output,
+      stats: generation.stats,
+      receivedAt: nowIso(),
+      status: 'complete'
+    }] });
+  }
+  const initialExchange: LlmExchange = {
     ...exchange,
     output: generation.output,
-    stats: generation.stats,
-    receivedAt: timestamp,
+    stats: { ...objectStats(generation.stats), vocabularyQualityStage: stage, selectedForFinal: true },
+    receivedAt: nowIso(),
     status: 'complete'
+  };
+  await options.onNode?.({
+    id: `${stage}:generation`, callKind: 'generation', stage, pass: 1, status: 'done',
+    title: stage === 'initial' ? 'Generate initial set' : 'Generate balance set',
+    output: { summary: { statLine: `${normalized.length} conversations generated`, conversationCount: normalized.length }, exchange: initialExchange, conversations: normalized }
   });
-  let evaluated = await evaluateVocabularyQuality(
+  const controlled = await runQualityControl({
+    stage,
+    textModel,
+    originalPrompt: prompt,
     setNumber,
+    expectedCount,
     allowedVocabulary,
     knownVocabulary,
-    normalizeGeneratedConversations(generation.parsed, expectedCount)
-  );
-  exchanges[0] = {
-    ...exchanges[0],
-    stats: {
-      ...objectStats(exchanges[0].stats),
-      vocabularyQuality: evaluated.quality,
-      vocabularyQualityStage: 'initial',
-      selectedForFinal: evaluated.quality.passed
-    }
-  };
-
-  let selectedExchangeIndex = 0;
-  const maxRepairAttempts = evaluated.quality.passed ? 0 : 1;
-  for (let attempt = 1; !evaluated.quality.passed && attempt <= maxRepairAttempts; attempt += 1) {
-    const repairPrompt = buildRepairPrompt(prompt, allowedVocabulary, evaluated.conversations, evaluated.quality);
-    const repairRequestedAt = new Date().toISOString();
-    const repairExchange = makeLlmExchange(textModel, repairPrompt, repairRequestedAt);
-    const qualityBeforeRepair = evaluated.quality;
-    let repair: Awaited<ReturnType<ConversationJsonGenerator>>;
-    try {
-      repair = await conversationJsonGenerator(repairPrompt, textModel);
-    } catch (error) {
-      const failure = errorAuditDetails(error);
-      exchanges.push({
-        ...repairExchange,
-        output: failure.output,
-        stats: {
-          ...failure.stats,
-          repairAttempt: attempt,
-          vocabularyQualityBeforeRepair: qualityBeforeRepair,
-          repairOutcome: 'provider_failed',
-          selectedForFinal: false
-        },
-        receivedAt: new Date().toISOString(),
-        status: 'failed',
-        error: failure.message
-      });
-      break;
-    }
-    timestamp = new Date().toISOString();
-    const repaired = await evaluateVocabularyQuality(
-      setNumber,
-      allowedVocabulary,
-      knownVocabulary,
-      normalizeGeneratedConversations(repair.parsed, expectedCount)
-    );
-    const improved = repaired.conversations.length > 0 && qualityIssueScore(repaired.quality) < qualityIssueScore(qualityBeforeRepair);
-    const repairExchangeIndex = exchanges.length;
-    exchanges.push({
-      ...repairExchange,
-      output: repair.output,
-      stats: {
-        ...objectStats(repair.stats),
-        repairAttempt: attempt,
-        vocabularyQualityBeforeRepair: qualityBeforeRepair,
-        vocabularyQuality: repaired.quality,
-        repairOutcome: improved ? 'improved' : 'not_improved',
-        selectedForFinal: improved
-      },
-      receivedAt: timestamp,
-      status: 'complete'
+    conversations: normalized,
+    libraryContext: options.libraryContext,
+    invoker: qualityStructuredInvokerForTests,
+    conversationGenerator: conversationJsonGenerator,
+    onNode: options.onNode
+  });
+  const evaluated = await evaluateVocabularyQuality(setNumber, allowedVocabulary, knownVocabulary, controlled.conversations);
+  const exchanges = [
+    { ...initialExchange, stats: { ...objectStats(initialExchange.stats), vocabularyQuality: evaluated.quality, finalVocabularyQuality: evaluated.quality } },
+    ...controlled.exchanges
+  ];
+  const regenerateRate = controlled.stageAudit.generatedCount
+    ? controlled.stageAudit.regenerateCount / controlled.stageAudit.generatedCount
+    : 0;
+  if (stage === 'initial' && regenerateRate > INITIAL_REGENERATE_FAILURE_RATE) {
+    const guidance = `Initial quality regeneration rate ${Math.round(regenerateRate * 100)}% exceeded the ${Math.round(INITIAL_REGENERATE_FAILURE_RATE * 100)}% limit. Try a smaller batch, relax incompatible constraints, or adjust the generation prompt.`;
+    await options.onNode?.({
+      id: `${stage}:quality-threshold`,
+      callKind: 'final-audit',
+      stage,
+      pass: 1,
+      status: 'error',
+      title: 'Initial quality threshold',
+      error: guidance,
+      output: {
+        summary: { statLine: `${Math.round(regenerateRate * 100)}% regenerate · FAIL`, thresholdOutcome: 'fail' },
+        details: { regenerateRate, limit: INITIAL_REGENERATE_FAILURE_RATE, guidance }
+      }
     });
-
-    if (improved) {
-      exchanges[selectedExchangeIndex] = {
-        ...exchanges[selectedExchangeIndex],
-        stats: {
-          ...objectStats(exchanges[selectedExchangeIndex].stats),
-          selectedForFinal: false
-        }
-      };
-      selectedExchangeIndex = repairExchangeIndex;
-      evaluated = repaired;
-    }
+    throw new AuditableGenerationError(
+      guidance,
+      { exchanges, conversations: evaluated.conversations, quality: evaluated.quality }
+    );
   }
-
-  exchanges[selectedExchangeIndex] = {
-    ...exchanges[selectedExchangeIndex],
-    stats: {
-      ...objectStats(exchanges[selectedExchangeIndex].stats),
-      selectedForFinal: true,
-      finalVocabularyQuality: evaluated.quality
-    }
-  };
-
   return {
     conversations: evaluated.conversations,
-    exchange: exchanges[selectedExchangeIndex],
+    exchange: exchanges[0],
     exchanges,
-    quality: evaluated.quality
+    quality: evaluated.quality,
+    stageAudit: controlled.stageAudit
+  };
+}
+
+function stageAuditForBatch(
+  batch: { conversations: PracticeConversation[]; stageAudit?: Awaited<ReturnType<typeof runQualityControl>>['stageAudit'] },
+  stage: 'initial' | 'balance',
+  requestedCount: number
+): Awaited<ReturnType<typeof runQualityControl>>['stageAudit'] {
+  return batch.stageAudit ?? {
+    stage,
+    requestedCount,
+    generatedCount: batch.conversations.length,
+    acceptedCount: batch.conversations.length,
+    regenerateCount: 0,
+    rerollRequestedCount: 0,
+    rerollGeneratedCount: 0,
+    dropped: [],
+    verdicts: [],
+    picks: [],
+    failures: []
   };
 }
 
@@ -1088,40 +1251,23 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
 
     let primary = resume ? checkpoint.primary as Awaited<ReturnType<typeof generateTextBatch>> | undefined : undefined;
     if (!primary) {
-      updateWorkflowNode(jobId, 'generator', {
-        status: 'processing',
-        startedAt: nowIso(),
-        input: {
-          setNumber: context.setNumber,
-          requestedConversationCount: context.conversationCount,
-          model: context.textModel,
-          prompt: context.prompt
-        }
-      });
       primary = await generateTextBatch(
         context.textModel,
         context.prompt,
         context.allowedVocabulary,
         context.knownVocabulary,
         context.setNumber,
-        context.conversationCount
+        context.conversationCount,
+        {
+          stage: 'initial',
+          libraryContext: context.qualityLibraryContext,
+          onNode: (event) => publishWorkflowQualityNode(jobId, event)
+        }
       );
     }
     if (!primary.conversations.length) {
       throw new Error('The generation response did not include any usable conversations.');
     }
-    updateWorkflowNode(jobId, 'generator', {
-      status: 'done',
-      completedAt: nowIso(),
-      output: {
-        exchange: primary.exchange,
-        exchanges: primary.exchanges,
-        conversations: primary.conversations,
-        vocabularyQuality: primary.quality,
-        analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, primary.conversations),
-        distributionStats: calculateWorkflowDistributionStats(context.setNumber, context.allowedVocabulary, primary.conversations)
-      }
-    });
     await updateStudioJob(jobId, (job) => ({
       ...job,
       checkpoint: { ...(job.checkpoint as Record<string, unknown> | undefined), primary }
@@ -1140,17 +1286,6 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
       balance,
       'fresh generated batch'
     );
-    updateWorkflowNode(jobId, 'balancer', {
-      status: 'processing',
-      startedAt: nowIso(),
-      input: {
-        setNumber: context.setNumber,
-        requestedConversationCount: context.balanceConversationCount,
-        model: context.textModel,
-        balance,
-        prompt: complementPrompt
-      }
-    });
     let complement = resume ? checkpoint.complement as Awaited<ReturnType<typeof generateTextBatch>> | undefined : undefined;
     if (!complement) {
       complement = await generateTextBatch(
@@ -1159,7 +1294,13 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
         context.allowedVocabulary,
         context.knownVocabulary,
         context.setNumber,
-        context.balanceConversationCount
+        context.balanceConversationCount,
+        {
+          stage: 'balance',
+          startNumber: primary.conversations.length + 1,
+          libraryContext: context.qualityLibraryContext,
+          onNode: (event) => publishWorkflowQualityNode(jobId, event)
+        }
       );
     }
     const complementConversations = renumberConversations(complement.conversations, primary.conversations.length + 1);
@@ -1176,31 +1317,44 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
         conversations
       }
     }));
-    updateWorkflowNode(jobId, 'balancer', {
+    await generationCheckpoint(jobId);
+
+    const legacyCheckpoint = resume && (!primary.stageAudit || !complement.stageAudit);
+    updateWorkflowNode(jobId, 'final-audit', {
+      status: 'processing',
+      startedAt: nowIso(),
+      input: { requestedCount: context.conversationCount + context.balanceConversationCount }
+    });
+    const finalTextAudit = checkpoint.finalTextAudit as ReturnType<typeof buildFinalTextAudit> | undefined ?? buildFinalTextAudit({
+      requestedCount: context.conversationCount + context.balanceConversationCount,
+      initial: stageAuditForBatch(primary, 'initial', context.conversationCount),
+      balance: stageAuditForBatch(complement, 'balance', context.balanceConversationCount),
+      conversations,
+      currentSetVocabulary: context.allowedVocabulary.filter((item) => item.set === context.setNumber),
+      distributionStats: calculateWorkflowDistributionStats(context.setNumber, context.allowedVocabulary, conversations)
+    });
+    updateWorkflowNode(jobId, 'final-audit', {
       status: 'done',
       completedAt: nowIso(),
       output: {
-        exchange: {
-          ...complement.exchange,
-          stats: {
-            ...objectStats(complement.exchange.stats),
-            generatedBatchBalance: balance
-          }
+        summary: {
+          statLine: `${finalTextAudit.acceptedCount}/${finalTextAudit.requestedCount} accepted · ${finalTextAudit.outcome.toUpperCase()}`,
+          acceptedCount: finalTextAudit.acceptedCount,
+          requestedCount: finalTextAudit.requestedCount,
+          thresholdOutcome: finalTextAudit.outcome
         },
-        exchanges: complement.exchanges.map((exchange) => ({
-          ...exchange,
-          stats: {
-            ...objectStats(exchange.stats),
-            generatedBatchBalance: balance
-          }
-        })),
-        conversations: complementConversations,
-        vocabularyQuality: complement.quality,
-        analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
-        distributionStats: calculateWorkflowDistributionStats(context.setNumber, context.allowedVocabulary, conversations)
+        factsByConversationId: Object.fromEntries(conversations.map((conversation) => [conversation.id, {
+          quality: conversation.quality,
+          flags: conversation.qualityFlags,
+          remainingOutOfVocabulary: conversation.outOfVocabularyAudit
+        }])),
+        details: finalTextAudit
       }
     });
-    await generationCheckpoint(jobId);
+    await updateStudioJob(jobId, (job) => ({
+      ...job,
+      checkpoint: { ...(job.checkpoint as Record<string, unknown> | undefined), finalTextAudit }
+    }));
 
     const timestamp = nowIso();
     const existingRun = resume && durableJob.runId ? await readRun(durableJob.runId).catch(() => undefined) : undefined;
@@ -1212,6 +1366,7 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
       textModel: context.textModel,
       analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
       status: 'generated',
+      finalTextAudit,
       llmExchanges: [
         ...(primary.exchanges ?? [primary.exchange]),
         ...(complement.exchanges ?? [complement.exchange]).map((exchange) => ({
@@ -1227,7 +1382,35 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
       updatedAt: timestamp,
       conversations
     });
-    updateWorkflowJob(jobId, (job) => ({ ...job, run }));
+    const textCompleteJob = updateWorkflowJob(jobId, (job) => ({ ...job, run }));
+    if (textCompleteJob) {
+      run = {
+        ...run,
+        finalTextAudit,
+        workflowAudit: { ...workflowAuditForJob(textCompleteJob), finalTextAudit }
+      };
+      await mutateRun(run.id, () => run);
+      updateWorkflowJob(jobId, (job) => ({ ...job, run }));
+    }
+
+    if (finalTextAudit.outcome === 'fail') {
+      throw new Error(finalTextAudit.guidance ?? 'The final text audit failed.');
+    }
+    if (finalTextAudit.outcome === 'pause' && checkpoint.reviewApproved !== true && !legacyCheckpoint) {
+      const paused = updateWorkflowJob(jobId, (job) => ({ ...job, status: 'paused', run }));
+      if (paused) {
+        run = { ...run, workflowAudit: { ...workflowAuditForJob(paused), finalTextAudit } };
+        await mutateRun(run.id, () => run);
+      }
+      await updateStudioJob(jobId, (job) => ({
+        ...job,
+        status: 'paused',
+        stageLabel: `Review final audit: accepted ${finalTextAudit.acceptedCount} of ${finalTextAudit.requestedCount} requested`,
+        runId: run.id,
+        checkpoint: { ...(job.checkpoint as Record<string, unknown> | undefined), finalTextAudit, conversations, runId: run.id }
+      }));
+      return;
+    }
 
     const audioTargets = run.conversations.slice(0, context.audioCount);
     const preDoneCount = audioTargets.filter((conversation) => conversation.audioFileName).length;
@@ -1315,7 +1498,9 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
       error: message,
       nodes: job.nodes.map((node) => node.status === 'processing'
         ? { ...node, status: 'error' as WorkflowNodeStatus, completedAt: nowIso(), error: message, output: failureOutput ?? node.output }
-        : node)
+        : node.status === 'pending'
+          ? { ...node, status: 'skipped' as WorkflowNodeStatus, completedAt: nowIso(), error: 'Skipped after a run-stopping failure.' }
+          : node)
     }));
   }
 }
@@ -1332,10 +1517,24 @@ async function runStandardGenerationJob(jobId: string): Promise<void> {
       stageLabel: 'Generating initial set',
       stages: current.stages.map((stage) => ({ ...stage, status: 'running', startedAt: nowIso() }))
     }));
-    const generated = await generateTextBatch(context.textModel, context.prompt, context.allowedVocabulary, context.knownVocabulary, context.setNumber, context.conversationCount);
+    const generated = await generateTextBatch(
+      context.textModel,
+      context.prompt,
+      context.allowedVocabulary,
+      context.knownVocabulary,
+      context.setNumber,
+      context.conversationCount,
+      { stage: 'initial', libraryContext: context.qualityLibraryContext }
+    );
     if (!generated.conversations.length) throw new Error('The generation response did not include any usable conversations.');
     await generationCheckpoint(jobId);
     const timestamp = nowIso();
+    const finalTextAudit = buildFinalTextAudit({
+      requestedCount: context.conversationCount,
+      initial: generated.stageAudit,
+      conversations: generated.conversations,
+      currentSetVocabulary: context.allowedVocabulary.filter((item) => item.set === context.setNumber)
+    });
     const run = await saveRun({
       id: job.runId ?? makeRunId(context.setNumber),
       setNumber: context.setNumber,
@@ -1345,6 +1544,7 @@ async function runStandardGenerationJob(jobId: string): Promise<void> {
       analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
       status: 'generated',
       llmExchanges: generated.exchanges,
+      finalTextAudit,
       createdAt: job.createdAt,
       updatedAt: timestamp,
       conversations: generated.conversations
@@ -1387,7 +1587,8 @@ async function runLibraryComplementJob(jobId: string): Promise<void> {
       context.allowedVocabulary,
       context.knownVocabulary,
       context.setNumber,
-      context.conversationCount
+      context.conversationCount,
+      { stage: 'balance', libraryContext: context.librarySnapshotContext }
     );
     if (!generated.conversations.length) throw new Error('The generation response did not include any usable conversations.');
     await generationCheckpoint(jobId);
@@ -1409,6 +1610,12 @@ async function runLibraryComplementJob(jobId: string): Promise<void> {
       analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
       status: 'generated',
       llmExchanges: exchanges,
+      finalTextAudit: buildFinalTextAudit({
+        requestedCount: context.conversationCount,
+        initial: generated.stageAudit,
+        conversations: generated.conversations,
+        currentSetVocabulary: context.allowedVocabulary.filter((item) => item.set === context.setNumber)
+      }),
       createdAt: job.createdAt,
       updatedAt: timestamp,
       conversations: generated.conversations
@@ -1537,7 +1744,16 @@ app.post('/api/studio/jobs/:jobId/resume', asyncHandler(async (req, res) => {
   }
   if (job.kind === 'workflow-generation') {
     if (!job.workflow || !job.request) throw new Error('Workflow checkpoint is incomplete.');
-    const resumed = await updateStudioJob(job.id, (current) => ({ ...current, status: 'queued', stageLabel: isGenerationSlotBusy() ? 'Waiting for earlier generation' : 'Resuming workflow', error: undefined }));
+    const approvedFinalAudit = job.status === 'paused' && Boolean((job.checkpoint as Record<string, unknown> | undefined)?.finalTextAudit);
+    const resumed = await updateStudioJob(job.id, (current) => ({
+      ...current,
+      status: 'queued',
+      stageLabel: isGenerationSlotBusy() ? 'Waiting for earlier generation' : 'Resuming workflow',
+      error: undefined,
+      checkpoint: approvedFinalAudit
+        ? { ...(current.checkpoint as Record<string, unknown> | undefined), reviewApproved: true }
+        : current.checkpoint
+    }));
     workflowJobs.set(job.id, { ...job.workflow, status: 'running', error: undefined });
     void runQueuedGenerationJob(job.id, () => runWorkflowJob(job.id, job.request as WorkflowGenerateRequest, true));
     res.status(202).json({ job: resumed });
@@ -1637,6 +1853,119 @@ app.post('/api/runs/:runId/workflow-nodes/:nodeId/repair', asyncHandler(async (r
   const node = run.workflowAudit?.nodes.find((item) => item.id === nodeId);
   if (!run.workflowAudit || !node) {
     res.status(404).json({ error: 'Workflow audit node not found for this run.' });
+    return;
+  }
+  if (node.callKind && node.stage) {
+    if (!['repair-candidate', 'dominance-gates', 'pick'].includes(node.callKind)) {
+      res.status(409).json({ error: 'Choose a repair, gates, or pick node to rerun the scoped repair flow.' });
+      return;
+    }
+    if (!['done', 'repairWarning', 'error'].includes(node.status)) {
+      res.status(409).json({ error: 'Repair can only be rerun after the selected node has finished.' });
+      return;
+    }
+    const pass = node.pass ?? 1;
+    const stageNodes = run.workflowAudit.nodes.filter((item) => item.stage === node.stage && (item.pass ?? 1) === pass);
+    const triageNode = stageNodes.find((item) => item.callKind === 'triage');
+    const sourceNode = stageNodes.find((item) => pass === 2 ? item.callKind === 'reroll' : item.callKind === 'generation');
+    const triageDetails = recordValue(recordValue(triageNode?.output)?.details);
+    const verdicts = Array.isArray(triageDetails?.verdicts) ? triageDetails.verdicts.map(recordValue).filter(Boolean) : [];
+    const repairIds = new Set(verdicts.filter((verdict) => verdict?.verdict === 'repair').map((verdict) => String(verdict?.conversationId)));
+    const sourceConversations = Array.isArray(recordValue(sourceNode?.output)?.conversations)
+      ? (recordValue(sourceNode?.output)?.conversations as unknown[]).filter((item): item is PracticeConversation => Boolean(recordValue(item) && Array.isArray(recordValue(item)?.text)))
+      : [];
+    const flagged = sourceConversations.filter((conversation) => repairIds.has(conversation.id));
+    if (!flagged.length) {
+      res.status(409).json({ error: 'The saved per-call audit has no flagged source conversations to repair.' });
+      return;
+    }
+    if (run.conversations.some((conversation) => repairIds.has(conversation.id) && conversation.curatedId)) {
+      res.status(409).json({ error: 'Remove repaired conversations from the curated library before changing their generated text.' });
+      return;
+    }
+    const sourceInput = recordValue(sourceNode?.input);
+    const originalPrompt = typeof sourceInput?.prompt === 'string' ? sourceInput.prompt : 'Repair the saved flagged conversations.';
+    const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
+    const knownVocabulary = await readVocabulary();
+    const publishedEvents = new Map<string, QualityNodeEvent>();
+    let forcedTriage = true;
+    const rerunInvoker: StructuredJsonInvoker = async (prompt, textModel, instructions) => {
+      if (forcedTriage && prompt.includes('Conversations with authoritative evidence:')) {
+        forcedTriage = false;
+        const forcedVerdicts = flagged.map((conversation) => ({
+          conversationId: conversation.id,
+          verdict: 'repair',
+          rationale: 'Operator requested a scoped repair rerun from the saved audit.',
+          flags: ['operator_repair_rerun']
+        }));
+        return { parsed: { verdicts: forcedVerdicts }, output: JSON.stringify({ verdicts: forcedVerdicts }) };
+      }
+      return (qualityStructuredInvokerForTests ?? invokeStructuredJson)(prompt, textModel, instructions);
+    };
+    const result = await runQualityControl({
+      stage: node.stage,
+      textModel: run.textModel,
+      originalPrompt,
+      setNumber: run.setNumber,
+      expectedCount: flagged.length,
+      allowedVocabulary,
+      knownVocabulary,
+      conversations: flagged,
+      libraryContext: await getQualityLibraryContext(run.setNumber),
+      invoker: rerunInvoker,
+      conversationGenerator: conversationJsonGenerator,
+      onNode: (event) => { publishedEvents.set(event.id, event); }
+    });
+    const replacements = result.conversations;
+    const originalById = new Map(flagged.map((conversation) => [conversation.id, conversation]));
+    const changedIds = new Set(replacements.filter((conversation) => JSON.stringify(conversation.text) !== JSON.stringify(originalById.get(conversation.id)?.text)).map((conversation) => conversation.id));
+    const rerunSuffix = `rerun-${Date.now()}`;
+    const appendedNodes: WorkflowAuditNode[] = [...publishedEvents.values()].map((event, index) => ({
+      id: `${event.id}:${rerunSuffix}`,
+      kind: event.callKind,
+      callKind: event.callKind,
+      stage: event.stage,
+      pass: event.pass,
+      candidateIndex: event.candidateIndex,
+      sequence: Math.max(0, ...run.workflowAudit!.nodes.map((item) => item.sequence ?? 0)) + index + 1,
+      title: `${event.title} (rerun)`,
+      status: event.status,
+      startedAt: event.status === 'processing' ? nowIso() : undefined,
+      completedAt: event.status === 'processing' ? undefined : nowIso(),
+      input: event.input,
+      output: event.output,
+      error: event.error
+    }));
+    const updated = await mutateRun(run.id, async (current) => {
+      await Promise.all(current.conversations.map((conversation) => changedIds.has(conversation.id) && conversation.audioFileName
+        ? deleteAudioFile(current.id, conversation.audioFileName)
+        : Promise.resolve()));
+      const conversations = replaceConversationsById(current, replacements);
+      let workflowAudit = current.workflowAudit!;
+      for (const conversationId of changedIds) {
+        workflowAudit = workflowAuditWithConversationAudioCleared({ ...current, workflowAudit }, conversationId) ?? workflowAudit;
+      }
+      workflowAudit = { ...workflowAudit, nodes: [...workflowAudit.nodes, ...appendedNodes], updatedAt: nowIso() };
+      const next = {
+        ...current,
+        conversations,
+        analytics: calculateRunAnalytics(current.setNumber, allowedVocabulary, conversations),
+        workflowAudit,
+        llmExchanges: workflowLlmExchanges(workflowAudit.nodes),
+        updatedAt: nowIso()
+      };
+      next.status = runStatusFor(next.conversations);
+      return next;
+    });
+    const responseExchange = [...result.exchanges].reverse().find((item) => item.status === 'complete') ?? result.exchanges.at(-1);
+    if (!responseExchange) throw new Error('Scoped repair rerun did not record a model exchange.');
+    res.json({
+      run: updated,
+      repairApplied: changedIds.size > 0,
+      repairOutcome: changedIds.size > 0 ? 'improved' : 'not_improved',
+      exchange: responseExchange,
+      evidenceByConversationId: await getConversationCurationEvidence(updated.setNumber, updated.conversations)
+    } satisfies WorkflowRepairResponse);
     return;
   }
   if (node.kind !== 'generator' && node.kind !== 'balancer') {
@@ -2053,8 +2382,10 @@ app.post('/api/workflow/start', asyncHandler(async (req: express.Request<unknown
     return;
   }
   const jobId = makeWorkflowJobId(context.setNumber);
+  const runId = makeRunId(context.setNumber);
   const job: WorkflowJob = {
     id: jobId,
+    runId,
     status: 'running',
     setNumber: context.setNumber,
     primaryConversationCount: context.conversationCount,
@@ -2076,12 +2407,13 @@ app.post('/api/workflow/start', asyncHandler(async (req: express.Request<unknown
     detail: `${context.conversationCount + context.balanceConversationCount} conversations`,
     stageLabel: isGenerationSlotBusy() ? 'Waiting for earlier generation' : 'Starting generation',
     setNumber: context.setNumber,
-    runId: makeRunId(context.setNumber),
+    runId,
     revision: 1,
     progress: { completed: 0, total: context.audioCount, queued: context.audioCount },
     stages: [
       { id: 'generator', label: 'Generating initial set', status: 'pending' },
       { id: 'balancer', label: 'Balancing set', status: 'pending' },
+      { id: 'final-audit', label: 'Reviewing final text audit', status: 'pending' },
       { id: 'audio', label: 'Generating audio', status: 'pending' }
     ],
     request: req.body,
@@ -2120,7 +2452,8 @@ app.post('/api/generate', asyncHandler(async (req: express.Request<unknown, unkn
     context.allowedVocabulary,
     context.knownVocabulary,
     context.setNumber,
-    context.conversationCount
+    context.conversationCount,
+    { stage: 'initial', libraryContext: context.qualityLibraryContext }
   );
 
   if (!generated.conversations.length) {
@@ -2129,6 +2462,12 @@ app.post('/api/generate', asyncHandler(async (req: express.Request<unknown, unkn
   }
 
   const timestamp = new Date().toISOString();
+  const finalTextAudit = buildFinalTextAudit({
+    requestedCount: context.conversationCount,
+    initial: generated.stageAudit,
+    conversations: generated.conversations,
+    currentSetVocabulary: context.allowedVocabulary.filter((item) => item.set === context.setNumber)
+  });
   const run = await saveRun({
     id: makeRunId(context.setNumber),
     setNumber: context.setNumber,
@@ -2138,6 +2477,7 @@ app.post('/api/generate', asyncHandler(async (req: express.Request<unknown, unkn
     analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
     status: 'generated',
     llmExchanges: generated.exchanges,
+    finalTextAudit,
     createdAt: timestamp,
     updatedAt: timestamp,
     conversations: generated.conversations
@@ -2159,7 +2499,8 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
     context.allowedVocabulary,
     context.knownVocabulary,
     context.setNumber,
-    context.conversationCount
+    context.conversationCount,
+    { stage: 'initial', libraryContext: context.qualityLibraryContext }
   );
 
   if (!primary.conversations.length) {
@@ -2185,7 +2526,8 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
     context.allowedVocabulary,
     context.knownVocabulary,
     context.setNumber,
-    context.balanceConversationCount
+    context.balanceConversationCount,
+    { stage: 'balance', startNumber: primary.conversations.length + 1, libraryContext: context.qualityLibraryContext }
   );
   const complementConversations = renumberConversations(complement.conversations, primary.conversations.length + 1);
   const conversations = [...primary.conversations, ...complementConversations];
@@ -2196,6 +2538,14 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
   }
 
   const timestamp = new Date().toISOString();
+  const finalTextAudit = buildFinalTextAudit({
+    requestedCount: context.conversationCount + context.balanceConversationCount,
+    initial: primary.stageAudit,
+    balance: complement.stageAudit,
+    conversations,
+    currentSetVocabulary: context.allowedVocabulary.filter((item) => item.set === context.setNumber),
+    distributionStats: calculateWorkflowDistributionStats(context.setNumber, context.allowedVocabulary, conversations)
+  });
   let run = await saveRun({
     id: makeRunId(context.setNumber),
     setNumber: context.setNumber,
@@ -2204,6 +2554,7 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
     textModel: context.textModel,
     analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
     status: 'generated',
+    finalTextAudit,
     llmExchanges: [
       ...primary.exchanges,
       ...complement.exchanges.map((exchange) => ({
@@ -2284,7 +2635,8 @@ app.post('/api/library/sets/:setNumber/complement', asyncHandler(async (req: exp
     context.allowedVocabulary,
     context.knownVocabulary,
     context.setNumber,
-    context.conversationCount
+    context.conversationCount,
+    { stage: 'balance', libraryContext: context.librarySnapshotContext }
   );
 
   if (!generated.conversations.length) {
@@ -2319,6 +2671,12 @@ app.post('/api/library/sets/:setNumber/complement', asyncHandler(async (req: exp
     analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
     status: 'generated',
     llmExchanges: exchanges,
+    finalTextAudit: buildFinalTextAudit({
+      requestedCount: context.conversationCount,
+      initial: generated.stageAudit,
+      conversations: generated.conversations,
+      currentSetVocabulary: context.allowedVocabulary.filter((item) => item.set === context.setNumber)
+    }),
     createdAt: timestamp,
     updatedAt: timestamp,
     conversations: generated.conversations

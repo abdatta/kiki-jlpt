@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Check, CircleAlert, Headphones, LoaderCircle, Pause, RefreshCw, X } from 'lucide-react';
 
-export type AudioProgressItemStatus = 'pending' | 'processing' | 'done' | 'error' | 'skipped' | 'paused';
+export type AudioProgressItemStatus = 'pending' | 'processing' | 'done' | 'repairWarning' | 'error' | 'skipped' | 'paused';
 
 export interface AudioProgressItem {
   id: string;
@@ -35,7 +35,7 @@ export function audioProgressStageTitle(items: readonly AudioProgressItem[], sta
 function AudioProgressIcon({ status, size = 15 }: { status: AudioProgressItemStatus; size?: number }) {
   if (status === 'processing') return <RefreshCw className="spin" size={size} />;
   if (status === 'done') return <Check size={size} />;
-  if (status === 'error') return <CircleAlert size={size} />;
+  if (status === 'error' || status === 'repairWarning') return <CircleAlert size={size} />;
   if (status === 'skipped') return <X size={size} />;
   return <Pause size={size} />;
 }
