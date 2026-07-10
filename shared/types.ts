@@ -18,7 +18,7 @@ export interface SetSummary {
   cumulativeCount: number;
 }
 
-export type TextModelProvider = 'gemini' | 'codex';
+export type TextModelProvider = 'gemini' | 'codex' | 'claude';
 
 export interface TextModelInfo {
   id: string;
@@ -27,6 +27,8 @@ export interface TextModelInfo {
   label: string;
   reasoningEffort?: string;
   source?: 'configured' | 'codex-api' | 'fallback' | 'legacy';
+  /** Exact model version reported by the provider once a generation ran (aliases like `sonnet` resolve at call time). */
+  resolvedModel?: string;
 }
 
 export interface LlmExchange {
@@ -34,6 +36,7 @@ export interface LlmExchange {
   provider: TextModelProvider;
   model: string;
   label: string;
+  resolvedModel?: string;
   instructions?: string;
   prompt: string;
   output?: string;

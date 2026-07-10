@@ -1,4 +1,5 @@
 import type { TextModelInfo } from '../shared/types.ts';
+import { generateClaudeStructuredJson } from './claudeText.ts';
 import { generateCodexStructuredJson } from './codexText.ts';
 import { generateGeminiStructuredJson } from './gemini.ts';
 
@@ -15,7 +16,12 @@ export type StructuredJsonInvoker = (
 ) => Promise<StructuredJsonResult>;
 
 export const invokeStructuredJson: StructuredJsonInvoker = async (prompt, textModel, instructions) => {
-  return textModel.provider === 'codex'
-    ? generateCodexStructuredJson(prompt, textModel.model, instructions)
-    : generateGeminiStructuredJson(prompt, textModel.model, 0.2);
+  switch (textModel.provider) {
+    case 'codex':
+      return generateCodexStructuredJson(prompt, textModel.model, instructions);
+    case 'claude':
+      return generateClaudeStructuredJson(prompt, textModel.model, instructions);
+    default:
+      return generateGeminiStructuredJson(prompt, textModel.model, 0.2);
+  }
 };

@@ -8,6 +8,7 @@ import type { AiCurationRequest, GenerateRequest, LibraryComplementGenerateReque
 import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR, STUDIO_JOBS_DIR } from './paths.ts';
 import { buildAiLibraryBalancePrompt, buildBalancedRepairPrompt, buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
 import { buildTtsPrompt, generateConversationAudio, generateConversationJson } from './gemini.ts';
+import { CLAUDE_TEXT_INSTRUCTIONS, generateClaudeConversationJson } from './claudeText.ts';
 import { CODEX_TEXT_INSTRUCTIONS, generateCodexConversationJson } from './codexText.ts';
 import { getAllowedVocabulary, getSetSummaries, readVocabulary } from './vocab.ts';
 import { deleteRun, listRuns, makeRunId, mutateRun, readRun, reanalyzeRun, runAudioDir, saveRun, touchConversation, unlockCuratedSource, updateConversation } from './storage.ts';
@@ -271,6 +272,12 @@ async function getLibraryComplementContext(
   };
 }
 
+function conversationInstructionsFor(provider: TextModelInfo['provider']): string | undefined {
+  if (provider === 'codex') return CODEX_TEXT_INSTRUCTIONS;
+  if (provider === 'claude') return CLAUDE_TEXT_INSTRUCTIONS;
+  return undefined;
+}
+
 function makeLlmExchange(
   textModel: TextModelInfo,
   prompt: string,
@@ -281,7 +288,7 @@ function makeLlmExchange(
     provider: textModel.provider,
     model: textModel.model,
     label: textModel.label,
-    instructions: textModel.provider === 'codex' ? CODEX_TEXT_INSTRUCTIONS : undefined,
+    instructions: conversationInstructionsFor(textModel.provider),
     prompt,
     requestedAt,
     status: 'pending'
@@ -293,20 +300,23 @@ type ConversationJsonGenerator = (
   textModel: TextModelInfo
 ) => Promise<{ parsed: unknown; output: string; stats?: unknown }>;
 
-let conversationJsonGenerator: ConversationJsonGenerator = async (prompt, textModel) => (
-  textModel.provider === 'codex'
-    ? generateCodexConversationJson(prompt, textModel.model)
-    : generateConversationJson(prompt)
-);
+const defaultConversationJsonGenerator: ConversationJsonGenerator = async (prompt, textModel) => {
+  switch (textModel.provider) {
+    case 'codex':
+      return generateCodexConversationJson(prompt, textModel.model);
+    case 'claude':
+      return generateClaudeConversationJson(prompt, textModel.model);
+    default:
+      return generateConversationJson(prompt);
+  }
+};
+
+let conversationJsonGenerator: ConversationJsonGenerator = defaultConversationJsonGenerator;
 
 let qualityStructuredInvokerForTests: StructuredJsonInvoker | undefined;
 
 export function configureConversationJsonGeneratorForTests(generator?: ConversationJsonGenerator): void {
-  conversationJsonGenerator = generator ?? (async (prompt, textModel) => (
-    textModel.provider === 'codex'
-      ? generateCodexConversationJson(prompt, textModel.model)
-      : generateConversationJson(prompt)
-  ));
+  conversationJsonGenerator = generator ?? defaultConversationJsonGenerator;
   qualityStructuredInvokerForTests = generator
     ? async (prompt) => {
         if (prompt.includes('Admissible version sets:')) {
@@ -406,6 +416,32 @@ function errorAuditDetails(error: unknown): { message: string; output?: string; 
       ...cause
     }
   };
+}
+
+function resolvedModelFromStats(stats: unknown): string | undefined {
+  const record = objectStats(stats);
+  // Providers report the exact serving model differently: the Claude CLI as
+  // `resolvedModel`, Gemini as `modelVersion`.
+  const resolved = record.resolvedModel ?? record.modelVersion;
+  return typeof resolved === 'string' && resolved.trim() ? resolved.trim() : undefined;
+}
+
+function annotateResolvedModel(exchange: LlmExchange): LlmExchange {
+  if (exchange.resolvedModel) return exchange;
+  const resolvedModel = resolvedModelFromStats(exchange.stats);
+  return resolvedModel ? { ...exchange, resolvedModel } : exchange;
+}
+
+function stampResolvedTextModel(textModel: TextModelInfo, exchanges: LlmExchange[]): TextModelInfo {
+  const resolvedModel = exchanges
+    .filter((exchange) => exchange.status === 'complete')
+    .map((exchange) => exchange.resolvedModel ?? resolvedModelFromStats(exchange.stats))
+    .find((model): model is string => Boolean(model));
+  // A resolved version identical to the selected model adds no information
+  // (e.g. Gemini's modelVersion often matches the configured model).
+  return resolvedModel && resolvedModel !== textModel.model && resolvedModel !== textModel.resolvedModel
+    ? { ...textModel, resolvedModel }
+    : textModel;
 }
 
 function qualityIssueScore(quality: VocabularyQualityResult): number {
@@ -1020,13 +1056,13 @@ async function generateTextBatch(
       status: 'complete'
     }] });
   }
-  const initialExchange: LlmExchange = {
+  const initialExchange: LlmExchange = annotateResolvedModel({
     ...exchange,
     output: generation.output,
     stats: { ...objectStats(generation.stats), vocabularyQualityStage: stage, selectedForFinal: true },
     receivedAt: nowIso(),
     status: 'complete'
-  };
+  });
   await options.onNode?.({
     id: `${stage}:generation`, callKind: 'generation', stage, pass: 1, status: 'done',
     title: stage === 'initial' ? 'Generate initial set' : 'Generate balance set',
@@ -1050,7 +1086,7 @@ async function generateTextBatch(
   const exchanges = [
     { ...initialExchange, stats: { ...objectStats(initialExchange.stats), vocabularyQuality: evaluated.quality, finalVocabularyQuality: evaluated.quality } },
     ...controlled.exchanges
-  ];
+  ].map(annotateResolvedModel);
   const regenerateRate = controlled.stageAudit.generatedCount
     ? controlled.stageAudit.regenerateCount / controlled.stageAudit.generatedCount
     : 0;
@@ -1363,7 +1399,10 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
       setNumber: context.setNumber,
       conversationCount: context.conversationCount + context.balanceConversationCount,
       allowedVocabCount: context.allowedVocabulary.length,
-      textModel: context.textModel,
+      textModel: stampResolvedTextModel(context.textModel, [
+        ...(primary.exchanges ?? [primary.exchange]),
+        ...(complement.exchanges ?? [complement.exchange])
+      ]),
       analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
       status: 'generated',
       finalTextAudit,
@@ -1540,7 +1579,7 @@ async function runStandardGenerationJob(jobId: string): Promise<void> {
       setNumber: context.setNumber,
       conversationCount: context.conversationCount,
       allowedVocabCount: context.allowedVocabulary.length,
-      textModel: context.textModel,
+      textModel: stampResolvedTextModel(context.textModel, generated.exchanges),
       analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
       status: 'generated',
       llmExchanges: generated.exchanges,
@@ -1606,7 +1645,7 @@ async function runLibraryComplementJob(jobId: string): Promise<void> {
       setNumber: context.setNumber,
       conversationCount: context.conversationCount,
       allowedVocabCount: context.allowedVocabulary.length,
-      textModel: context.textModel,
+      textModel: stampResolvedTextModel(context.textModel, exchanges),
       analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
       status: 'generated',
       llmExchanges: exchanges,
@@ -2066,7 +2105,7 @@ app.post('/api/runs/:runId/workflow-nodes/:nodeId/repair', asyncHandler(async (r
   );
   const repaired = await evaluateVocabularyQuality(run.setNumber, allowedVocabulary, knownVocabulary, repairedConversations);
   const improved = repaired.conversations.length > 0 && qualityIssueScore(repaired.quality) < qualityIssueScore(evaluated.quality);
-  const completedExchange: LlmExchange = {
+  const completedExchange: LlmExchange = annotateResolvedModel({
     ...repairExchange,
     output: repair.output,
     stats: {
@@ -2079,7 +2118,7 @@ app.post('/api/runs/:runId/workflow-nodes/:nodeId/repair', asyncHandler(async (r
     },
     receivedAt: nowIso(),
     status: 'complete'
-  };
+  });
   const exchanges = improved
     ? replaceRepairExchange([
       ...existingExchanges.map((exchange) => ({
@@ -2473,7 +2512,7 @@ app.post('/api/generate', asyncHandler(async (req: express.Request<unknown, unkn
     setNumber: context.setNumber,
     conversationCount: context.conversationCount,
     allowedVocabCount: context.allowedVocabulary.length,
-    textModel: context.textModel,
+    textModel: stampResolvedTextModel(context.textModel, generated.exchanges),
     analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
     status: 'generated',
     llmExchanges: generated.exchanges,
@@ -2551,7 +2590,7 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
     setNumber: context.setNumber,
     conversationCount: context.conversationCount + context.balanceConversationCount,
     allowedVocabCount: context.allowedVocabulary.length,
-    textModel: context.textModel,
+    textModel: stampResolvedTextModel(context.textModel, [...primary.exchanges, ...complement.exchanges]),
     analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
     status: 'generated',
     finalTextAudit,
@@ -2667,7 +2706,7 @@ app.post('/api/library/sets/:setNumber/complement', asyncHandler(async (req: exp
     setNumber: context.setNumber,
     conversationCount: context.conversationCount,
     allowedVocabCount: context.allowedVocabulary.length,
-    textModel: context.textModel,
+    textModel: stampResolvedTextModel(context.textModel, exchanges),
     analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
     status: 'generated',
     llmExchanges: exchanges,

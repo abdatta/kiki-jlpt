@@ -131,10 +131,13 @@ function pendingExchange(textModel: TextModelInfo, prompt: string, kind: string,
 }
 
 function completedExchange(exchange: LlmExchange, result: { output: string; stats?: unknown }, stats: UnknownRecord): LlmExchange {
+  const combinedStats = { ...asRecord(result.stats), ...stats };
+  const resolved = combinedStats.resolvedModel ?? combinedStats.modelVersion;
   return {
     ...exchange,
+    ...(typeof resolved === 'string' && resolved.trim() ? { resolvedModel: resolved.trim() } : {}),
     output: result.output,
-    stats: { ...asRecord(result.stats), ...stats },
+    stats: combinedStats,
     receivedAt: nowIso(),
     status: 'complete'
   };

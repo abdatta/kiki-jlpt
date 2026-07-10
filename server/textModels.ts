@@ -10,6 +10,15 @@ type CodexModelRecord = {
 
 const GEMINI_MODEL_ID = 'gemini';
 const CODEX_FALLBACK_MODEL = 'gpt-5.5';
+// The claude CLI has no model-enumeration command, so the picker offers a
+// curated set. Aliases resolve to the latest model of their tier at call time.
+const CLAUDE_DEFAULT_MODELS = ['fable', 'opus', 'sonnet', 'haiku'];
+const CLAUDE_ALIAS_LABELS: Record<string, string> = {
+  fable: 'Claude Fable',
+  opus: 'Claude Opus',
+  sonnet: 'Claude Sonnet',
+  haiku: 'Claude Haiku'
+};
 const CODEX_CLIENT_VERSION = process.env.CODEX_CLIENT_VERSION || '0.0.0';
 const CODEX_MODEL_CACHE_MS = 10 * 60 * 1000;
 const CODEX_MODEL_TIMEOUT_MS = 1500;
@@ -41,6 +50,25 @@ function codexModelOption(model: string, label = model, source: TextModelInfo['s
 
 function fallbackCodexModel(): TextModelInfo {
   return codexModelOption(CODEX_FALLBACK_MODEL, 'GPT-5.5', 'fallback');
+}
+
+function claudeModelOption(model: string, source: TextModelInfo['source'] = 'configured'): TextModelInfo {
+  return {
+    id: `claude:${model}`,
+    provider: 'claude',
+    model,
+    label: CLAUDE_ALIAS_LABELS[model] ?? `Claude (${model})`,
+    source
+  };
+}
+
+function claudeModelOptions(): TextModelInfo[] {
+  const configured = (process.env.CLAUDE_TEXT_MODELS ?? '')
+    .split(',')
+    .map((model) => model.trim())
+    .filter(Boolean);
+  const models = configured.length ? [...new Set(configured)] : CLAUDE_DEFAULT_MODELS;
+  return models.map((model) => claudeModelOption(model));
 }
 
 function normalizeCodexModels(payload: unknown): TextModelInfo[] {
@@ -115,7 +143,7 @@ async function fetchCodexModelOptions(): Promise<TextModelInfo[]> {
 }
 
 export async function getTextModelOptions(): Promise<TextModelInfo[]> {
-  return [geminiTextModel(), ...(await getCodexModelOptions())];
+  return [geminiTextModel(), ...(await getCodexModelOptions()), ...claudeModelOptions()];
 }
 
 export async function resolveTextModel(textModelId?: string): Promise<TextModelInfo> {
@@ -130,6 +158,17 @@ export async function resolveTextModel(textModelId?: string): Promise<TextModelI
 
     const model = textModelId.slice('codex:'.length);
     return codexModelOption(model, model, 'fallback');
+  }
+
+  if (textModelId.startsWith('claude:')) {
+    const selected = claudeModelOptions().find((option) => option.id === textModelId);
+    if (selected) return selected;
+
+    const model = textModelId.slice('claude:'.length);
+    if (!model) throw new Error(`Unsupported text model: ${textModelId}`);
+    // The CLI validates actual availability at generation time, so saved runs
+    // and manually configured models keep resolving.
+    return claudeModelOption(model, 'fallback');
   }
 
   throw new Error(`Unsupported text model: ${textModelId}`);
