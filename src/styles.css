@@ -403,6 +403,20 @@ textarea:focus {
   gap: 6px;
 }
 
+.runLibraryBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid var(--studio-accent-border);
+  border-radius: 999px;
+  background: var(--studio-accent-softer);
+  color: var(--studio-accent-strong);
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+}
+
 .runJobActions {
   display: inline-flex;
   align-items: center;
@@ -1163,42 +1177,80 @@ textarea:focus {
 .workflowJobStatus.paused { border-color: #d9a441; background: #fff1cf; color: #7a4e05; }
 
 .workflowAuditGraph { display: grid; gap: 14px; }
-.workflowConversationRail { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; }
-.workflowConversationRail button { min-height: 36px; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--studio-border-soft); border-radius: 999px; background: var(--studio-surface-raised); color: var(--studio-text-muted); padding: 4px 10px 4px 5px; }
-.workflowConversationRail button.selected { outline: 3px solid var(--studio-focus-ring); color: var(--studio-text-soft); }
-.workflowConversationRail b { min-width: 25px; height: 25px; display: grid; place-items: center; border-radius: 999px; background: var(--studio-code-bg); font-size: 11px; }
-.workflowConversationRail em,
-.conversationQualityChip { border: 1px solid currentColor; border-radius: 999px; padding: 2px 7px; font-size: 10px; font-style: normal; font-weight: 900; text-transform: uppercase; }
-.workflowConversationRail em.good,
+.workflowTraceBar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; border: 1px solid var(--studio-border-soft); border-radius: 10px; background: var(--studio-surface); padding: 10px 14px; }
+.workflowTraceControl { display: inline-flex; align-items: center; gap: 10px; }
+.workflowTraceBar p { flex: 1 1 280px; margin: 0; color: var(--studio-text-subtle); font-size: 12px; }
+.conversationQualityChip,
+.traceChip { display: inline-flex; align-items: center; border: 1px solid currentColor; border-radius: 999px; padding: 2px 7px; font-size: 10px; font-style: normal; font-weight: 900; line-height: 1.2; text-transform: uppercase; }
 .conversationQualityChip.good { color: #2f6835; background: #eef7ed; }
-.workflowConversationRail em.okay,
 .conversationQualityChip.okay { color: #8a5a06; background: #fff8ec; }
-.workflowConversationRail button.dropped { color: var(--studio-danger); border-style: dashed; }
-.workflowConversationRail button.dropped span { text-decoration: line-through; }
-.conversationQualityChip { min-height: 27px; cursor: pointer; }
+.traceChip.repaired { color: var(--studio-info); background: var(--studio-info-soft, #eef2fb); }
+.traceChip.dropped { color: var(--studio-danger); background: var(--studio-danger-soft); }
+/* Only the clickable run-row chip needs a touch target; inline chips in the
+   trace dropdown should size to their text. */
+button.conversationQualityChip { min-height: 27px; cursor: pointer; }
+
+/* Custom trace dropdown so options can format the number and quality/repaired
+   as separate chips (a native <select> can only render plain text). */
+.traceSelect { position: relative; min-width: 300px; max-width: min(460px, 100%); }
+.traceSelectButton { width: 100%; min-height: 40px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--studio-border); border-radius: 8px; background: var(--studio-surface-raised); padding: 5px 10px; }
+.traceSelectValue,
+.traceSelectPopup li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.traceSelectValue .traceTitle,
+.traceSelectPopup .traceTitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.traceSelectCaret { flex: 0 0 auto; color: var(--studio-text-subtle); }
+.traceNumber { flex: 0 0 auto; min-width: 24px; height: 24px; display: grid; place-items: center; border-radius: 999px; background: var(--studio-code-bg); color: var(--studio-text-muted); font-size: 11px; font-weight: 900; }
+.traceAll { font-weight: 700; }
+.traceSelectPopup { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; max-height: 320px; overflow-y: auto; display: grid; gap: 2px; margin: 0; border: 1px solid var(--studio-border); border-radius: 8px; background: var(--studio-surface-raised); padding: 5px; list-style: none; box-shadow: 0 18px 44px rgba(31, 26, 18, 0.22); }
+/* The class rule above would otherwise beat the UA [hidden] rule and keep the
+   popup permanently open. */
+.traceSelectPopup[hidden] { display: none; }
+.traceSelectPopup li { border-radius: 6px; padding: 7px 8px; cursor: pointer; }
+.traceSelectPopup li.active { background: var(--studio-code-bg); }
+.traceSelectPopup li.selected { outline: 2px solid var(--studio-focus-ring); }
 
 .workflowStageLane { display: grid; gap: 12px; border: 1px solid var(--studio-border-soft); border-radius: 10px; background: var(--studio-surface); padding: 14px; overflow-x: auto; }
 .workflowStageLane > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--studio-divider-muted); padding-bottom: 10px; }
 .workflowStageLane > header strong { color: var(--studio-text-muted); font-size: 12px; }
-.workflowPassRow { min-width: 980px; display: grid; gap: 7px; }
+.workflowPassRow { min-width: 0; display: grid; gap: 7px; }
 .workflowPassRow.pass2 { margin-left: 28px; border-left: 2px solid var(--studio-border-muted); padding-left: 14px; }
 .workflowPassLabel,
-.workflowRepairFork > span,
-.workflowNodeEyebrow { color: var(--studio-text-subtle); font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
-.workflowStageSequence { display: flex; align-items: center; gap: 8px; }
-.workflowStageSequence > .workflowNode { width: 150px; flex: 0 0 150px; }
-.workflowRepairFork { width: 170px; flex: 0 0 170px; display: grid; gap: 6px; }
+.workflowRepairFork > span { color: var(--studio-text-subtle); font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+
+/* Boustrophedon snake: wide cards laid out in a measured grid, every other row
+   reversed, connectors drawn into the gaps by ::after so the flow turns down
+   and doubles back instead of jumping to the left edge. */
+.workflowSnake { display: grid; gap: 40px 44px; justify-content: center; align-items: stretch; }
+.workflowSnakeCell { position: relative; display: grid; align-content: center; min-width: 0; }
+.workflowSnakeCell > .workflowNode { width: 100%; }
+.workflowSnakeCell > .workflowRepairFork { width: 100%; display: grid; gap: 6px; }
 .workflowRepairFork .workflowNode { min-height: 74px; }
+.workflowSnakeCell::after { position: absolute; color: var(--studio-text-subtle); font-size: 22px; font-weight: 900; line-height: 1; pointer-events: none; }
+.workflowSnakeCell[data-arrow="right"]::after { content: "→"; right: -33px; top: 50%; transform: translateY(-50%); }
+.workflowSnakeCell[data-arrow="left"]::after { content: "←"; left: -33px; top: 50%; transform: translateY(-50%); }
+.workflowSnakeCell[data-arrow="down"]::after { content: "↓"; bottom: -31px; left: 50%; transform: translateX(-50%); }
+
+.workflowPassCollapsed > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; cursor: pointer; list-style-position: outside; color: var(--studio-text-subtle); }
+.workflowPassCollapsed > summary small { font-size: 11px; }
+.workflowPassCollapsed[open] > summary { margin-bottom: 7px; }
 .workflowNode.deterministic { background: var(--studio-code-bg); box-shadow: none; }
 .workflowNode.dimmed { opacity: .35; filter: grayscale(.45); }
 .workflowNodeBody { min-width: 0; }
 .workflowNodeMeta { display: block; margin-top: 5px; color: var(--studio-text-subtle); font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Stacked stat variant: the bold title row carries the meta beside it so the
+   per-version lines fit without growing the node. */
+.workflowNodeHeaderRow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.workflowNodeHeaderRow .workflowNodeMeta { margin-top: 0; flex: 0 1 auto; }
+.workflowNodeStats { display: grid; gap: 2px; margin-top: 4px; }
+.workflowNodeStats span { display: block; min-width: 0; font-size: 11px; font-weight: 500; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .workflowFinalAuditBand,
 .workflowAudioLane,
 .workflowJourney,
 .workflowLegacyNotice { border: 1px solid var(--studio-border-soft); border-radius: 10px; background: var(--studio-surface); padding: 14px; }
 .workflowFinalAuditBand { display: grid; grid-template-columns: minmax(240px, 340px) minmax(0, 1fr); gap: 14px; }
+/* A lone final-audit node (no review gate) centres across the band. */
+.workflowFinalAuditBand > .workflowNode:only-child { grid-column: 1 / -1; justify-self: center; width: min(320px, 100%); }
 .workflowFinalAuditBand.pause { border-color: #d9a441; background: #fff8ec; }
 .workflowFinalAuditBand.fail { border-color: var(--studio-danger-border); background: var(--studio-danger-soft); }
 .workflowReviewGate { display: grid; gap: 10px; }
@@ -1601,6 +1653,20 @@ textarea:focus {
   border-radius: 8px;
   background: var(--studio-surface-raised);
   overflow: hidden;
+}
+
+.workflowInspectorModal {
+  width: min(980px, 100%);
+  max-height: min(860px, calc(100vh - 36px));
+  overflow: auto;
+  border-color: var(--studio-border);
+  box-shadow: 0 24px 60px rgba(31, 26, 18, 0.28);
+}
+
+.workflowInspectorHeaderMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .workflowInspectorHeader {
@@ -3643,15 +3709,12 @@ audio {
     align-items: stretch;
   }
 
-  .workflowStageLane { overflow: visible; }
+  /* The snake grid measures its own width, so it collapses to a single column
+     on narrow lanes without media-query help; keep the lane scrollable only. */
   .workflowLegacySequence { grid-column: auto; display: grid; grid-template-columns: 1fr; }
-  .workflowPassRow { min-width: 0; }
   .workflowPassRow.pass2 { margin-left: 10px; }
-  .workflowStageSequence { display: grid; grid-template-columns: 1fr; align-items: stretch; }
-  .workflowStageSequence > .workflowNode,
-  .workflowRepairFork { width: 100%; min-width: 0; }
-  .workflowStageSequence .workflowArrow { transform: rotate(90deg); justify-self: center; }
-  .workflowRepairFork::before { content: "parallel repair candidates"; color: var(--studio-text-subtle); font-size: 10px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+  .workflowTraceControl { width: 100%; }
+  .traceSelect { flex: 1 1 auto; }
   .workflowFinalAuditBand { grid-template-columns: 1fr; }
 
   .workflowMetricGrid {

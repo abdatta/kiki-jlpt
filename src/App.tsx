@@ -1,9 +1,10 @@
-import { Fragment, Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   Bot,
   BookOpen,
   Check,
+  ChevronDown,
   CircleAlert,
   Clock,
   Disc3,
@@ -49,6 +50,7 @@ import type {
   StudioRunShellSummary,
   StudioSnapshot,
   TextModelInfo,
+  TextModelProvider,
   WorkflowAuditNode,
   WorkflowJob,
   WorkflowRepairResponse,
@@ -81,7 +83,7 @@ type ConversationAction = 'audio' | 'delete-audio';
 type BoardMode = 'runs' | 'library' | 'recommendations' | 'ai-curation';
 type GenerateRunMode = 'workflow-max-audio' | 'workflow-audio' | 'workflow-text' | 'text-only';
 type StudioRoute =
-  | { boardMode: 'runs'; runId?: string; auditOpen: boolean; nodeId?: string; conversationId?: string }
+  | { boardMode: 'runs'; runId?: string; auditOpen: boolean; conversationId?: string }
   | { boardMode: 'recommendations'; setNumber: number }
   | { boardMode: 'ai-curation'; setNumber: number }
   | { boardMode: 'library'; setNumber: number };
@@ -207,12 +209,13 @@ function decodeRoutePart(value: string | undefined): string | undefined {
   }
 }
 
-function studioRunsRoute(runId?: string, auditOpen = false, nodeId?: string, conversationId?: string): string {
+function studioRunsRoute(runId?: string, auditOpen = false, conversationId?: string): string {
   if (!runId) return '#/studio/runs';
   const auditPath = auditOpen ? '/audit' : '';
-  const nodePath = auditOpen && nodeId ? `/n/${encodeURIComponent(nodeId)}` : '';
+  // The node inspector is a transient modal, so it is not URL-addressable; the
+  // conversation trace annotates the whole graph and stays shareable.
   const conversationPath = auditOpen && conversationId ? `/c/${encodeURIComponent(conversationId)}` : '';
-  return `#/studio/runs/${encodeURIComponent(runId)}${auditPath}${nodePath}${conversationPath}`;
+  return `#/studio/runs/${encodeURIComponent(runId)}${auditPath}${conversationPath}`;
 }
 
 function studioQueueRoute(setNumber: number): string {
@@ -245,13 +248,13 @@ export function parseStudioRoute(hash = typeof window === 'undefined' ? '' : win
   if (parts[1] === 'runs' && parts.length >= 3 && (parts.length === 3 || parts[3] === 'audit')) {
     const runId = decodeRoutePart(parts[2]);
     if (!runId) return { boardMode: 'runs', auditOpen: false };
-    let nodeId: string | undefined;
     let conversationId: string | undefined;
+    // Legacy links may still carry an /n/<node> segment; parse it for the
+    // conversation trace but ignore the node (the inspector is now a modal).
     for (let index = 4; index < parts.length - 1; index += 2) {
-      if (parts[index] === 'n') nodeId = decodeRoutePart(parts[index + 1]);
       if (parts[index] === 'c') conversationId = decodeRoutePart(parts[index + 1]);
     }
-    return { boardMode: 'runs', runId, auditOpen: parts[3] === 'audit', nodeId, conversationId };
+    return { boardMode: 'runs', runId, auditOpen: parts[3] === 'audit', conversationId };
   }
 
   if (parts[1] === 'queue' && parts[2] === 'set' && parts.length === 4) {
@@ -672,14 +675,110 @@ function wordFrequency(words: string[]): Map<string, number> {
   return counts;
 }
 
+// claude-sonnet-4-5-20250929 → "Sonnet 4.5"; claude-fable-5 → "Fable 5".
+// Non-Claude identifiers pass through unchanged; exact ids stay in exchange stats.
+export function formatClaudeModelVersion(modelId: string): string {
+  const match = /^claude-([a-z]+)-(\d+(?:-\d+)*?)(?:-\d{8})?$/i.exec(modelId.trim());
+  if (!match) return modelId;
+  const family = match[1].charAt(0).toUpperCase() + match[1].slice(1);
+  return `${family} ${match[2].replace(/-/g, '.')}`;
+}
+
+// Display form of a resolved model id. Claude ids keep their provider name
+// ("Claude Fable 5") so runs stay distinguishable across Claude/GPT/Gemini;
+// other providers' ids already carry theirs (gpt-…, gemini-…).
+export function formatResolvedModel(modelId: string): string {
+  const short = formatClaudeModelVersion(modelId);
+  return short === modelId ? modelId : `Claude ${short}`;
+}
+
+// gpt-5.6-sol → "GPT 5.6 Sol"; gpt-5.5 → "GPT 5.5"; gpt-5.4-mini → "GPT 5.4 Mini".
+// Every Codex option runs at medium effort, so the effort is not shown.
+export function formatCodexModelName(modelId: string): string {
+  const match = /^gpt-([0-9.]+)(?:-(.+))?$/i.exec(modelId.trim());
+  if (!match) return modelId.toUpperCase();
+  const suffix = match[2]
+    ? match[2].split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ')
+    : '';
+  return suffix ? `GPT ${match[1]} ${suffix}` : `GPT ${match[1]}`;
+}
+
+// gemini-3-flash-preview → "Gemini 3"; gemini-3.5-flash → "Gemini 3.5";
+// a bare "gemini" id → "Gemini".
+export function formatGeminiModelName(modelId: string): string {
+  const trimmed = modelId.trim();
+  const match = /^gemini[-\s]?([0-9.]+)/i.exec(trimmed);
+  if (match) return `Gemini ${match[1]}`;
+  return /^gemini$/i.test(trimmed) ? 'Gemini' : trimmed;
+}
+
+function modelDisplayName(model: { provider: TextModelProvider; model: string; resolvedModel?: string; label?: string }): string {
+  if (model.provider === 'claude') return model.resolvedModel ? formatResolvedModel(model.resolvedModel) : (model.label ?? model.model);
+  if (model.provider === 'codex') return formatCodexModelName(model.model);
+  return formatGeminiModelName(model.model);
+}
+
+function exchangeModelName(exchange?: LlmExchange, fallbackLabel?: string): string {
+  if (!exchange) return fallbackLabel ?? 'Pending';
+  return modelDisplayName(exchange);
+}
+
 function shortModelLabel(model: TextModelInfo): string {
-  const effort = model.reasoningEffort ? model.reasoningEffort.slice(0, 3) : undefined;
-  if (model.provider === 'codex') {
-    const match = /GPT[-\s]?([\d.]+)/i.exec(model.label) ?? /gpt-([\d.]+)/i.exec(model.model);
-    const name = match ? `GPT-${match[1]}` : model.model.toUpperCase();
-    return effort ? `${name} (${effort})` : name;
+  if (model.source === 'legacy') return model.label;
+  return modelDisplayName(model);
+}
+
+function runModelDisplay(model: TextModelInfo): string {
+  return shortModelLabel(model);
+}
+
+// In-progress run shells carry only a pre-baked label string (a picker id like
+// `codex:gpt-5.5`, or a stored label like "GPT-5.6-Sol (Codex, medium)"), so
+// normalise those shapes to the same clean names shown elsewhere.
+export function cleanShellModelLabel(label: string): string {
+  const trimmed = label.trim();
+  if (trimmed.startsWith('codex:')) return formatCodexModelName(trimmed.slice('codex:'.length));
+  if (trimmed.startsWith('claude:')) {
+    const rest = trimmed.slice('claude:'.length);
+    const resolved = formatResolvedModel(rest);
+    return resolved.startsWith('Claude') ? resolved : `Claude ${rest.charAt(0).toUpperCase()}${rest.slice(1)}`;
   }
-  return model.model.replace(/^gemini-/i, 'Gemini ');
+  if (/^gemini:?$/i.test(trimmed)) return 'Gemini';
+  const parenthetical = /^(.*?)\s*\(([^)]*)\)\s*$/.exec(trimmed);
+  if (parenthetical) {
+    const inside = parenthetical[2].trim();
+    if (/^gemini-/i.test(inside)) return formatGeminiModelName(inside);
+    if (/^gpt/i.test(parenthetical[1])) return formatCodexModelName(parenthetical[1].trim());
+    return parenthetical[1].trim();
+  }
+  if (/^gpt-/i.test(trimmed)) return formatCodexModelName(trimmed);
+  if (/^gemini-/i.test(trimmed)) return formatGeminiModelName(trimmed);
+  return trimmed;
+}
+
+const TEXT_MODEL_PROVIDER_GROUPS: Array<{ provider: TextModelProvider; label: string }> = [
+  { provider: 'gemini', label: 'Gemini' },
+  { provider: 'codex', label: 'GPT' },
+  { provider: 'claude', label: 'Claude' }
+];
+
+export function TextModelOptionGroups({ models }: { models: TextModelInfo[] }) {
+  return (
+    <>
+      {TEXT_MODEL_PROVIDER_GROUPS
+        .map((group) => ({ ...group, options: models.filter((model) => model.provider === group.provider) }))
+        .filter((group) => group.options.length > 0)
+        .map((group) => (
+          <optgroup key={group.provider} label={group.label}>
+            {group.options.map((model) => (
+              <option key={model.id} value={model.id}>
+                {shortModelLabel(model)}
+              </option>
+            ))}
+          </optgroup>
+        ))}
+    </>
+  );
 }
 
 function runHistorySummary(run: PracticeRun): string {
@@ -688,6 +787,27 @@ function runHistorySummary(run: PracticeRun): string {
 
 function libraryHistorySummary(set: CuratedSet): string {
   return `${set.conversations.length} convos · ${set.analytics.currentSetMissingCount} Missing · ${set.analytics.allowedVocabUsedPercentage}% Used · ${set.analytics.outOfAllowedCount} OOV`;
+}
+
+export function libraryCountsBySourceRun(sets: readonly CuratedSet[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const set of sets) {
+    for (const conversation of set.conversations) {
+      counts.set(conversation.sourceRunId, (counts.get(conversation.sourceRunId) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
+export function RunLibraryBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  const description = `${count} conversation${count === 1 ? '' : 's'} from this run in the library`;
+  return (
+    <span className="runLibraryBadge" title={description} aria-label={description}>
+      <BookOpen size={11} aria-hidden />
+      {count}
+    </span>
+  );
 }
 
 function formatAuditOutput(value?: string): string | undefined {
@@ -881,6 +1001,61 @@ function workflowNodeDetail(node: WorkflowAuditNode): string {
   if (node.status === 'error') return 'Audio failed';
   if (node.status === 'skipped') return 'Skipped after failure';
   return 'Queued';
+}
+
+function workflowNodeDetailLines(node: WorkflowAuditNode): string[] {
+  return deriveVersionStatLines(node) ?? [workflowNodeDetail(node)];
+}
+
+function versionPickLine(label: string, stats: { picked: number; good: number; okay: number }): string {
+  if (!stats.picked) return `${label}: 0 picked`;
+  const parts = [
+    `${stats.picked} picked`,
+    ...(stats.good ? [`${stats.good} good`] : []),
+    ...(stats.okay ? [`${stats.okay} okay`] : [])
+  ];
+  return `${label}: ${parts.join(' · ')}`;
+}
+
+function repairGateLine(candidateIndex: 1 | 2, stats: { failed: boolean; eliminated: number; coverageLoss: number }): string {
+  if (stats.failed) return `Repair ${candidateIndex}: call failed`;
+  return `Repair ${candidateIndex}: ${stats.eliminated} eliminated · ${stats.coverageLoss} coverage-loss`;
+}
+
+/* Version-comparing nodes (dominance gates, version pick) render a per-version
+   stat stack derived from the per-conversation facts persisted in their
+   details. Display text is never stored, so runs of any age render alike. */
+function deriveVersionStatLines(node: WorkflowAuditNode): string[] | undefined {
+  const details = objectValue(objectValue(node.output)?.details);
+  const records = (value: unknown): Record<string, unknown>[] =>
+    (Array.isArray(value) ? value : []).map(objectValue).filter((record): record is Record<string, unknown> => record !== undefined);
+  const recordsByConversation = (value: unknown): Record<string, unknown>[] =>
+    Object.values(objectValue(value) ?? {}).flatMap(records);
+  if (node.callKind === 'pick') {
+    const picks = records(details?.picks);
+    if (!picks.length) return undefined;
+    const line = (label: string, source: string) => {
+      const selected = picks.filter((pick) => pick.selected === source);
+      const good = selected.filter((pick) => pick.selectedQuality === 'good').length;
+      return versionPickLine(label, { picked: selected.length, good, okay: selected.length - good });
+    };
+    return [line('Original', 'original'), line('Repair 1', 'candidate1'), line('Repair 2', 'candidate2')];
+  }
+  if (node.callKind === 'dominance-gates') {
+    const versions = recordsByConversation(details?.versionsByConversationId);
+    if (!versions.length) return undefined;
+    const eliminated = recordsByConversation(details?.eliminatedByConversationId);
+    const line = (candidateIndex: 1 | 2) => {
+      const source = `candidate${candidateIndex}`;
+      return repairGateLine(candidateIndex, {
+        failed: !versions.some((version) => version.source === source),
+        eliminated: eliminated.filter((item) => item.source === source).length,
+        coverageLoss: versions.filter((version) => version.source === source && Array.isArray(version.flags) && version.flags.includes('coverage_loss')).length
+      });
+    };
+    return [line(1), line(2)];
+  }
+  return undefined;
 }
 
 function RepairFailureIcon({ size = 18 }: { size?: number }) {
@@ -1575,18 +1750,37 @@ function WorkflowNodeButton({
   const exchange = workflowNodeExchanges(node)[0];
   const durationMs = node.startedAt && node.completedAt ? new Date(node.completedAt).getTime() - new Date(node.startedAt).getTime() : undefined;
   const deterministic = ['vocab-audit', 'dominance-gates', 'final-audit'].includes(node.callKind ?? '');
+  const detailLines = traceFact ? [traceFact] : workflowNodeDetailLines(node);
+  const meta = !deterministic && (exchange?.model || durationMs !== undefined)
+    ? `${exchangeModelName(exchange, 'Model call')}${durationMs !== undefined ? ` · ${(durationMs / 1000).toFixed(1)}s` : ''}`
+    : undefined;
+  /* Multi-line stat stacks reclaim the redundant bold-title row (the eyebrow
+     already names the step) and pull the meta up beside it, so the node's
+     footprint stays the same as the single-line layout. */
+  const stacked = detailLines.length > 1;
   return (
     <button className={`workflowNode ${node.status} ${deterministic ? 'deterministic' : 'llmCall'} ${repairWarning ? 'repairWarning' : ''} ${selected ? 'selected' : ''} ${dimmed ? 'dimmed' : ''}`} onClick={onSelect} type="button">
       <span className="workflowNodeIcon">
         <WorkflowStatusIcon node={node} />
       </span>
       <span className="workflowNodeBody">
-        <span className="workflowNodeEyebrow">{node.callKind?.replaceAll('-', ' ') ?? node.kind}</span>
-        <strong>{workflowNodeTitle(node)}</strong>
-        <small>{traceFact ?? workflowNodeDetail(node)}</small>
-        {!deterministic && (exchange?.model || durationMs !== undefined) ? (
-          <span className="workflowNodeMeta">{exchange?.model ?? 'Model call'}{durationMs !== undefined ? ` · ${(durationMs / 1000).toFixed(1)}s` : ''}</span>
-        ) : null}
+        {stacked ? (
+          <>
+            <span className="workflowNodeHeaderRow">
+              <strong>{workflowNodeTitle(node)}</strong>
+              {meta ? <span className="workflowNodeMeta">{meta}</span> : node.status === 'skipped' ? <span className="workflowNodeMeta">skipped</span> : null}
+            </span>
+            <span className="workflowNodeStats">
+              {detailLines.map((line) => <span key={line} title={line}>{line}</span>)}
+            </span>
+          </>
+        ) : (
+          <>
+            <strong>{workflowNodeTitle(node)}</strong>
+            <small>{detailLines[0]}</small>
+            {meta ? <span className="workflowNodeMeta">{meta}</span> : null}
+          </>
+        )}
       </span>
     </button>
   );
@@ -1645,9 +1839,79 @@ function workflowConversationFactText(node: WorkflowAuditNode, conversationId: s
   return text.length > 90 ? `${text.slice(0, 87)}…` : text;
 }
 
+// useLayoutEffect on the client (measure before paint to avoid a one-column
+// flash), useEffect on the server (renderToStaticMarkup runs no effects anyway).
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
+
+function useMeasuredWidth<T extends HTMLElement>(): [React.RefObject<T | null>, number] {
+  const ref = useRef<T>(null);
+  const [width, setWidth] = useState(0);
+  useIsomorphicLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+    setWidth(element.getBoundingClientRect().width);
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => setWidth(entries[0]?.contentRect.width ?? 0));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  return [ref, width];
+}
+
+const SNAKE_CELL_MIN = 220;
+const SNAKE_CELL_MAX = 280;
+const SNAKE_COL_GAP = 44;
+
+export type SnakeArrow = 'right' | 'left' | 'down' | 'none';
+
+// Boustrophedon placement: even rows flow left→right, odd rows right→left so the
+// odd row's first cell sits directly under the even row's last cell and the
+// connector just turns straight down. `total` is needed so the final cell emits
+// no trailing arrow.
+export function snakeCellPlacement(index: number, cols: number, total: number): { column: number; row: number; arrow: SnakeArrow } {
+  const row = Math.floor(index / cols);
+  const posInRow = index % cols;
+  const rightward = row % 2 === 0;
+  const column = rightward ? posInRow + 1 : cols - posInRow;
+  const arrow: SnakeArrow = index === total - 1 ? 'none' : posInRow === cols - 1 ? 'down' : rightward ? 'right' : 'left';
+  return { column, row: row + 1, arrow };
+}
+
+export function snakeColumnCount(width: number, cellCount: number): number {
+  if (width <= 0 || cellCount <= 0) return 1;
+  const fit = Math.max(1, Math.min(cellCount, Math.floor((width + SNAKE_COL_GAP) / (SNAKE_CELL_MIN + SNAKE_COL_GAP))));
+  // Balance the rows: keep the row count at its minimum for the fitting width,
+  // then even out the columns so the flow wraps into a symmetrical block
+  // (6 cells across a 4-wide fit become 3+3, not 4+2) rather than a long row
+  // with a short stub.
+  const rows = Math.ceil(cellCount / fit);
+  return Math.max(1, Math.ceil(cellCount / rows));
+}
+
+// Fit as many fixed-width cells per row as the measured width allows; below one
+// cell's min width the grid overflows its lane, which surfaces the lane's
+// horizontal scrollbar.
+function WorkflowSnakeFlow({ cells }: { cells: Array<{ key: string; content: ReactNode }> }) {
+  const [ref, width] = useMeasuredWidth<HTMLDivElement>();
+  const cols = snakeColumnCount(width, cells.length);
+  return (
+    <div ref={ref} className="workflowSnake" style={{ gridTemplateColumns: `repeat(${cols}, minmax(${SNAKE_CELL_MIN}px, ${SNAKE_CELL_MAX}px))` }}>
+      {cells.map((cell, index) => {
+        const placement = snakeCellPlacement(index, cols, cells.length);
+        return (
+          <div className="workflowSnakeCell" data-arrow={placement.arrow} key={cell.key} style={{ gridColumn: placement.column, gridRow: placement.row }}>
+            {cell.content}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function WorkflowStageLane({
   stage,
   nodes,
+  live = false,
   selectedNodeId,
   selectedConversationId,
   onSelectNode,
@@ -1655,6 +1919,7 @@ function WorkflowStageLane({
 }: {
   stage: 'initial' | 'balance';
   nodes: WorkflowAuditNode[];
+  live?: boolean;
   selectedNodeId?: string;
   selectedConversationId?: string;
   onSelectNode: (nodeId: string) => void;
@@ -1666,18 +1931,43 @@ function WorkflowStageLane({
   };
   const renderPass = (pass: 1 | 2) => {
     const passNodes = nodes.filter((node) => (node.pass ?? 1) === pass).sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+    if (!passNodes.length) return null;
+    // A pass that never ran collapses to a summary row. During a live run only
+    // an explicitly all-skipped pass collapses, so upcoming ghost steps stay
+    // visible; once the job settles, stale pending ghosts count as skipped.
+    const anyRan = passNodes.some((node) => !['skipped', 'pending'].includes(node.status));
+    const anySkipped = passNodes.some((node) => node.status === 'skipped');
+    const allSkipped = !anyRan && anySkipped && (!live || passNodes.every((node) => node.status === 'skipped'));
     const repairs = passNodes.filter((node) => node.callKind === 'repair-candidate');
     const regular = passNodes.filter((node) => node.callKind !== 'repair-candidate');
     const before = regular.filter((node) => !['dominance-gates', 'pick'].includes(node.callKind ?? ''));
     const after = regular.filter((node) => ['dominance-gates', 'pick'].includes(node.callKind ?? ''));
+    // An isolated skipped node renders as a full, greyed-out card in place; only
+    // a whole skipped pass collapses into the summary row below.
+    const cells: Array<{ key: string; content: ReactNode }> = [
+      ...before.map((node) => ({ key: node.id, content: renderNode(node) })),
+      ...(repairs.length ? [{
+        key: `${stage}:pass${pass}:fork`,
+        content: <div className="workflowRepairFork"><span>parallel</span>{repairs.map((node) => renderNode(node))}</div>
+      }] : []),
+      ...after.map((node) => ({ key: node.id, content: renderNode(node) }))
+    ];
+    const sequence = <WorkflowSnakeFlow cells={cells} />;
+    if (allSkipped) {
+      return (
+        <details className={`workflowPassRow pass${pass} workflowPassCollapsed`} key={pass}>
+          <summary>
+            <span className="workflowPassLabel">{pass === 2 ? '↳ Pass 2 · re-roll' : `Stage ${stage} steps`} · skipped</span>
+            <small>{pluralize(passNodes.length, 'step')} skipped — expand to inspect</small>
+          </summary>
+          {sequence}
+        </details>
+      );
+    }
     return (
       <div className={`workflowPassRow pass${pass}`} key={pass}>
         {pass === 2 ? <span className="workflowPassLabel">↳ Pass 2 · re-roll</span> : null}
-        <div className="workflowStageSequence">
-          {before.map((node, index) => <Fragment key={node.id}>{index ? <span className="workflowArrow">→</span> : null}{renderNode(node)}</Fragment>)}
-          {repairs.length ? <><span className="workflowArrow">→</span><div className="workflowRepairFork"><span>parallel</span>{repairs.map(renderNode)}</div></> : null}
-          {after.map((node) => <Fragment key={node.id}><span className="workflowArrow">→</span>{renderNode(node)}</Fragment>)}
-        </div>
+        {sequence}
       </div>
     );
   };
@@ -1693,6 +1983,98 @@ function WorkflowStageLane({
   );
 }
 
+interface TraceOption {
+  value: string;
+  number?: number | string;
+  title: string;
+  quality?: 'good' | 'okay';
+  repaired?: boolean;
+  dropped?: boolean;
+}
+
+function TraceOptionContent({ option }: { option: TraceOption }) {
+  if (!option.value) return <span className="traceAll">{option.title}</span>;
+  return (
+    <>
+      <b className="traceNumber">{option.number ?? '–'}</b>
+      <span className="traceTitle">{option.title}</span>
+      {option.quality ? <em className={`conversationQualityChip ${option.quality}`}>{option.quality}</em> : null}
+      {option.repaired ? <em className="traceChip repaired">repaired</em> : null}
+      {option.dropped ? <em className="traceChip dropped">dropped</em> : null}
+    </>
+  );
+}
+
+function TraceSelect({
+  options,
+  value,
+  onChange
+}: {
+  options: TraceOption[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => option.value === value) ?? options[0];
+
+  useEffect(() => {
+    if (!open) return;
+    setActiveIndex(Math.max(0, options.findIndex((option) => option.value === value)));
+    function onPointerDown(event: MouseEvent) {
+      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    window.addEventListener('mousedown', onPointerDown);
+    return () => window.removeEventListener('mousedown', onPointerDown);
+  }, [open, options, value]);
+
+  function commit(next: string) {
+    onChange(next || undefined as unknown as string);
+    setOpen(false);
+  }
+
+  function onKeyDown(event: React.KeyboardEvent) {
+    if (event.key === 'Escape') { setOpen(false); return; }
+    if (!open && (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setOpen(true); return; }
+    if (!open) return;
+    if (event.key === 'ArrowDown') { event.preventDefault(); setActiveIndex((index) => Math.min(options.length - 1, index + 1)); }
+    else if (event.key === 'ArrowUp') { event.preventDefault(); setActiveIndex((index) => Math.max(0, index - 1)); }
+    else if (event.key === 'Enter') { event.preventDefault(); commit(options[activeIndex]?.value ?? ''); }
+  }
+
+  return (
+    <div className="traceSelect" ref={containerRef}>
+      <button
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label="Conversation trace"
+        className="traceSelectButton"
+        onClick={() => setOpen((previous) => !previous)}
+        onKeyDown={onKeyDown}
+        type="button"
+      >
+        <span className="traceSelectValue"><TraceOptionContent option={selected} /></span>
+        <ChevronDown className="traceSelectCaret" size={16} />
+      </button>
+      <ul className="traceSelectPopup" hidden={!open} role="listbox" tabIndex={-1}>
+        {options.map((option, index) => (
+          <li
+            aria-selected={option.value === value}
+            className={`${index === activeIndex ? 'active' : ''} ${option.value === value ? 'selected' : ''}`}
+            key={option.value || 'all'}
+            onClick={() => commit(option.value)}
+            onMouseEnter={() => setActiveIndex(index)}
+            role="option"
+          >
+            <TraceOptionContent option={option} />
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function WorkflowConversationRail({
   conversations,
   dropped,
@@ -1704,20 +2086,30 @@ function WorkflowConversationRail({
   selectedConversationId?: string;
   onSelectConversation: (conversationId?: string) => void;
 }) {
+  const options: TraceOption[] = [
+    { value: '', title: 'All conversations' },
+    ...conversations.map((conversation) => ({
+      value: conversation.id,
+      number: conversation.number,
+      title: conversation.title,
+      quality: conversation.quality,
+      repaired: conversation.qualityDecision === 'repair'
+    })),
+    ...dropped.filter((conversation) => conversation.conversationId).map((conversation) => ({
+      value: conversation.conversationId as string,
+      number: conversation.number,
+      title: conversation.title ?? (conversation.conversationId as string),
+      dropped: true
+    }))
+  ];
   return (
-    <nav className="workflowConversationRail" aria-label="Conversation trace">
-      <button className={!selectedConversationId ? 'selected' : ''} onClick={() => onSelectConversation(undefined)} type="button">All</button>
-      {conversations.map((conversation) => (
-        <button className={selectedConversationId === conversation.id ? 'selected' : ''} key={conversation.id} onClick={() => onSelectConversation(conversation.id)} type="button">
-          <b>{conversation.number}</b><span>{conversation.title}</span>{conversation.quality ? <em className={conversation.quality}>{conversation.quality}</em> : null}{conversation.qualityDecision === 'repair' ? <i>⚒</i> : null}
-        </button>
-      ))}
-      {dropped.map((conversation) => (
-        <button className={`dropped ${selectedConversationId === conversation.conversationId ? 'selected' : ''}`} key={`dropped-${conversation.conversationId}`} onClick={() => onSelectConversation(conversation.conversationId)} type="button">
-          <b>{conversation.number ?? '–'}</b><span>{conversation.title ?? conversation.conversationId}</span><em>dropped</em>
-        </button>
-      ))}
-    </nav>
+    <div className="workflowTraceBar">
+      <div className="workflowTraceControl">
+        <span className="eyebrow">Trace</span>
+        <TraceSelect options={options} value={selectedConversationId ?? ''} onChange={(next) => onSelectConversation(next || undefined)} />
+      </div>
+      <p>Follow one conversation through the pipeline: each step re-annotates with what happened to it (verdict, repair, pick), untouched steps dim, and its version history with diffs opens below the graph.</p>
+    </div>
   );
 }
 
@@ -1899,8 +2291,20 @@ export function WorkflowAuditFlow({
 }) {
   const [inputTab, setInputTab] = useState<'prompt' | 'settings'>('prompt');
   const [outputTab, setOutputTab] = useState<'response' | 'attempts' | 'metadata'>('response');
+  // Opens only on an explicit node click (or a deep link that named a node at
+  // mount); the auto-follow effect below moves the selection without popping
+  // the dialog open.
+  const [inspectorOpen, setInspectorOpen] = useState(() => Boolean(selectedNodeId));
   const outputDetailsRef = useRef<HTMLElement | null>(null);
   const isPerCallAudit = job.nodes.some((node) => Boolean(node.callKind));
+  const inspectNode = useCallback((nodeId: string) => {
+    onSelectNode(nodeId);
+    setInspectorOpen(true);
+  }, [onSelectNode]);
+  // Auto-follow (default selection, live processing node) highlights the graph
+  // without touching the URL, so it never leaves a `/n/<node>` deep link behind
+  // that would re-open the modal on the next plain reload.
+  const [autoFollowId, setAutoFollowId] = useState<string | undefined>(undefined);
   const displayNodes = useMemo(() => isPerCallAudit ? job.nodes : synthesizeLegacyAuditNodes(job.nodes), [isPerCallAudit, job.nodes]);
   const generator = displayNodes.find((node) => node.id === 'generator' || node.id === 'generator:generate');
   const balancer = displayNodes.find((node) => node.id === 'balancer' || node.id === 'balancer:generate');
@@ -1909,6 +2313,8 @@ export function WorkflowAuditFlow({
   const finalAuditNode = displayNodes.find((node) => node.callKind === 'final-audit');
   const audioNodes = displayNodes.filter((node) => node.kind === 'audio');
   const legacyTextNodes = displayNodes.filter((node) => node.kind !== 'audio');
+  const highlightNodeId = selectedNodeId ?? autoFollowId;
+  const highlightNode = highlightNodeId ? displayNodes.find((node) => node.id === highlightNodeId) : undefined;
   const selectedNode = selectedNodeId ? displayNodes.find((node) => node.id === selectedNodeId) : undefined;
   const selectedInput = splitPromptFromAuditValue(selectedNode?.input);
   const selectedOutput = splitResponseFromAuditValue(selectedNode?.output);
@@ -1933,8 +2339,8 @@ export function WorkflowAuditFlow({
 
   useEffect(() => {
     const processing = displayNodes.find((node) => node.status === 'processing');
-    if (job.status === 'running' && processing && processing.id !== selectedNodeId) {
-      onSelectNode(processing.id);
+    if (job.status === 'running' && processing) {
+      setAutoFollowId(processing.id);
       return;
     }
     if (selectedNodeId) return;
@@ -1943,13 +2349,22 @@ export function WorkflowAuditFlow({
       : job.status === 'complete' || job.status === 'paused'
         ? finalAuditNode ?? generator ?? displayNodes.find((node) => node.status === 'done')
         : processing ?? displayNodes.find((node) => node.status !== 'pending');
-    if (fallback) onSelectNode(fallback.id);
-  }, [displayNodes, finalAuditNode, generator, job.status, onSelectNode, selectedNodeId]);
+    if (fallback) setAutoFollowId(fallback.id);
+  }, [displayNodes, finalAuditNode, generator, job.status, selectedNodeId]);
 
   useEffect(() => {
     setInputTab('prompt');
     setOutputTab(!isPerCallAudit && selectedHasRepairFailure && selectedExchanges.length ? 'attempts' : 'response');
   }, [isPerCallAudit, selectedHasRepairFailure, selectedExchanges.length, selectedNodeId]);
+
+  useEffect(() => {
+    if (!inspectorOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setInspectorOpen(false);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [inspectorOpen]);
 
   function openRepairDetails() {
     setOutputTab('attempts');
@@ -1983,44 +2398,54 @@ export function WorkflowAuditFlow({
       {isPerCallAudit ? (
         <div className="workflowAuditGraph">
           <WorkflowConversationRail conversations={job.run?.conversations ?? []} dropped={dropped} selectedConversationId={selectedConversationId} onSelectConversation={onSelectConversation} />
-          <WorkflowStageLane stage="initial" nodes={initialNodes} selectedNodeId={selectedNode?.id} selectedConversationId={selectedConversationId} onSelectNode={onSelectNode} rollup={initialRollup} />
-          <WorkflowStageLane stage="balance" nodes={balanceNodes} selectedNodeId={selectedNode?.id} selectedConversationId={selectedConversationId} onSelectNode={onSelectNode} rollup={balanceRollup} />
+          <WorkflowStageLane stage="initial" nodes={initialNodes} live={job.status === 'running'} selectedNodeId={highlightNode?.id} selectedConversationId={selectedConversationId} onSelectNode={inspectNode} rollup={initialRollup} />
+          <WorkflowStageLane stage="balance" nodes={balanceNodes} live={job.status === 'running'} selectedNodeId={highlightNode?.id} selectedConversationId={selectedConversationId} onSelectNode={inspectNode} rollup={balanceRollup} />
           {finalAuditNode ? (
             <section className={`workflowFinalAuditBand ${finalAudit?.outcome ?? finalAuditNode.status}`}>
-              <WorkflowNodeButton node={finalAuditNode} selected={selectedNode?.id === finalAuditNode.id} onSelect={() => onSelectNode(finalAuditNode.id)} traceFact={selectedConversationId ? workflowConversationFactText(finalAuditNode, selectedConversationId) : undefined} />
+              <WorkflowNodeButton node={finalAuditNode} selected={highlightNode?.id === finalAuditNode.id} onSelect={() => inspectNode(finalAuditNode.id)} traceFact={selectedConversationId ? workflowConversationFactText(finalAuditNode, selectedConversationId) : undefined} />
               {job.status === 'paused' && finalAudit ? (
                 <div className="workflowReviewGate">
                   <div><span className="eyebrow">Paused for review</span><strong>{finalAudit.acceptedCount} of {finalAudit.requestedCount} accepted · {finalAudit.shortfallCount} short</strong></div>
                   <div className="workflowReviewThresholds">{finalAudit.thresholds.map((threshold) => <span className={threshold.outcome} key={threshold.id}>{threshold.id.replaceAll('-', ' ')}: {threshold.outcome}</span>)}</div>
-                  <div className="workflowReviewActions"><button onClick={onApprove} type="button">Approve &amp; generate audio</button>{onDiscard ? <button className="danger" onClick={onDiscard} type="button">Discard run</button> : null}<button onClick={() => onSelectNode(finalAuditNode.id)} type="button">Full report</button></div>
+                  <div className="workflowReviewActions"><button onClick={onApprove} type="button">Approve &amp; generate audio</button>{onDiscard ? <button className="danger" onClick={onDiscard} type="button">Discard run</button> : null}<button onClick={() => inspectNode(finalAuditNode.id)} type="button">Full report</button></div>
                 </div>
               ) : null}
             </section>
           ) : null}
           <div className={job.status === 'paused' ? 'workflowAudioLane awaitingReview' : 'workflowAudioLane'}>
             {job.status === 'paused' ? <span className="workflowAwaitingReview">Awaiting review</span> : null}
-            <WorkflowAudioStage nodes={audioNodes} jobStatus={job.status} selectedNodeId={selectedNode?.id} onSelectNode={onSelectNode} onRegenerateAudio={onRegenerateAudio} regenerateDisabled={regenerateAudioDisabled} />
+            <WorkflowAudioStage nodes={audioNodes} jobStatus={job.status} selectedNodeId={highlightNode?.id} onSelectNode={inspectNode} onRegenerateAudio={onRegenerateAudio} regenerateDisabled={regenerateAudioDisabled} />
           </div>
-          {selectedConversationId ? <WorkflowJourney nodes={job.nodes} conversationId={selectedConversationId} onSelectNode={onSelectNode} /> : null}
+          {selectedConversationId ? <WorkflowJourney nodes={job.nodes} conversationId={selectedConversationId} onSelectNode={inspectNode} /> : null}
         </div>
       ) : (
         <>
           <div className="workflowLegacyNotice"><Info size={16} /> Recorded before per-call quality auditing. This reduced graph is synthesized from stored exchanges.</div>
           <div className="workflowGraph">
             <div className="workflowLegacySequence">
-              {legacyTextNodes.map((node, index) => <Fragment key={node.id}>{index ? <span className="workflowArrow" aria-hidden="true">&rarr;</span> : null}<WorkflowNodeButton node={node} selected={selectedNode?.id === node.id} onSelect={() => onSelectNode(node.id)} /></Fragment>)}
+              {legacyTextNodes.map((node, index) => <Fragment key={node.id}>{index ? <span className="workflowArrow" aria-hidden="true">&rarr;</span> : null}<WorkflowNodeButton node={node} selected={highlightNode?.id === node.id} onSelect={() => inspectNode(node.id)} /></Fragment>)}
             </div>
             <span className="workflowArrow branch" aria-hidden="true">&rarr;</span>
-            <WorkflowAudioStage nodes={audioNodes} jobStatus={job.status} selectedNodeId={selectedNode?.id} onSelectNode={onSelectNode} onRegenerateAudio={onRegenerateAudio} regenerateDisabled={regenerateAudioDisabled} />
+            <WorkflowAudioStage nodes={audioNodes} jobStatus={job.status} selectedNodeId={highlightNode?.id} onSelectNode={inspectNode} onRegenerateAudio={onRegenerateAudio} regenerateDisabled={regenerateAudioDisabled} />
           </div>
         </>
       )}
 
-      {selectedNode ? (
-        <section className="workflowInspector" aria-label={`${workflowNodeTitle(selectedNode)} audit details`}>
+      {selectedNode && inspectorOpen ? (
+        <div className="modalOverlay" role="presentation" onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            setInspectorOpen(false);
+          }
+        }}>
+        <section className="workflowInspector workflowInspectorModal" role="dialog" aria-modal="true" aria-label={`${workflowNodeTitle(selectedNode)} audit details`}>
           <div className="workflowInspectorHeader">
             <span>{workflowNodeTitle(selectedNode)}</span>
-            <small>{workflowStatusText(selectedNode.status)}</small>
+            <span className="workflowInspectorHeaderMeta">
+              <small>{workflowStatusText(selectedNode.status)}</small>
+              <button className="iconButton" onClick={() => setInspectorOpen(false)} title="Close" type="button">
+                <X size={18} />
+              </button>
+            </span>
           </div>
           {selectedHasRepairFailure ? (
             <div className="workflowRepairInspectorNotice" role="status">
@@ -2132,6 +2557,7 @@ export function WorkflowAuditFlow({
           </section>
           <WorkflowStatsPanel selectedNode={selectedNode} generatorNode={generator} />
         </section>
+        </div>
       ) : null}
     </section>
   );
@@ -2181,7 +2607,7 @@ function AuditLog({ exchange, fallbackLabel }: { exchange?: LlmExchange; fallbac
         </div>
         <div className="auditMeta">
           <span>Model</span>
-          <strong>{exchange?.model ?? fallbackLabel ?? 'Pending'}</strong>
+          <strong>{exchangeModelName(exchange, fallbackLabel)}</strong>
         </div>
         <div className="auditMeta">
           <span>Sent</span>
@@ -2350,11 +2776,7 @@ function GenerateModal({
             <span>Text model</span>
             <select value={state.textModelId} onChange={(event) => onChange({ ...state, textModelId: event.target.value })}>
               <option value="" disabled>Select a model</option>
-              {textModels.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.label}
-                </option>
-              ))}
+              <TextModelOptionGroups models={textModels} />
             </select>
           </label>
         </div>
@@ -2444,11 +2866,7 @@ function BalanceModal({
             <span>Model</span>
             <select value={state.textModelId} onChange={(event) => onChange({ ...state, textModelId: event.target.value })}>
               <option value="" disabled>Select a model</option>
-              {textModels.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.label}
-                </option>
-              ))}
+              <TextModelOptionGroups models={textModels} />
             </select>
           </label>
 
@@ -2604,6 +3022,7 @@ function StudioApp() {
   const activeShellVisible = Boolean(activeShellJobId && filteredRunShells.some((shell) => shell.jobId === activeShellJobId));
   const activeStudioJobs = useMemo(() => studioJobs.filter((job) => ['queued', 'running', 'pausing'].includes(job.status)), [studioJobs]);
   const currentCuratedLibrarySets = useMemo(() => currentLibrarySet && currentLibrarySet.conversations.length > 0 ? [currentLibrarySet] : [], [currentLibrarySet]);
+  const libraryCountBySourceRun = useMemo(() => libraryCountsBySourceRun(librarySets), [librarySets]);
   const currentRecommendations = recommendations?.setNumber === setNumber ? recommendations : null;
   const currentAiCurationReview = aiCurationReview?.setNumber === setNumber ? aiCurationReview : null;
   const aiCurationCandidateCount = currentRecommendations?.candidateCount ?? currentAiCurationReview?.snapshot.candidateCount ?? 0;
@@ -3294,7 +3713,7 @@ function StudioApp() {
     setBoardMode(studioRoute.boardMode);
     setGenerationSession(null);
     setWorkflowJob(null);
-    setSelectedWorkflowNodeId(studioRoute.boardMode === 'runs' ? studioRoute.nodeId : undefined);
+    setSelectedWorkflowNodeId(undefined);
     setSelectedWorkflowConversationId(studioRoute.boardMode === 'runs' ? studioRoute.conversationId : undefined);
     setEdit(null);
     if (studioRoute.boardMode !== 'runs' || studioRoute.runId) setFocusedShellJobId(null);
@@ -3540,18 +3959,15 @@ function StudioApp() {
   }
 
   function selectWorkflowNode(nodeId: string) {
+    // The inspector modal is transient local state, not a URL location.
     setSelectedWorkflowNodeId(nodeId);
-    const runId = visibleWorkflowJob?.run?.id ?? visibleWorkflowJob?.runId ?? currentRun?.id;
-    if (runId && (auditOpen || visibleWorkflowJob)) {
-      navigateToStudioRoute(studioRunsRoute(runId, true, nodeId, selectedWorkflowConversationId));
-    }
   }
 
   function selectWorkflowConversation(conversationId?: string) {
     setSelectedWorkflowConversationId(conversationId);
     const runId = visibleWorkflowJob?.run?.id ?? visibleWorkflowJob?.runId ?? currentRun?.id;
     if (runId && (auditOpen || visibleWorkflowJob)) {
-      navigateToStudioRoute(studioRunsRoute(runId, true, selectedWorkflowNodeId, conversationId));
+      navigateToStudioRoute(studioRunsRoute(runId, true, conversationId));
     }
   }
 
@@ -4114,7 +4530,7 @@ function StudioApp() {
           </div>
           <div className="cardHeaderMeta">
             {source === 'run' && conversation.quality && currentRun ? (
-              <button className={`conversationQualityChip ${conversation.quality}`} onClick={() => navigateToStudioRoute(studioRunsRoute(currentRun.id, true, undefined, conversation.id))} type="button">
+              <button className={`conversationQualityChip ${conversation.quality}`} onClick={() => navigateToStudioRoute(studioRunsRoute(currentRun.id, true, conversation.id))} type="button">
                 {conversation.quality}
               </button>
             ) : null}
@@ -4524,7 +4940,7 @@ function StudioApp() {
                     : <CircleAlert size={14} />}
                   {formatRunHistoryTitle(shell.createdAt)}
                 </span>
-                <time dateTime={shell.createdAt}>{shell.modelLabel}</time>
+                <time dateTime={shell.createdAt}>{cleanShellModelLabel(shell.modelLabel)}</time>
               </span>
               <small>{shell.stageLabel}</small>
               {shell.resumable ? (
@@ -4565,6 +4981,7 @@ function StudioApp() {
                   <span className="runJobTitle">
                     {liveJob && ['queued', 'running', 'pausing'].includes(liveJob.status) ? <RefreshCw className="spin" size={14} /> : null}
                     {formatRunHistoryTitle(run.createdAt)}
+                    <RunLibraryBadge count={libraryCountBySourceRun.get(run.id) ?? 0} />
                   </span>
                   <time dateTime={run.createdAt}>{shortModelLabel(run.textModel)}</time>
                 </span>
@@ -4724,7 +5141,7 @@ function StudioApp() {
                     onChange={setTextModelId}
                     required
                     value={textModels.some((model) => model.id === textModelId) ? textModelId : 'gemini'}
-                    options={textModels.map((model) => ({ value: model.id, label: model.label }))}
+                    options={textModels.map((model) => ({ value: model.id, label: shortModelLabel(model) }))}
                   />
                   <label className="curationCountField">
                     <span>Size</span>
@@ -4750,7 +5167,7 @@ function StudioApp() {
           ) : currentRun ? (
             <div className="runStats">
               <span>{currentRun.allowedVocabCount} allowed words</span>
-              <span>{currentRun.textModel.label}</span>
+              <span>{runModelDisplay(currentRun.textModel)}</span>
               <span>{currentRun.status}</span>
               <button className="auditToggle" onClick={reanalyzeCurrentRun} disabled={busy === `reanalyze-run:${currentRun.id}`}>
                 {busy === `reanalyze-run:${currentRun.id}` ? <RefreshCw className="spin" size={15} /> : <RefreshCw size={15} />}

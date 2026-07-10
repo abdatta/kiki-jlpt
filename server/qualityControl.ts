@@ -405,7 +405,7 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
     }
     for (const kind of ['dominance-gates', 'pick'] as const) {
       await publish(options, {
-        id: nodeId(options.stage, pass, kind), callKind: kind, pass, status: 'skipped', title: kind === 'pick' ? 'Pick' : 'Dominance gates',
+        id: nodeId(options.stage, pass, kind), callKind: kind, pass, status: 'skipped', title: kind === 'pick' ? 'Version pick' : 'Dominance gates',
         output: { summary: { statLine: 'Skipped — no repair candidates' } }
       });
     }
@@ -501,7 +501,7 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
   if (ties.length) {
     const pickerPrompt = buildPickerPrompt(ties);
     const pickerExchange = pendingExchange(options.textModel, pickerPrompt, 'pick', QUALITY_REVIEW_INSTRUCTIONS, `-${pass}`);
-    await publish(options, { id: nodeId(options.stage, pass, 'pick'), callKind: 'pick', pass, status: 'processing', title: 'Pick', input: { prompt: pickerPrompt, model: options.textModel } });
+    await publish(options, { id: nodeId(options.stage, pass, 'pick'), callKind: 'pick', pass, status: 'processing', title: 'Version pick', input: { prompt: pickerPrompt, model: options.textModel } });
     try {
       const result = await invoker(pickerPrompt, options.textModel, QUALITY_REVIEW_INSTRUCTIONS);
       const decisions = validatePicks(result.parsed, ties);
@@ -513,7 +513,7 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
         picks.push({ ...decision, decidedBy: 'tie-break', flags: [...new Set([...decision.flags, ...selected.flags])], eliminated: eliminatedById.get(decision.conversationId) ?? [] });
       }
       await publish(options, {
-        id: nodeId(options.stage, pass, 'pick'), callKind: 'pick', pass, status: 'done', title: 'Pick',
+        id: nodeId(options.stage, pass, 'pick'), callKind: 'pick', pass, status: 'done', title: 'Version pick',
         output: { summary: pickSummary(picks), exchange, factsByConversationId: Object.fromEntries(picks.map((pick) => [pick.conversationId, pick])), details: { picks, versionsByConversationId: Object.fromEntries(versionsById) } }
       });
     } catch (error) {
@@ -532,13 +532,13 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
         });
       }
       await publish(options, {
-        id: nodeId(options.stage, pass, 'pick'), callKind: 'pick', pass, status: 'repairWarning', title: 'Pick', error: message,
+        id: nodeId(options.stage, pass, 'pick'), callKind: 'pick', pass, status: 'repairWarning', title: 'Version pick', error: message,
         output: { summary: { ...pickSummary(picks), statLine: `${pickSummary(picks).statLine} · fallback` }, exchange, factsByConversationId: Object.fromEntries(picks.map((pick) => [pick.conversationId, pick])), details: { picks, versionsByConversationId: Object.fromEntries(versionsById) } }
       });
     }
   } else {
     await publish(options, {
-      id: nodeId(options.stage, pass, 'pick'), callKind: 'pick', pass, status: 'skipped', title: 'Pick',
+      id: nodeId(options.stage, pass, 'pick'), callKind: 'pick', pass, status: 'skipped', title: 'Version pick',
       output: { summary: { ...pickSummary(picks), statLine: `${pickSummary(picks).statLine} · gate-decided` }, factsByConversationId: Object.fromEntries(picks.map((pick) => [pick.conversationId, pick])), details: { picks, versionsByConversationId: Object.fromEntries(versionsById) } }
     });
   }

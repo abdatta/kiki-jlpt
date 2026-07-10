@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import type { AiCurationRecommendation, AiCurationReviewReconciliation, ConversationCurationEvidence, FinalTextAuditReport, PracticeConversation, StudioJob, WorkflowJob } from '../shared/types.ts';
-import { parseStudioRoute, WorkflowAuditFlow } from './App.tsx';
+import type { AiCurationRecommendation, AiCurationReviewReconciliation, ConversationCurationEvidence, CuratedConversation, CuratedSet, FinalTextAuditReport, PracticeConversation, StudioJob, WorkflowJob } from '../shared/types.ts';
+import { cleanShellModelLabel, formatClaudeModelVersion, formatCodexModelName, formatGeminiModelName, formatResolvedModel, libraryCountsBySourceRun, parseStudioRoute, RunLibraryBadge, snakeCellPlacement, snakeColumnCount, TextModelOptionGroups, WorkflowAuditFlow } from './App.tsx';
 import { AddAllProgressModal } from './components/AddAllProgressModal.tsx';
 import { AiCurationReconciliationPanel } from './components/AiCurationReconciliationPanel.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
@@ -189,6 +189,60 @@ test('Studio source distribution groups visible items and renders collapsed rows
   assert.match(html, /25%/);
   assert.match(html, /href="#\/studio\/runs\/run-a"/);
   assert.match(html, /Run metadata unavailable/);
+});
+
+test('Studio run library badge counts curated conversations per source run', () => {
+  const analytics = {
+    currentSetTotal: 98,
+    currentSetUsedCount: 80,
+    currentSetMissingCount: 18,
+    currentSetMissingWords: [],
+    allowedVocabTotal: 195,
+    allowedVocabUsedCount: 150,
+    allowedVocabUsedPercentage: 77,
+    outOfAllowedCount: 0,
+    outOfAllowedWords: []
+  };
+  const curated = (id: string, sourceRunId: string): CuratedConversation => ({
+    ...conversation,
+    id,
+    sourceRunId,
+    sourceConversationId: 'convo-01',
+    setNumber: 2,
+    audioFileName: `${id}.mp3`,
+    audioUrl: `/audio/library/${id}.mp3`,
+    curatedAudioPath: `library/${id}.mp3`
+  });
+  const sets: CuratedSet[] = [
+    {
+      setNumber: 2,
+      analytics,
+      createdAt: '2026-07-09T07:28:00.000Z',
+      updatedAt: '2026-07-09T07:28:00.000Z',
+      conversations: [curated('set-02-001', 'run-a'), curated('set-02-002', 'run-a'), curated('set-02-003', 'run-b')]
+    },
+    {
+      setNumber: 3,
+      analytics,
+      createdAt: '2026-07-09T07:28:00.000Z',
+      updatedAt: '2026-07-09T07:28:00.000Z',
+      conversations: [curated('set-03-001', 'run-a')]
+    }
+  ];
+
+  const counts = libraryCountsBySourceRun(sets);
+  assert.equal(counts.get('run-a'), 3);
+  assert.equal(counts.get('run-b'), 1);
+  assert.equal(counts.get('run-c'), undefined);
+
+  const html = renderToStaticMarkup(<RunLibraryBadge count={3} />);
+  assert.match(html, /class="runLibraryBadge"/);
+  assert.match(html, /title="3 conversations from this run in the library"/);
+  assert.match(html, />3</);
+
+  const singular = renderToStaticMarkup(<RunLibraryBadge count={1} />);
+  assert.match(singular, /title="1 conversation from this run in the library"/);
+  assert.equal(renderToStaticMarkup(<RunLibraryBadge count={0} />), '');
 });
 
 test('Studio historical curation reconciliation renders action state and stale warnings', () => {
@@ -643,8 +697,8 @@ function perCallJob(status: WorkflowJob['status'] = 'complete'): WorkflowJob {
     { id: 'initial:triage', kind: 'triage', callKind: 'triage', stage: 'initial', pass: 1, sequence: 2, title: 'Quality triage', status: 'done', output: { ...summary('0 pass · 1 repair · 0 regen', { 'convo-01': { conversationId: 'convo-01', verdict: 'repair', rationale: 'Stilted.' } }), details: { verdicts: [{ conversationId: 'convo-01', verdict: 'repair', rationale: 'Stilted.', flags: [] }] } } },
     { id: 'initial:repair-1', kind: 'repair-candidate', callKind: 'repair-candidate', stage: 'initial', pass: 1, candidateIndex: 1, sequence: 3, title: 'Repair candidate 1', status: 'done', output: summary('1 conversation · 1 selected', { 'convo-01': { oovBefore: 0, oovAfter: 0 } }) },
     { id: 'initial:repair-2', kind: 'repair-candidate', callKind: 'repair-candidate', stage: 'initial', pass: 1, candidateIndex: 2, sequence: 4, title: 'Repair candidate 2', status: 'done', output: summary('1 conversation · 0 selected', { 'convo-01': { oovBefore: 0, oovAfter: 0 } }) },
-    { id: 'initial:dominance-gates', kind: 'dominance-gates', callKind: 'dominance-gates', stage: 'initial', pass: 1, sequence: 5, title: 'Dominance gates', status: 'done', output: summary('0 eliminated', { 'convo-01': { admissible: ['original', 'candidate1', 'candidate2'] } }) },
-    { id: 'initial:pick', kind: 'pick', callKind: 'pick', stage: 'initial', pass: 1, sequence: 6, title: 'Pick', status: 'done', output: { ...summary('orig 0 · c1 1 · c2 0', { 'convo-01': { conversationId: 'convo-01', selected: 'candidate1', selectedQuality: 'good' } }), details: { picks: [{ conversationId: 'convo-01', selected: 'candidate1', selectedQuality: 'good' }] } } },
+    { id: 'initial:dominance-gates', kind: 'dominance-gates', callKind: 'dominance-gates', stage: 'initial', pass: 1, sequence: 5, title: 'Dominance gates', status: 'done', output: { summary: { statLine: '1 eliminated · 1 coverage-loss flags' }, factsByConversationId: { 'convo-01': { admissible: ['original', 'candidate1'] } }, details: { versionsByConversationId: { 'convo-01': [{ source: 'original', flags: [] }, { source: 'candidate1', flags: ['coverage_loss'] }, { source: 'candidate2', flags: [] }] }, eliminatedByConversationId: { 'convo-01': [{ source: 'candidate2', reason: 'Eliminated by deterministic vocabulary gate (2 findings; best 0).' }] } } } },
+    { id: 'initial:pick', kind: 'pick', callKind: 'pick', stage: 'initial', pass: 1, sequence: 6, title: 'Version pick', status: 'done', output: { summary: { statLine: 'orig 0 · c1 1 · c2 0' }, factsByConversationId: { 'convo-01': { conversationId: 'convo-01', selected: 'candidate1', selectedQuality: 'good' } }, details: { picks: [{ conversationId: 'convo-01', selected: 'candidate1', selectedQuality: 'good' }] } } },
     { id: 'final-audit', kind: 'final-audit', callKind: 'final-audit', sequence: 200, title: 'Final text audit', status: 'done', output: { summary: { statLine: `1/1 accepted · ${finalTextAudit.outcome.toUpperCase()}` }, details: finalTextAudit } },
     { id: 'audio-1', kind: 'audio', callKind: 'audio', sequence: 300, title: 'Conversation 1', status: status === 'paused' ? 'pending' : 'done' }
   ];
@@ -666,10 +720,101 @@ test('per-call audit renders lanes, parallel repairs, stat lines, and conversati
   const traceHtml = renderToStaticMarkup(<WorkflowAuditFlow job={perCallJob()} selectedNodeId="initial:pick" selectedConversationId="convo-01" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
   assert.match(html, /Stage 1 · initial/i);
   assert.match(html, /parallel/i);
-  assert.match(html, /orig 0 · c1 1 · c2 0/i);
+  // Version-comparing nodes derive per-version stat stacks from their details
+  // (never from stored display text). The bold title names every node; the
+  // redundant all-caps kind eyebrow is gone.
+  assert.match(html, /<strong>Version pick<\/strong>/);
+  assert.match(html, /Original: 0 picked/);
+  assert.match(html, /Repair 1: 1 picked · 1 good/);
+  assert.match(html, /Repair 2: 0 picked/);
+  assert.match(html, /Repair 1: 0 eliminated · 1 coverage-loss/);
+  assert.match(html, /Repair 2: 1 eliminated · 0 coverage-loss/);
+  assert.doesNotMatch(html, /orig 0 · c1 1 · c2 0/);
+  assert.doesNotMatch(html, /workflowNodeEyebrow/);
   assert.match(traceHtml, /Conversation trace/i);
   assert.match(traceHtml, /candidate1 · good/i);
   assert.doesNotMatch(html, />Attempts</);
+});
+
+test('the conversation trace is a custom dropdown with chip-formatted options and an explainer', () => {
+  const html = renderToStaticMarkup(<WorkflowAuditFlow job={perCallJob()} selectedNodeId="initial:pick" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
+
+  assert.match(html, /aria-haspopup="listbox"[^>]*aria-label="Conversation trace"|aria-label="Conversation trace"[^>]*aria-haspopup="listbox"/);
+  assert.match(html, /role="listbox"/);
+  assert.match(html, /role="option"/);
+  assert.match(html, /All conversations/);
+  // Number as its own badge, quality and repaired rendered as separate chips.
+  assert.match(html, /class="traceNumber">1</);
+  assert.match(html, /class="conversationQualityChip good">good</);
+  assert.match(html, /class="traceChip repaired">repaired</);
+  assert.match(html, /Follow one conversation through the pipeline/);
+});
+
+test('snake placement reverses odd rows and turns down at row ends', () => {
+  // 3 columns, 7 cells → row 0 L→R (cols 1,2,3), row 1 R→L (cols 3,2,1), row 2 (col 1).
+  assert.deepEqual(snakeCellPlacement(0, 3, 7), { column: 1, row: 1, arrow: 'right' });
+  assert.deepEqual(snakeCellPlacement(2, 3, 7), { column: 3, row: 1, arrow: 'down' });
+  assert.deepEqual(snakeCellPlacement(3, 3, 7), { column: 3, row: 2, arrow: 'left' });
+  assert.deepEqual(snakeCellPlacement(5, 3, 7), { column: 1, row: 2, arrow: 'down' });
+  assert.deepEqual(snakeCellPlacement(6, 3, 7), { column: 1, row: 3, arrow: 'none' });
+  // Single column degenerates to a straight vertical flow.
+  assert.equal(snakeCellPlacement(0, 1, 3).arrow, 'down');
+  assert.equal(snakeCellPlacement(2, 1, 3).arrow, 'none');
+});
+
+test('snake column count fits the width, balances rows, and never drops below one', () => {
+  assert.equal(snakeColumnCount(0, 8), 1);
+  assert.equal(snakeColumnCount(200, 8), 1);
+  assert.equal(snakeColumnCount(900, 8), 3); // fits 3 → 3+3+2
+  // 8 cells fit 6 wide, but balance to two rows of 4 rather than 6+2.
+  assert.equal(snakeColumnCount(1600, 8), 4);
+  // 6 cells fit 4 wide → balance to 3+3, not 4+2.
+  assert.equal(snakeColumnCount(1100, 6), 3);
+  // A single row is left intact (and centres via CSS).
+  assert.equal(snakeColumnCount(5000, 3), 3);
+});
+
+test('selecting a node presents its deep dive as a modal dialog', () => {
+  const html = renderToStaticMarkup(<WorkflowAuditFlow job={perCallJob()} selectedNodeId="initial:pick" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
+
+  assert.match(html, /workflowInspectorModal/);
+  assert.match(html, /role="dialog"/);
+  assert.match(html, /title="Close"/);
+});
+
+test('a pass that never ran collapses into an expandable summary row once the job settles', () => {
+  const job = perCallJob();
+  job.nodes = [
+    ...job.nodes,
+    { id: 'initial:pass2:reroll', kind: 'reroll', callKind: 'reroll', stage: 'initial', pass: 2, sequence: 10, title: 'Re-roll', status: 'skipped', output: { summary: { statLine: 'No regenerate verdicts' } } },
+    // Ghost step published at stage start that never transitioned because the
+    // re-roll was skipped — must count as skipped once the job is settled.
+    { id: 'initial:pass2:vocab-audit', kind: 'vocab-audit', callKind: 'vocab-audit', stage: 'initial', pass: 2, sequence: 11, title: 'Re-roll vocabulary audit', status: 'pending' }
+  ];
+
+  const html = renderToStaticMarkup(<WorkflowAuditFlow job={job} selectedNodeId="initial:pick" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
+
+  assert.match(html, /workflowPassCollapsed/);
+  assert.match(html, /↳ Pass 2 · re-roll · skipped/);
+  assert.match(html, /2 steps skipped — expand to inspect/);
+  assert.match(html, /No regenerate verdicts/);
+
+  const runningJob = { ...perCallJob('running'), nodes: job.nodes };
+  const runningHtml = renderToStaticMarkup(<WorkflowAuditFlow job={runningJob} selectedNodeId="initial:pick" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
+  assert.doesNotMatch(runningHtml, /workflowPassCollapsed/);
+});
+
+test('an isolated skipped node renders as a full greyed-out card, not a compact chip', () => {
+  const job = perCallJob();
+  job.nodes = job.nodes.map((node) => node.id === 'initial:pick' ? { ...node, status: 'skipped' as const, output: undefined } : node);
+
+  const html = renderToStaticMarkup(<WorkflowAuditFlow job={job} selectedNodeId="initial:triage" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
+
+  assert.doesNotMatch(html, /compactNode/);
+  // Full card, greyed via the status class, with the detail line calling it skipped.
+  assert.match(html, /workflowNode skipped/);
+  assert.match(html, />Version pick</);
+  assert.match(html, />Skipped</);
 });
 
 test('paused final audit renders threshold review actions and awaiting-audio state', () => {
@@ -697,7 +842,103 @@ test('legacy workflow rendering keeps the pre-quality-control notice and Attempt
   assert.match(html, />Attempts</);
 });
 
-test('audit deep links restore node and conversation selection', () => {
-  const route = parseStudioRoute('#/studio/runs/run-1/audit/n/initial%3Apick/c/convo-01');
-  assert.deepEqual(route, { boardMode: 'runs', runId: 'run-1', auditOpen: true, nodeId: 'initial:pick', conversationId: 'convo-01' });
+test('audit deep links restore conversation trace and ignore any node segment', () => {
+  assert.deepEqual(
+    parseStudioRoute('#/studio/runs/run-1/audit/c/convo-01'),
+    { boardMode: 'runs', runId: 'run-1', auditOpen: true, conversationId: 'convo-01' }
+  );
+  // The node inspector is a transient modal, so a legacy /n/ segment is parsed
+  // for its conversation only — no node is restored from the URL.
+  assert.deepEqual(
+    parseStudioRoute('#/studio/runs/run-1/audit/n/initial%3Apick/c/convo-01'),
+    { boardMode: 'runs', runId: 'run-1', auditOpen: true, conversationId: 'convo-01' }
+  );
+});
+
+const pickerModels = [
+  { id: 'gemini', provider: 'gemini' as const, model: 'gemini-2.5-flash', label: 'Gemini (gemini-2.5-flash)' },
+  { id: 'codex:gpt-5.5', provider: 'codex' as const, model: 'gpt-5.5', label: 'GPT-5.5 (Codex, medium)' },
+  { id: 'claude:sonnet', provider: 'claude' as const, model: 'sonnet', label: 'Claude Sonnet' },
+  { id: 'claude:haiku', provider: 'claude' as const, model: 'haiku', label: 'Claude Haiku' }
+];
+
+test('text model picker groups options under Gemini, GPT, and Claude in order', () => {
+  const html = renderToStaticMarkup(<select value="" onChange={() => undefined}><TextModelOptionGroups models={pickerModels} /></select>);
+
+  const groupOrder = [...html.matchAll(/<optgroup label="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(groupOrder, ['Gemini', 'GPT', 'Claude']);
+  const claudeGroup = html.slice(html.indexOf('<optgroup label="Claude"'));
+  assert.match(claudeGroup, /Claude Sonnet/);
+  assert.match(claudeGroup, /Claude Haiku/);
+  assert.ok(claudeGroup.indexOf('Claude Sonnet') < claudeGroup.indexOf('Claude Haiku'));
+});
+
+test('a historical model injected ahead of the list still renders inside its provider group', () => {
+  const legacy = { id: 'codex:gpt-5', provider: 'codex' as const, model: 'gpt-5', label: 'GPT-5 (Codex, medium)', source: 'fallback' as const };
+  const html = renderToStaticMarkup(<select value="" onChange={() => undefined}><TextModelOptionGroups models={[legacy, ...pickerModels]} /></select>);
+
+  // Options render the clean name (no redundant "(Codex, medium)").
+  const gptGroup = html.slice(html.indexOf('<optgroup label="GPT"'), html.indexOf('<optgroup label="Claude"'));
+  assert.match(gptGroup, />GPT 5</);
+  assert.match(gptGroup, />GPT 5.5</);
+  assert.doesNotMatch(gptGroup, /Codex, medium/);
+  const groupOrder = [...html.matchAll(/<optgroup label="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(groupOrder, ['Gemini', 'GPT', 'Claude']);
+});
+
+test('model names format cleanly by provider without redundant effort or variant noise', () => {
+  assert.equal(formatCodexModelName('gpt-5.5'), 'GPT 5.5');
+  assert.equal(formatCodexModelName('gpt-5.6-sol'), 'GPT 5.6 Sol');
+  assert.equal(formatCodexModelName('gpt-5.6-terra'), 'GPT 5.6 Terra');
+  assert.equal(formatCodexModelName('gpt-5.6-luna'), 'GPT 5.6 Luna');
+  assert.equal(formatCodexModelName('gpt-5.4-mini'), 'GPT 5.4 Mini');
+  assert.equal(formatGeminiModelName('gemini-3-flash-preview'), 'Gemini 3');
+  assert.equal(formatGeminiModelName('gemini-3.5-flash'), 'Gemini 3.5');
+  assert.equal(formatGeminiModelName('gemini-2.5-flash'), 'Gemini 2.5');
+});
+
+test('in-progress run shell labels normalise every stored shape', () => {
+  // Picker ids (no run yet).
+  assert.equal(cleanShellModelLabel('gemini'), 'Gemini');
+  assert.equal(cleanShellModelLabel('codex:gpt-5.5'), 'GPT 5.5');
+  assert.equal(cleanShellModelLabel('claude:sonnet'), 'Claude Sonnet');
+  // Stored textModel labels once the run exists.
+  assert.equal(cleanShellModelLabel('GPT-5.6-Sol (Codex, medium)'), 'GPT 5.6 Sol');
+  assert.equal(cleanShellModelLabel('Gemini (gemini-3-flash-preview)'), 'Gemini 3');
+  assert.equal(cleanShellModelLabel('Claude Fable'), 'Claude Fable');
+  assert.equal(cleanShellModelLabel('Configured model'), 'Configured model');
+});
+
+test('audit node meta prefers the resolved model version reported by the provider', () => {
+  const exchange = {
+    id: 'claude-exchange', provider: 'claude' as const, model: 'sonnet', label: 'Claude Sonnet', resolvedModel: 'claude-sonnet-5',
+    prompt: 'prompt', output: 'output', requestedAt: '2026-01-01T00:00:00.000Z', receivedAt: '2026-01-01T00:00:01.000Z', status: 'complete' as const
+  };
+  const job: WorkflowJob = {
+    id: 'claude-run', status: 'complete', setNumber: 2, primaryConversationCount: 1, balanceConversationCount: 1, requestedTotalConversationCount: 2,
+    audioRequestedCount: 0, audioGeneratedCount: 0, audioErrors: [],
+    nodes: [
+      { id: 'generator', kind: 'generator', title: 'Generate', status: 'done', output: { exchanges: [exchange] } },
+      { id: 'balancer', kind: 'balancer', title: 'Balance', status: 'done', output: exchange }
+    ],
+    createdAt: exchange.requestedAt, updatedAt: exchange.receivedAt
+  };
+  const html = renderToStaticMarkup(<WorkflowAuditFlow job={job} selectedNodeId="generator:generate" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
+
+  assert.match(html, /Claude Sonnet 5/);
+  assert.doesNotMatch(html, /claude-sonnet-5/);
+});
+
+test('resolved Claude model ids format as short friendly names without date suffixes', () => {
+  assert.equal(formatClaudeModelVersion('claude-sonnet-4-5-20250929'), 'Sonnet 4.5');
+  assert.equal(formatClaudeModelVersion('claude-haiku-4-5-20251001'), 'Haiku 4.5');
+  assert.equal(formatClaudeModelVersion('claude-opus-4-8'), 'Opus 4.8');
+  assert.equal(formatClaudeModelVersion('claude-fable-5'), 'Fable 5');
+  assert.equal(formatClaudeModelVersion('gemini-2.5-flash-002'), 'gemini-2.5-flash-002');
+});
+
+test('resolved model display keeps the Claude provider name for cross-provider clarity', () => {
+  assert.equal(formatResolvedModel('claude-fable-5'), 'Claude Fable 5');
+  assert.equal(formatResolvedModel('claude-sonnet-4-5-20250929'), 'Claude Sonnet 4.5');
+  assert.equal(formatResolvedModel('gemini-2.5-flash-002'), 'gemini-2.5-flash-002');
 });

@@ -17,27 +17,33 @@ The studio SHALL record and present the generation pipeline as a flow graph in w
 
 #### Scenario: Pipeline shape stays constant
 - **WHEN** a run needed no repairs, no tie-break, or no re-roll
-- **THEN** the unneeded steps render as skipped nodes with an explanatory summary rather than being removed
+- **THEN** the unneeded steps render as skipped nodes rather than being removed — presented compactly, and collapsed into an expandable summary row when an entire pass was skipped — with their explanatory summaries available on expansion or inspection
 - **AND** the flowchart shape remains recognizably the same across runs
 
+#### Scenario: Flow adapts to the available width
+- **WHEN** the audit graph is shown at different viewport widths
+- **THEN** each stage lays its nodes out as a snake that wraps to as many nodes per row as the width allows, with alternate rows reversed so the flow turns down and doubles back rather than jumping to the left edge
+- **AND** below a minimum node width the stage scrolls horizontally instead of shrinking the nodes further
+
 ### Requirement: Node output summaries with per-kind deep dives
-Every audit node SHALL display a one-line summary of its output appropriate to its kind (for example: generation counts and vocabulary findings; triage pass/repair/regenerate tallies; repair candidate out-of-vocabulary deltas; gate eliminations and coverage-loss flags; pick wins by version and quality tallies; re-roll replacements and permanent drops; final-audit accepted-versus-requested, coverage, and threshold outcome; audio duration). Each stage SHALL display a rollup summary of its outcome. Selecting a node SHALL open a deep-dive inspector for exactly that node containing its full evidence: the call's prompt and settings, raw response and metadata for model calls, and kind-appropriate per-conversation detail tables — triage verdicts with rationales, repair before/after differences against the original, gate elimination evidence, pick decisions with the chosen version, decided-by source, quality, confidence, flags, and comparison views, and the complete final-audit report with per-threshold outcomes. Every node and every conversation trace SHALL be addressable by a deep link within the run's audit route.
+Every audit node SHALL display a compact summary of its output appropriate to its kind — a single stat line for most nodes, and a short per-version stat stack for the version-comparing nodes (dominance gates: eliminations and coverage losses per repair candidate; version pick: picks and quality tallies for the original and each repair candidate). Examples of kind-appropriate content: generation counts and vocabulary findings; triage pass/repair/regenerate tallies; repair candidate out-of-vocabulary deltas; re-roll replacements and permanent drops; final-audit accepted-versus-requested, coverage, and threshold outcome; audio duration. Stacked summaries SHALL fit within the node footprint the single-line layout establishes rather than enlarging the node. Each stage SHALL display a rollup summary of its outcome. Selecting a node SHALL open a deep-dive inspector, presented as a transient modal dialog dismissible by close button, backdrop, or Escape, for exactly that node containing its full evidence: the call's prompt and settings, raw response and metadata for model calls, and kind-appropriate per-conversation detail tables — triage verdicts with rationales, repair before/after differences against the original, gate elimination evidence, pick decisions with the chosen version, decided-by source, quality, confidence, flags, and comparison views, and the complete final-audit report with per-threshold outcomes. The per-node inspector is transient and SHALL NOT be URL-addressable; each conversation trace SHALL be addressable by a deep link within the run's audit route.
 
 #### Scenario: Read the pipeline from summaries alone
 - **WHEN** an operator scans the audit graph without selecting anything
-- **THEN** each completed node shows its one-line output summary and each stage shows its rollup, sufficient to understand what happened at every step
+- **THEN** each completed node shows its output summary (single line or per-version stack) and each stage shows its rollup, sufficient to understand what happened at every step
 
 #### Scenario: Deep dive into a pick decision
 - **WHEN** an operator selects the pick node
 - **THEN** the inspector lists every picked conversation with the chosen version, whether gates or the tie-break decided it, quality, confidence, flags, and rationale
 - **AND** each row can expand to compare the original and candidate versions
 
-#### Scenario: Deep link to a node
-- **WHEN** an operator opens a URL addressing a specific audit node
-- **THEN** the audit view opens with that node selected and its inspector visible
+#### Scenario: Deep link to a conversation trace
+- **WHEN** an operator opens a URL addressing a specific conversation trace
+- **THEN** the audit view opens in trace mode for that conversation
+- **AND** the per-node inspector remains closed until a node is selected
 
 ### Requirement: Conversation trace mode
-The studio SHALL provide a conversation-level trace through the audit graph. A conversation rail SHALL list every conversation the run produced or dropped, with its quality label and journey markers. Selecting a conversation SHALL annotate the graph with that conversation's per-node facts, de-emphasize nodes that did not touch it, and present a journey view of its history across the pipeline — including verdicts, version-to-version differences from generation through repair and pick, drop rationale when dropped, and its audio outcome. Dropped conversations SHALL remain traceable with their full evidence even though they are absent from the run's accepted conversations.
+The studio SHALL provide a conversation-level trace through the audit graph. A conversation selector, accompanied by a short explanation of what tracing reveals, SHALL list every conversation the run produced or dropped with its quality label and journey markers. Selecting a conversation SHALL annotate the graph with that conversation's per-node facts, de-emphasize nodes that did not touch it, and present a journey view of its history across the pipeline — including verdicts, version-to-version differences from generation through repair and pick, drop rationale when dropped, and its audio outcome. Dropped conversations SHALL remain traceable with their full evidence even though they are absent from the run's accepted conversations.
 
 #### Scenario: Trace a repaired conversation
 - **WHEN** an operator selects a conversation that was flagged, repaired, and picked

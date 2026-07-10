@@ -48,13 +48,13 @@ Create exactly {{conversationCount}} mini conversations in Japanese.
 
 Conversation requirements:
 1. Each conversation should be around 20-40 seconds when spoken naturally.
-2. Each conversation should have 6-10 spoken lines.
+2. Each conversation should have 8-10 spoken lines.
 3. Use natural beginner Japanese, not robotic textbook fragments.
 4. Each conversation should have a clear everyday situation.
 5. Use only Speaker 1 and Speaker 2.
 6. Do not use English inside Japanese spoken lines.
 7. Use simple everyday themes that fit the allowed vocabulary.
-8. Each conversation must include 4-6 listening questions. Questions should not be easy and must demonstrate comprehensive understanding of the conversation.
+8. Each conversation must include 5-8 listening questions. Questions should not be easy and must demonstrate comprehensive understanding of the conversation.
 9. Each listening question must have a matching answer-key entry in the same order.
 
 Return only valid JSON with this exact top-level shape:
@@ -77,7 +77,7 @@ Return only valid JSON with this exact top-level shape:
           "japanese": "Japanese line"
         }
       ],
-      "listeningQuestions": [ "Question in English" ] /* array of 4-6 questions */,
+      "listeningQuestions": [ "Question in English" ] /* array of 5-8 questions */,
       "answerKey": [ "Answer in English" ] /* answer for each question */,
       "declaredNonVocabularyTerms": [
         {
@@ -101,8 +101,8 @@ Return only valid JSON with this exact top-level shape:
 Final self-check before answering:
 1. Did every spoken line include delivery tags?
 2. Did every delivery tag list end with slow?
-3. Does every conversation have 6-10 spoken lines?
-4. Does every conversation have 4-6 listening questions and matching answers?
+3. Does every conversation have 8-10 spoken lines?
+4. Does every conversation have 5-8 listening questions and matching answers?
 5. Are Speaker 1 names/references female and Speaker 2 names/references male?
 6. Are the conversations natural and suitable for beginner listening practice?
 7. Are current-set words meaningful to the scenes rather than inserted only for coverage?
