@@ -1069,12 +1069,25 @@
 }
 
 .starredConversationList {
+  --fade-top: 0px;
+  --fade-bottom: 0px;
   display: block;
   margin-top: 14px;
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-width: none;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent 100%);
+}
+
+.starredConversationList[data-at-top="false"] {
+  --fade-top: 26px;
+}
+
+.starredConversationList[data-at-bottom="false"] {
+  --fade-bottom: 26px;
 }
 
 .starredConversationList::-webkit-scrollbar {

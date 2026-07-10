@@ -1468,15 +1468,33 @@ function ConversationNavigatorModal({
 }) {
   const [filter, setFilter] = useState<'all' | 'starred'>(initialFilter);
   const activeRowRef = useRef<HTMLButtonElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [scrollEdges, setScrollEdges] = useState({ atTop: true, atBottom: true });
+
+  function syncScrollEdges() {
+    const list = listRef.current;
+    if (!list) return;
+    const atTop = list.scrollTop <= 0;
+    const atBottom = list.scrollTop + list.clientHeight >= list.scrollHeight - 1;
+    setScrollEdges((current) => (current.atTop === atTop && current.atBottom === atBottom ? current : { atTop, atBottom }));
+  }
 
   useLayoutEffect(() => {
+    const list = listRef.current;
     const row = activeRowRef.current;
-    const scroller = row?.closest('.starredConversationList');
-    if (!row || !(scroller instanceof HTMLElement)) return;
-    const rowRect = row.getBoundingClientRect();
-    const scrollerRect = scroller.getBoundingClientRect();
-    scroller.scrollTop += (rowRect.top - scrollerRect.top) - (scroller.clientHeight - row.clientHeight) / 2;
+    if (list && row) {
+      const rowRect = row.getBoundingClientRect();
+      const listRect = list.getBoundingClientRect();
+      list.scrollTop += (rowRect.top - listRect.top) - (list.clientHeight - row.clientHeight) / 2;
+    }
+    syncScrollEdges();
   }, []);
+
+  useEffect(() => {
+    syncScrollEdges();
+    const settleTimer = setTimeout(syncScrollEdges, 360);
+    return () => clearTimeout(settleTimer);
+  }, [filter]);
 
   const numberedConversations = conversations.map((conversation, index) => ({
     conversation,
@@ -1518,7 +1536,13 @@ function ConversationNavigatorModal({
             </button>
           </div>
         </div>
-        <div className="starredConversationList">
+        <div
+          className="starredConversationList"
+          ref={listRef}
+          onScroll={syncScrollEdges}
+          data-at-top={scrollEdges.atTop}
+          data-at-bottom={scrollEdges.atBottom}
+        >
           {numberedConversations.map(({ conversation, number, isStarred }) => {
             const isSelected = conversation.id === selectedConversationId;
             const rowHidden = filter === 'starred' && !isStarred;
