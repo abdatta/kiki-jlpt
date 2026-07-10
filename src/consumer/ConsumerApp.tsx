@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, Dispatch, ReactNode, SetStateAction } from 'react';
 import {
   BookOpen,
@@ -1232,7 +1232,7 @@ function ConversationsPage({
   onOpenNextLevel: (level: number) => void;
 }) {
   const [playbackSpeed, setPlaybackSpeed] = useState(() => normalizePlaybackSpeed(loadConversationPlaybackSpeed()));
-  const [isStarredModalOpen, setIsStarredModalOpen] = useState(false);
+  const [navigatorFilter, setNavigatorFilter] = useState<'all' | 'starred' | null>(null);
   const [unlockModalReason, setUnlockModalReason] = useState<'listening' | 'vocab' | null>(null);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const allConversations = useMemo(() => library.conversations.filter((conversation) => conversation.level === level), [library, level]);
@@ -1247,6 +1247,15 @@ function ConversationsPage({
   const completedIds = useMemo(
     () => completedConversationIds(conversations, conversationProgress.completedConversationIds),
     [conversationProgress.completedConversationIds, conversations]
+  );
+  const navigatorConversations = useMemo(() => {
+    const completed = conversations.filter((conversation) => completedIds.has(conversation.id));
+    const currentInProgress = conversations.find((conversation) => !completedIds.has(conversation.id));
+    return currentInProgress ? [...completed, currentInProgress] : completed;
+  }, [conversations, completedIds]);
+  const navigatorStarredCount = useMemo(
+    () => navigatorConversations.filter((conversation) => starredIds.has(conversation.id)).length,
+    [navigatorConversations, starredIds]
   );
   const emptyBody = PRACTICE_ONLY
     ? 'Published conversations will appear after the curated library is exported.'
@@ -1338,9 +1347,9 @@ function ConversationsPage({
     setUnlockModalReason(listeningComplete ? 'vocab' : 'listening');
   }
 
-  function openStarredConversation(conversationId: string) {
+  function selectNavigatorConversation(conversationId: string) {
     setSelectedConversationId(conversationId);
-    setIsStarredModalOpen(false);
+    setNavigatorFilter(null);
   }
 
   return (
@@ -1365,17 +1374,19 @@ function ConversationsPage({
             <ChevronLeft size={17} />
             Prev
           </button>
-          <div
-            className="starredPickerButton"
-            aria-label={`Conversation ${currentConversationIndex} of ${conversations.length}`}
-          >
-            <span className="conversationPlaylistStatus">
+          <div className="starredPickerButton">
+            <button
+              className="conversationPlaylistStatus"
+              onClick={() => setNavigatorFilter('all')}
+              type="button"
+              aria-label={`Browse conversations (${currentConversationIndex} of ${conversations.length})`}
+            >
               <ListOrdered size={18} />
               <span className="conversationPositionText">{currentConversationIndex} / {conversations.length}</span>
-            </span>
+            </button>
             <button
               className="conversationStarredStatus"
-              onClick={() => setIsStarredModalOpen(true)}
+              onClick={() => setNavigatorFilter('starred')}
               type="button"
               aria-label={`Open starred conversations (${starredConversations.length})`}
             >
@@ -1414,12 +1425,15 @@ function ConversationsPage({
       ) : (
         <EmptyState title="No available conversation" body="Choose another level from the level ladder." />
       )}
-      {isStarredModalOpen ? (
-        <StarredConversationModal
-          conversations={starredConversations}
+      {navigatorFilter ? (
+        <ConversationNavigatorModal
+          conversations={navigatorConversations}
+          starredIds={starredIds}
+          starredCount={navigatorStarredCount}
           selectedConversationId={current?.id ?? null}
-          onSelect={openStarredConversation}
-          onClose={() => setIsStarredModalOpen(false)}
+          initialFilter={navigatorFilter}
+          onSelect={selectNavigatorConversation}
+          onClose={() => setNavigatorFilter(null)}
         />
       ) : null}
       {unlockModalReason ? (
@@ -1435,52 +1449,110 @@ function ConversationsPage({
   );
 }
 
-function StarredConversationModal({
+function ConversationNavigatorModal({
   conversations,
+  starredIds,
+  starredCount,
   selectedConversationId,
+  initialFilter,
   onSelect,
   onClose
 }: {
   conversations: StaticLibraryConversation[];
+  starredIds: Set<string>;
+  starredCount: number;
   selectedConversationId: string | null;
+  initialFilter: 'all' | 'starred';
   onSelect: (conversationId: string) => void;
   onClose: () => void;
 }) {
+  const [filter, setFilter] = useState<'all' | 'starred'>(initialFilter);
+  const activeRowRef = useRef<HTMLButtonElement | null>(null);
+
+  useLayoutEffect(() => {
+    const row = activeRowRef.current;
+    const scroller = row?.closest('.starredConversationList');
+    if (!row || !(scroller instanceof HTMLElement)) return;
+    const rowRect = row.getBoundingClientRect();
+    const scrollerRect = scroller.getBoundingClientRect();
+    scroller.scrollTop += (rowRect.top - scrollerRect.top) - (scroller.clientHeight - row.clientHeight) / 2;
+  }, []);
+
+  const numberedConversations = conversations.map((conversation, index) => ({
+    conversation,
+    number: index + 1,
+    isStarred: starredIds.has(conversation.id)
+  }));
+  const visibleCount = filter === 'starred' ? starredCount : conversations.length;
+
   return (
-    <div className="statsModal" role="dialog" aria-modal="true" aria-labelledby="starred-conversations-title">
-      <button className="statsModalBackdrop" aria-label="Close starred conversations" onClick={onClose} type="button" />
+    <div className="statsModal" role="dialog" aria-modal="true" aria-labelledby="conversation-navigator-title">
+      <button className="statsModalBackdrop" aria-label="Close conversations" onClick={onClose} type="button" />
       <section className="statsModalPanel starredConversationPanel">
-        <header className="statsModalHeader">
-          <div>
-            <h2 id="starred-conversations-title">Starred conversations</h2>
+        <div className="navigatorHeader">
+          <header className="statsModalHeader">
+            <div>
+              <h2 id="conversation-navigator-title">Conversations</h2>
+            </div>
+            <button className="modalCloseButton" aria-label="Close conversations" onClick={onClose} type="button">
+              <X size={18} />
+            </button>
+          </header>
+          <div className="conversationFilter" role="group" aria-label="Filter conversations" data-active={filter}>
+            <span className="conversationFilterIndicator" aria-hidden="true" />
+            <button
+              className={filter === 'all' ? 'conversationFilterOption active' : 'conversationFilterOption'}
+              onClick={() => setFilter('all')}
+              type="button"
+              aria-pressed={filter === 'all'}
+            >
+              All <span>{conversations.length}</span>
+            </button>
+            <button
+              className={filter === 'starred' ? 'conversationFilterOption active' : 'conversationFilterOption'}
+              onClick={() => setFilter('starred')}
+              type="button"
+              aria-pressed={filter === 'starred'}
+            >
+              <Star size={14} fill={starredCount > 0 ? 'currentColor' : 'none'} /> Starred <span>{starredCount}</span>
+            </button>
           </div>
-          <button className="modalCloseButton" aria-label="Close starred conversations" onClick={onClose} type="button">
-            <X size={18} />
-          </button>
-        </header>
-        {conversations.length === 0 ? (
-          <p className="emptyStatText starredEmptyText">Star conversations after listening to revisit them here.</p>
-        ) : (
-          <div className="starredConversationList">
-            {conversations.map((conversation, index) => {
-              const isSelected = conversation.id === selectedConversationId;
-              return (
-                <button
-                  className={isSelected ? 'starredConversationItem active' : 'starredConversationItem'}
-                  key={conversation.id}
-                  onClick={() => onSelect(conversation.id)}
-                  type="button"
-                >
-                  <span>
-                    <strong>{index + 1}. {conversation.title}</strong>
-                    <em>{conversation.scene}</em>
-                  </span>
-                  {isSelected ? <Check size={18} /> : <ChevronRight size={18} />}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        </div>
+        <div className="starredConversationList">
+          {numberedConversations.map(({ conversation, number, isStarred }) => {
+            const isSelected = conversation.id === selectedConversationId;
+            const rowHidden = filter === 'starred' && !isStarred;
+            return (
+              <div className="conversationRow" data-hidden={rowHidden} aria-hidden={rowHidden} key={conversation.id}>
+                <div className="conversationRowInner">
+                  <button
+                    className={isSelected ? 'starredConversationItem active' : 'starredConversationItem'}
+                    ref={isSelected ? activeRowRef : undefined}
+                    onClick={() => onSelect(conversation.id)}
+                    tabIndex={rowHidden ? -1 : undefined}
+                    type="button"
+                  >
+                    <span>
+                      <strong>{number}. {conversation.title}</strong>
+                      <em>{conversation.scene}</em>
+                    </span>
+                    <span className="conversationItemMeta">
+                      {isStarred ? <Star className="conversationItemStar" size={16} fill="currentColor" aria-hidden="true" /> : null}
+                      {isSelected ? <Check size={18} /> : <ChevronRight size={18} />}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {visibleCount === 0 ? (
+          <p className="emptyStatText starredEmptyText">
+            {filter === 'starred'
+              ? 'Star conversations after listening to revisit them here.'
+              : 'Finish a conversation to see it here.'}
+          </p>
+        ) : null}
       </section>
     </div>
   );

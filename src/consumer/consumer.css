@@ -608,6 +608,13 @@
 .conversationPlaylistStatus {
   flex: 1 1 auto;
   justify-content: center;
+  min-height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--accent-text);
+  padding: 0 6px;
+  cursor: pointer;
 }
 
 .conversationPlaylistStatus svg,
@@ -648,7 +655,9 @@
 }
 
 .conversationStarredStatus:hover,
-.conversationStarredStatus:focus-visible {
+.conversationStarredStatus:focus-visible,
+.conversationPlaylistStatus:hover,
+.conversationPlaylistStatus:focus-visible {
   color: var(--accent);
 }
 
@@ -982,16 +991,137 @@
 
 .starredConversationPanel {
   width: min(430px, 100%);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .starredEmptyText {
   margin-top: 14px;
 }
 
+.navigatorHeader {
+  flex: 0 0 auto;
+}
+
+.conversationFilter {
+  position: relative;
+  display: flex;
+  gap: 0;
+  margin-top: 16px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-soft);
+}
+
+.conversationFilterIndicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: var(--surface);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.conversationFilter[data-active="starred"] .conversationFilterIndicator {
+  transform: translateX(100%);
+}
+
+.conversationFilterOption {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-height: 34px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.conversationFilterOption.active {
+  color: var(--accent-text);
+}
+
+.conversationFilterOption span {
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted-strong);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.conversationFilterOption.active span {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
 .starredConversationList {
-  display: grid;
-  gap: 10px;
+  display: block;
   margin-top: 14px;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.starredConversationList::-webkit-scrollbar {
+  display: none;
+}
+
+.conversationRow {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-bottom: 10px;
+  transition: grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease, margin-bottom 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.conversationRow[data-hidden="true"] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-bottom: 0;
+  pointer-events: none;
+}
+
+.conversationRow:last-child {
+  margin-bottom: 0;
+}
+
+.conversationRowInner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conversationFilterIndicator,
+  .conversationFilterOption,
+  .conversationRow {
+    transition: none;
+  }
+}
+
+.starredConversationItem .conversationItemMeta {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.starredConversationItem .conversationItemStar {
+  color: var(--accent-text);
 }
 
 .starredConversationItem {

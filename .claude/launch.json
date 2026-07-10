@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev:api"],
       "port": 8787
+    },
+    {
+      "name": "practice",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:ui", "--", "--config", "vite.practice.config.ts", "--port", "5200", "--strictPort"],
+      "port": 5200
     }
   ]
 }
