@@ -312,8 +312,16 @@ export interface LibraryRecommendations {
   targetWordCount: number;
   libraryConversationCount: number;
   candidateCount: number;
+  eligibleRuns: AiCurationEligibleRun[];
   leastCoveredWords: LibraryRecommendationWord[];
   recommendations: LibraryRecommendationCandidate[];
+}
+
+export interface AiCurationEligibleRun {
+  runId: string;
+  createdAt: string;
+  textModel: TextModelInfo;
+  eligibleCandidateCount: number;
 }
 
 export interface AiCurationWordContribution {
@@ -363,6 +371,8 @@ export interface AiCurationSnapshot {
   fingerprint: string;
   evidenceVersion: string;
   setNumber: number;
+  selectedRunIds: string[];
+  eligibleRuns: AiCurationEligibleRun[];
   candidateCount: number;
   candidateKeys: string[];
   candidates: AiCurationCandidateSnapshot[];
@@ -441,6 +451,7 @@ export type AiCurationReviewStatus = 'complete' | 'failed';
 export interface AiCurationReview {
   id: string;
   setNumber: number;
+  selectedRunIds?: string[];
   targetConversationCount: number;
   status: AiCurationReviewStatus;
   stale: boolean;
@@ -457,6 +468,7 @@ export interface AiCurationReview {
 export interface AiCurationReviewSummary {
   id: string;
   setNumber: number;
+  selectedRunIds?: string[];
   targetConversationCount: number;
   status: AiCurationReviewStatus;
   stale: boolean;
@@ -471,6 +483,7 @@ export interface AiCurationReviewSummary {
 export interface AiCurationRequest {
   textModelId?: string;
   targetConversationCount?: number;
+  selectedRunIds?: string[];
 }
 
 export interface LibraryBalanceWord {

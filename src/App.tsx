@@ -64,6 +64,7 @@ import { AudioProgressStage } from './components/AudioProgressStage.tsx';
 import { StudioBackgroundJobs, type StudioToast } from './components/StudioBackgroundJobs.tsx';
 import { shouldNotifyJobEvent } from './studioNotifications.ts';
 import { selectStudioRunForSet } from './studioRunSelection.ts';
+import { selectedCurationCandidateCount, toggleCurationRun } from './studioCurationScope.ts';
 import {
   AiRecommendationReason,
   CurationEvidencePanel,
@@ -592,6 +593,7 @@ function aiCurationReviewSummary(review: AiCurationReview): AiCurationReviewSumm
   return {
     id: review.id,
     setNumber: review.setNumber,
+    selectedRunIds: review.selectedRunIds ?? review.snapshot.selectedRunIds,
     targetConversationCount: review.targetConversationCount,
     status: review.status,
     stale: review.stale,
@@ -3005,6 +3007,7 @@ function StudioApp() {
   const [aiCurationContextLoading, setAiCurationContextLoading] = useState(false);
   const [aiCurationHistoryLoading, setAiCurationHistoryLoading] = useState(false);
   const [aiCurationTargetCount, setAiCurationTargetCount] = useState('10');
+  const [aiCurationSelectedRunIds, setAiCurationSelectedRunIds] = useState<string[]>([]);
   const [currentRunEvidence, setCurrentRunEvidence] = useState<ConversationCurationEvidenceMap>({});
   const [currentLibraryEvidence, setCurrentLibraryEvidence] = useState<ConversationCurationEvidenceMap>({});
   const [libraryBalance, setLibraryBalance] = useState<LibraryBalancePlan | null>(null);
@@ -3039,6 +3042,7 @@ function StudioApp() {
   const seenStudioEventIds = useRef(new Set<string>());
   const studioJobWaiters = useRef(new Map<string, (job: StudioJob) => void>());
   const initialStudioHydrationComplete = useRef(false);
+  const aiCurationScopeSetRef = useRef<number | null>(null);
 
   const currentSet = useMemo(() => sets.find((item) => item.set === setNumber), [sets, setNumber]);
   const textModelOptions = useMemo(() => {
@@ -3059,7 +3063,10 @@ function StudioApp() {
   const libraryCountBySourceRun = useMemo(() => libraryCountsBySourceRun(librarySets), [librarySets]);
   const currentRecommendations = recommendations?.setNumber === setNumber ? recommendations : null;
   const currentAiCurationReview = aiCurationReview?.setNumber === setNumber ? aiCurationReview : null;
-  const aiCurationCandidateCount = currentRecommendations?.candidateCount ?? currentAiCurationReview?.snapshot.candidateCount ?? 0;
+  const aiCurationEligibleRuns = currentRecommendations?.eligibleRuns ?? currentAiCurationReview?.snapshot.eligibleRuns ?? [];
+  const aiCurationAvailableRunIdSet = useMemo(() => new Set(aiCurationEligibleRuns.map((run) => run.runId)), [aiCurationEligibleRuns]);
+  const aiCurationUnavailableSelectedRunIds = aiCurationSelectedRunIds.filter((runId) => !aiCurationAvailableRunIdSet.has(runId));
+  const aiCurationCandidateCount = selectedCurationCandidateCount(aiCurationEligibleRuns, aiCurationSelectedRunIds);
   const latestAiCurationReviewId = aiCurationHistory[0]?.id;
   const isHistoricalAiCurationReview = Boolean(currentAiCurationReview && latestAiCurationReviewId && currentAiCurationReview.id !== latestAiCurationReviewId);
   const currentAiCurationReconciliation = currentAiCurationReview?.reconciliation;
@@ -3292,6 +3299,8 @@ function StudioApp() {
   function applyAiCurationSettings(review: AiCurationReview) {
     setTextModelId(review.textModel.id);
     setAiCurationTargetCount(String(review.targetConversationCount ?? review.result?.recommendations.length ?? 1));
+    setAiCurationSelectedRunIds(review.selectedRunIds ?? review.snapshot.selectedRunIds ?? [...new Set(review.snapshot.candidates.map((candidate) => candidate.sourceRunId))]);
+    aiCurationScopeSetRef.current = review.setNumber;
   }
 
   async function loadAiCurationHistory(targetSet = setNumber): Promise<AiCurationReview | null> {
@@ -3334,6 +3343,12 @@ function StudioApp() {
 
   async function runAiCuration(retry = false) {
     const targetConversationCount = Number(aiCurationTargetCount);
+    if (aiCurationSelectedRunIds.length === 0 || aiCurationUnavailableSelectedRunIds.length > 0) {
+      setError(aiCurationUnavailableSelectedRunIds.length > 0
+        ? 'Remove unavailable generated runs before starting curation.'
+        : 'Select at least one generated run.');
+      return;
+    }
     if (!Number.isInteger(targetConversationCount) || targetConversationCount < 1 || targetConversationCount > aiCurationCandidateCount) {
       setError(`Portfolio size must be an integer from 1 through ${aiCurationCandidateCount}.`);
       return;
@@ -3346,7 +3361,7 @@ function StudioApp() {
         : `/api/library/sets/${encodeURIComponent(setNumber)}/ai-curation`;
       const payload = await api<{ review: AiCurationReview }>(reviewPath, {
         method: 'POST',
-        body: JSON.stringify({ textModelId, targetConversationCount })
+        body: JSON.stringify({ textModelId, targetConversationCount, selectedRunIds: aiCurationSelectedRunIds })
       });
       setAiCurationReview(payload.review);
       setAiCurationHistory((previous) => [aiCurationReviewSummary(payload.review), ...previous.filter((review) => review.id !== payload.review.id)]);
@@ -3852,12 +3867,19 @@ function StudioApp() {
 
   useEffect(() => {
     if (boardMode !== 'ai-curation' || !currentRecommendations) return;
+    if (aiCurationScopeSetRef.current === setNumber) return;
+    aiCurationScopeSetRef.current = setNumber;
+    setAiCurationSelectedRunIds(currentRecommendations.eligibleRuns.map((run) => run.runId));
+  }, [boardMode, currentRecommendations?.eligibleRuns, setNumber]);
+
+  useEffect(() => {
+    if (boardMode !== 'ai-curation' || !currentRecommendations) return;
     setAiCurationTargetCount((previous) => {
       const parsed = Number(previous);
       if (Number.isInteger(parsed) && parsed >= 1 && parsed <= currentRecommendations.candidateCount) return previous;
       return currentRecommendations.candidateCount > 0 ? String(Math.min(10, currentRecommendations.candidateCount)) : '';
     });
-  }, [boardMode, currentRecommendations?.candidateCount, setNumber]);
+  }, [boardMode, aiCurationCandidateCount, setNumber]);
 
   useEffect(() => {
     if (boardMode !== 'runs' || !currentRun) return;
@@ -5162,6 +5184,35 @@ function StudioApp() {
                     Use Settings
                   </button>
                 ) : null}
+                <details className="curationRunScope">
+                  <summary>
+                    Runs {aiCurationSelectedRunIds.length}/{aiCurationEligibleRuns.length} · {aiCurationCandidateCount} candidates
+                  </summary>
+                  <div className="curationRunScopePopover">
+                    <div className="curationRunScopeActions">
+                      <button type="button" onClick={() => setAiCurationSelectedRunIds(aiCurationEligibleRuns.map((run) => run.runId))}>Select all</button>
+                      <button type="button" onClick={() => setAiCurationSelectedRunIds([])}>Clear</button>
+                    </div>
+                    {aiCurationEligibleRuns.map((run) => (
+                      <label key={run.runId}>
+                        <input
+                          checked={aiCurationSelectedRunIds.includes(run.runId)}
+                          onChange={(event) => setAiCurationSelectedRunIds((previous) => toggleCurationRun(previous, run.runId, event.target.checked))}
+                          type="checkbox"
+                        />
+                        <span>{formatRunHistoryTitle(run.createdAt)}</span>
+                        <small>{run.eligibleCandidateCount} eligible · {run.textModel.label}</small>
+                      </label>
+                    ))}
+                    {aiCurationUnavailableSelectedRunIds.map((runId) => (
+                      <label className="unavailable" key={runId}>
+                        <input checked disabled type="checkbox" />
+                        <span>Unavailable run</span>
+                        <small>{runId}</small>
+                      </label>
+                    ))}
+                  </div>
+                </details>
                 <form
                   className="aiCurationControls"
                   onSubmit={(event) => {
@@ -5182,7 +5233,7 @@ function StudioApp() {
                     <span>Size</span>
                     <input
                       aria-label="Exact portfolio size"
-                      disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading || aiCurationCandidateCount === 0}
+                      disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading || aiCurationCandidateCount === 0 || aiCurationUnavailableSelectedRunIds.length > 0}
                       max={aiCurationCandidateCount || undefined}
                       min={1}
                       onChange={(event) => setAiCurationTargetCount(event.target.value)}
@@ -5192,7 +5243,7 @@ function StudioApp() {
                       value={aiCurationTargetCount}
                     />
                   </label>
-                  <button className="auditToggle" type="submit" disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading || aiCurationCandidateCount === 0}>
+                  <button className="auditToggle" type="submit" disabled={aiCurationLoading || aiCurationContextLoading || aiCurationHistoryLoading || aiCurationCandidateCount === 0 || aiCurationUnavailableSelectedRunIds.length > 0}>
                     {aiCurationLoading || aiCurationContextLoading ? <RefreshCw className="spin" size={15} /> : <Sparkles size={15} />}
                     {aiCurationContextLoading || aiCurationHistoryLoading ? 'Loading' : aiCurationLoading ? 'Curating' : isHistoricalAiCurationReview ? 'Start new' : currentAiCurationReview?.status === 'failed' ? 'Retry AI' : currentAiCurationReview ? 'Re-curate' : 'Start Curation'}
                   </button>
@@ -5374,7 +5425,7 @@ function StudioApp() {
                     <span>Portfolio rationale</span>
                     <span className="aiCurationProvenance" title="AI curation provenance">
                       <Bot size={14} />
-                      {currentAiCurationReview.textModel.label} · exactly {currentAiCurationReview.targetConversationCount} of {currentAiCurationReview.snapshot.candidateCount} · evidence v{currentAiCurationReview.snapshot.evidenceVersion}
+                      {currentAiCurationReview.textModel.label} · exactly {currentAiCurationReview.targetConversationCount} of {currentAiCurationReview.snapshot.candidateCount} · {(currentAiCurationReview.selectedRunIds ?? currentAiCurationReview.snapshot.selectedRunIds).length} source runs · evidence v{currentAiCurationReview.snapshot.evidenceVersion}
                     </span>
                   </div>
                   <p>{currentAiCurationReview.result?.summary}</p>

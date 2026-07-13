@@ -2272,7 +2272,8 @@ app.post('/api/library/sets/:setNumber/ai-curation', asyncHandler(async (req: ex
   const textModel = await resolveTextModel(req.body?.textModelId);
   try {
     res.json({ review: await createAiCurationReview(validated.setNumber, textModel, {
-      targetConversationCount: req.body?.targetConversationCount ?? Number.NaN
+      targetConversationCount: req.body?.targetConversationCount ?? Number.NaN,
+      selectedRunIds: req.body?.selectedRunIds
     }) });
   } catch (error) {
     if (error instanceof AiCurationInputError) {
@@ -2315,7 +2316,8 @@ app.post('/api/library/sets/:setNumber/ai-curation/:reviewId/retry', asyncHandle
   const textModel = await resolveTextModel(req.body?.textModelId ?? previous.textModel.id);
   try {
     res.json({ review: await createAiCurationReview(validated.setNumber, textModel, {
-      targetConversationCount: req.body?.targetConversationCount ?? previous.targetConversationCount
+      targetConversationCount: req.body?.targetConversationCount ?? previous.targetConversationCount,
+      selectedRunIds: previous.selectedRunIds ?? previous.snapshot.selectedRunIds
     }) });
   } catch (error) {
     if (error instanceof AiCurationInputError) {

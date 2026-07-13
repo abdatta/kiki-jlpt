@@ -47,6 +47,7 @@ interface CreateAiCurationOptions {
   storageRoot?: string;
   snapshot?: AiCurationSnapshot;
   targetConversationCount: number;
+  selectedRunIds?: string[];
 }
 
 export class AiCurationInputError extends Error {
@@ -137,12 +138,23 @@ interface CandidateSelection {
 // Single source of truth for which saved conversations are eligible candidates and in
 // what order. Both the full snapshot build and the cheap cache-key fingerprint use this
 // so the two can never disagree about candidate membership or ordering.
-function selectCandidates(setNumber: number, librarySet: CuratedSet, runs: PracticeRun[]): CandidateSelection[] {
+function normalizeSelectedRunIds(selectedRunIds: string[]): string[] {
+  return [...new Set(selectedRunIds.map((id) => id.trim()).filter(Boolean))].sort();
+}
+
+export function selectedRunIdsForReview(review: Pick<AiCurationReview, 'selectedRunIds' | 'snapshot'>): string[] {
+  return normalizeSelectedRunIds(review.selectedRunIds?.length
+    ? review.selectedRunIds
+    : review.snapshot.candidates.map((candidate) => candidate.sourceRunId));
+}
+
+function selectCandidates(setNumber: number, librarySet: CuratedSet, runs: PracticeRun[], selectedRunIds?: string[]): CandidateSelection[] {
+  const selected = selectedRunIds ? new Set(selectedRunIds) : null;
   const curatedSources = new Set(librarySet.conversations.map((conversation) => (
     `${conversation.sourceRunId}:${conversation.sourceConversationId}`
   )));
   const selection: CandidateSelection[] = [];
-  for (const run of runs.filter((item) => item.setNumber === setNumber)) {
+  for (const run of runs.filter((item) => item.setNumber === setNumber && (!selected || selected.has(item.id)))) {
     for (const conversation of run.conversations) {
       const candidateKey = `${run.id}:${conversation.id}`;
       if (conversation.curatedId || curatedSources.has(candidateKey)) continue;
@@ -159,6 +171,7 @@ function selectCandidates(setNumber: number, librarySet: CuratedSet, runs: Pract
 
 interface SnapshotFingerprintInput {
   setNumber: number;
+  selectedRunIds: string[];
   library: Pick<CuratedConversation, 'id' | 'updatedAt' | 'sourceRunId' | 'sourceConversationId'>[];
   candidates: {
     candidateKey: string;
@@ -169,6 +182,23 @@ interface SnapshotFingerprintInput {
   }[];
 }
 
+const vocabularyAnalysisCache = new Map<string, Promise<ConversationVocabularyAnalysis>>();
+
+function cachedConversationAnalysis(setNumber: number, vocabulary: VocabItem[], conversations: PracticeConversation[]) {
+  const key = createHash('sha256').update(JSON.stringify({
+    setNumber,
+    vocabulary: vocabulary.map((item) => [item.set, item.japanese]),
+    conversations: conversations.map((conversation) => ({ id: conversation.id, updatedAt: conversation.updatedAt, content: learningContent(conversation) }))
+  })).digest('hex');
+  const cached = vocabularyAnalysisCache.get(key);
+  if (cached) return cached;
+  const analysis = analyzeConversationsWithVocabulary(setNumber, vocabulary, conversations);
+  vocabularyAnalysisCache.set(key, analysis);
+  if (vocabularyAnalysisCache.size > 100) vocabularyAnalysisCache.delete(vocabularyAnalysisCache.keys().next().value!);
+  analysis.catch(() => vocabularyAnalysisCache.delete(key));
+  return analysis;
+}
+
 // Hashes only conversation content and identities — deliberately independent of tokenizer
 // output — so an identical fingerprint can be computed from cheap JSON reads alone. The
 // serialization shape is intentionally stable; changing it would mark every persisted
@@ -177,6 +207,7 @@ function snapshotFingerprint(input: SnapshotFingerprintInput): string {
   const stable = {
     evidenceVersion: CURATION_EVIDENCE_VERSION,
     setNumber: input.setNumber,
+    selectedRunIds: input.selectedRunIds,
     library: input.library.map((conversation) => ({
       id: conversation.id,
       updatedAt: conversation.updatedAt,
@@ -200,9 +231,10 @@ function snapshotFingerprint(input: SnapshotFingerprintInput): string {
   return createHash('sha256').update(JSON.stringify(stable)).digest('hex');
 }
 
-function fingerprintInput(setNumber: number, librarySet: CuratedSet, selection: CandidateSelection[]): SnapshotFingerprintInput {
+function fingerprintInput(setNumber: number, librarySet: CuratedSet, selection: CandidateSelection[], selectedRunIds: string[]): SnapshotFingerprintInput {
   return {
     setNumber,
+    selectedRunIds,
     library: librarySet.conversations,
     candidates: selection.map((item) => ({ candidateKey: item.candidateKey, conversation: item.conversation }))
   };
@@ -212,11 +244,12 @@ export async function buildAiCurationSnapshotFromData(
   setNumber: number,
   allowedVocabulary: VocabItem[],
   librarySet: CuratedSet,
-  runs: PracticeRun[]
+  runs: PracticeRun[],
+  requestedRunIds?: string[]
 ): Promise<AiCurationSnapshot> {
   const targetVocabulary = uniqueVocabulary(allowedVocabulary.filter((item) => item.set === setNumber));
   const wordExposure: Record<string, number> = Object.fromEntries(targetVocabulary.map((item) => [item.japanese, 0]));
-  const libraryAnalysis = await analyzeConversationsWithVocabulary(setNumber, allowedVocabulary, librarySet.conversations);
+  const libraryAnalysis = await cachedConversationAnalysis(setNumber, allowedVocabulary, librarySet.conversations);
 
   for (const conversation of librarySet.conversations) {
     const evidence = libraryAnalysis.evidenceByConversationId[conversation.id];
@@ -225,14 +258,17 @@ export async function buildAiCurationSnapshotFromData(
     }
   }
 
-  const selection = selectCandidates(setNumber, librarySet, runs);
+  const allSelection = selectCandidates(setNumber, librarySet, runs);
+  const allEligibleRunIds = normalizeSelectedRunIds(allSelection.map((item) => item.run.id));
+  const selectedRunIds = normalizeSelectedRunIds(requestedRunIds ?? allEligibleRunIds);
+  const selection = selectCandidates(setNumber, librarySet, runs, selectedRunIds);
   const analysisByRunId = new Map<string, ConversationVocabularyAnalysis>();
   const candidates: AiCurationCandidateSnapshot[] = [];
 
   for (const { candidateKey, run, conversation } of selection) {
     let analysis = analysisByRunId.get(run.id);
     if (!analysis) {
-      analysis = await analyzeConversationsWithVocabulary(setNumber, allowedVocabulary, run.conversations);
+      analysis = await cachedConversationAnalysis(setNumber, allowedVocabulary, run.conversations);
       analysisByRunId.set(run.id, analysis);
     }
     const evidence = analysis.evidenceByConversationId[conversation.id];
@@ -259,6 +295,16 @@ export async function buildAiCurationSnapshotFromData(
   const withoutFingerprint: Omit<AiCurationSnapshot, 'fingerprint'> = {
     evidenceVersion: CURATION_EVIDENCE_VERSION,
     setNumber,
+    selectedRunIds,
+    eligibleRuns: selectedRunIds.map((runId) => {
+      const run = runs.find((item) => item.id === runId)!;
+      return {
+        runId,
+        createdAt: run.createdAt,
+        textModel: run.textModel,
+        eligibleCandidateCount: selection.filter((item) => item.run.id === runId).length
+      };
+    }),
     candidateCount: candidates.length,
     candidateKeys: candidates.map((candidate) => candidate.candidateKey),
     candidates,
@@ -274,7 +320,7 @@ export async function buildAiCurationSnapshotFromData(
 
   return {
     ...withoutFingerprint,
-    fingerprint: snapshotFingerprint(fingerprintInput(setNumber, librarySet, selection))
+    fingerprint: snapshotFingerprint(fingerprintInput(setNumber, librarySet, selection, selectedRunIds))
   };
 }
 
@@ -289,18 +335,19 @@ interface CachedAiCurationSnapshot {
 // key from the JSON reads and skip the rebuild when it matches. The key is recomputed from
 // current data on every call, so the cache is self-validating — a library edit, run edit,
 // addition, or removal changes the key and forces a rebuild without any manual invalidation.
-const snapshotCacheBySet = new Map<number, CachedAiCurationSnapshot>();
+const snapshotCacheByScope = new Map<string, CachedAiCurationSnapshot>();
 // Dedupes concurrent builds for the same set (e.g. a Queue-open prefetch racing the
 // AI-curation navigation) so they share one computation instead of both tokenizing.
-const snapshotBuildInFlight = new Map<number, Promise<AiCurationSnapshot>>();
+const snapshotBuildInFlight = new Map<string, Promise<AiCurationSnapshot>>();
 
 function snapshotCacheKey(
   setNumber: number,
   allowedVocabulary: VocabItem[],
   librarySet: CuratedSet,
-  selection: CandidateSelection[]
+  selection: CandidateSelection[],
+  selectedRunIds: string[]
 ): string {
-  const contentFingerprint = snapshotFingerprint(fingerprintInput(setNumber, librarySet, selection));
+  const contentFingerprint = snapshotFingerprint(fingerprintInput(setNumber, librarySet, selection, selectedRunIds));
   // Folded in because the fingerprint intentionally ignores vocabulary, yet evidence and
   // word exposure depend on it. In practice vocabulary is process-stable, so this rarely changes.
   const vocabularyFingerprint = createHash('sha256')
@@ -309,8 +356,9 @@ function snapshotCacheKey(
   return `${contentFingerprint}:${vocabularyFingerprint}`;
 }
 
-export async function buildAiCurationSnapshot(setNumber: number): Promise<AiCurationSnapshot> {
-  const inFlight = snapshotBuildInFlight.get(setNumber);
+export async function buildAiCurationSnapshot(setNumber: number, requestedRunIds?: string[]): Promise<AiCurationSnapshot> {
+  const scopeKey = `${setNumber}:${requestedRunIds === undefined ? '*' : normalizeSelectedRunIds(requestedRunIds).join(',') || '(empty)'}`;
+  const inFlight = snapshotBuildInFlight.get(scopeKey);
   if (inFlight) return inFlight;
 
   const build = (async (): Promise<AiCurationSnapshot> => {
@@ -319,21 +367,36 @@ export async function buildAiCurationSnapshot(setNumber: number): Promise<AiCura
       readCuratedSet(setNumber),
       listRuns()
     ]);
-    const selection = selectCandidates(setNumber, librarySet, runs);
-    const key = snapshotCacheKey(setNumber, allowedVocabulary, librarySet, selection);
-    const cached = snapshotCacheBySet.get(setNumber);
+    const allSelection = selectCandidates(setNumber, librarySet, runs);
+    const allEligibleRunIds = normalizeSelectedRunIds(allSelection.map((item) => item.run.id));
+    const selectedRunIds = normalizeSelectedRunIds(requestedRunIds ?? allEligibleRunIds);
+    if (requestedRunIds !== undefined && selectedRunIds.length === 0) throw new AiCurationInputError('Select at least one generated run with eligible candidates.');
+    if (requestedRunIds !== undefined && selectedRunIds.length !== requestedRunIds.length) {
+      throw new AiCurationInputError('Selected generated runs must be unique, non-empty IDs.');
+    }
+    for (const runId of selectedRunIds) {
+      const run = runs.find((item) => item.id === runId);
+      if (!run) throw new AiCurationInputError(`Selected generated run could not be loaded: ${runId}`);
+      if (run.setNumber !== setNumber) throw new AiCurationInputError(`Selected generated run does not belong to Set ${setNumber}: ${runId}`);
+    }
+    const selection = selectCandidates(setNumber, librarySet, runs, selectedRunIds);
+    if (requestedRunIds !== undefined && selection.length === 0) throw new AiCurationInputError('The selected generated runs contain no eligible candidates.');
+    const emptyRun = selectedRunIds.find((runId) => !selection.some((item) => item.run.id === runId));
+    if (emptyRun) throw new AiCurationInputError(`Selected generated run contains no eligible candidates: ${emptyRun}`);
+    const key = snapshotCacheKey(setNumber, allowedVocabulary, librarySet, selection, selectedRunIds);
+    const cached = snapshotCacheByScope.get(scopeKey);
     if (cached && cached.key === key) return cached.snapshot;
 
-    const snapshot = await buildAiCurationSnapshotFromData(setNumber, allowedVocabulary, librarySet, runs);
-    snapshotCacheBySet.set(setNumber, { key, snapshot });
+    const snapshot = await buildAiCurationSnapshotFromData(setNumber, allowedVocabulary, librarySet, runs, selectedRunIds);
+    snapshotCacheByScope.set(scopeKey, { key, snapshot });
     return snapshot;
   })();
 
-  snapshotBuildInFlight.set(setNumber, build);
+  snapshotBuildInFlight.set(scopeKey, build);
   try {
     return await build;
   } finally {
-    snapshotBuildInFlight.delete(setNumber);
+    snapshotBuildInFlight.delete(scopeKey);
   }
 }
 
@@ -744,7 +807,29 @@ export async function saveAiCurationReview(review: AiCurationReview, storageRoot
 }
 
 export async function readAiCurationReview(setNumber: number, id: string, storageRoot = CURATION_REVIEWS_DIR): Promise<AiCurationReview> {
-  return JSON.parse(await readFile(reviewPath(setNumber, id, storageRoot), 'utf8')) as AiCurationReview;
+  return normalizeReview(JSON.parse(await readFile(reviewPath(setNumber, id, storageRoot), 'utf8')) as AiCurationReview);
+}
+
+function normalizeReview(review: AiCurationReview): AiCurationReview {
+  const legacyRunScope = (review as AiCurationReview & { _legacyRunScope?: boolean })._legacyRunScope
+    ?? !Array.isArray((review.snapshot as Partial<AiCurationSnapshot>).selectedRunIds);
+  const selectedRunIds = selectedRunIdsForReview(review);
+  const normalized: AiCurationReview = {
+    ...review,
+    selectedRunIds,
+    snapshot: {
+      ...review.snapshot,
+      selectedRunIds,
+      eligibleRuns: review.snapshot.eligibleRuns ?? selectedRunIds.map((runId) => ({
+        runId,
+        createdAt: review.snapshot.candidates.find((candidate) => candidate.sourceRunId === runId)?.sourceRunCreatedAt ?? review.createdAt,
+        textModel: review.textModel,
+        eligibleCandidateCount: review.snapshot.candidates.filter((candidate) => candidate.sourceRunId === runId).length
+      }))
+    }
+  };
+  Object.defineProperty(normalized, '_legacyRunScope', { value: legacyRunScope, enumerable: false });
+  return normalized;
 }
 
 function withFreshnessAgainstSnapshot(
@@ -767,11 +852,15 @@ function withFreshnessAgainstSnapshot(
 }
 
 async function withCurrentFreshness(review: AiCurationReview): Promise<AiCurationReview> {
-  const [current, runs, librarySet] = await Promise.all([
-    buildAiCurationSnapshot(review.setNumber),
-    listRuns(),
-    readCuratedSet(review.setNumber)
-  ]);
+  review = normalizeReview(review);
+  let current: AiCurationSnapshot;
+  try {
+    current = await buildAiCurationSnapshot(review.setNumber, selectedRunIdsForReview(review));
+  } catch (error) {
+    if (!(error instanceof AiCurationInputError)) throw error;
+    current = await buildAiCurationSnapshot(review.setNumber);
+  }
+  const [runs, librarySet] = await Promise.all([listRuns(), readCuratedSet(review.setNumber)]);
   return withFreshnessAgainstSnapshot(review, current, runs, librarySet);
 }
 
@@ -787,7 +876,13 @@ function hydrateProjectedCoverage(review: AiCurationReview): AiCurationReview {
 }
 
 export function isAiCurationReviewStale(review: AiCurationReview, current: AiCurationSnapshot): boolean {
-  return current.fingerprint !== review.snapshot.fingerprint;
+  if (current.fingerprint === review.snapshot.fingerprint) return false;
+  if (!(review as AiCurationReview & { _legacyRunScope?: boolean })._legacyRunScope) return true;
+  const comparable = (snapshot: AiCurationSnapshot) => {
+    const { fingerprint: _fingerprint, selectedRunIds: _selectedRunIds, eligibleRuns: _eligibleRuns, ...content } = snapshot;
+    return content;
+  };
+  return JSON.stringify(comparable(current)) !== JSON.stringify(comparable(review.snapshot));
 }
 
 export async function getAiCurationReview(setNumber: number, id: string): Promise<AiCurationReview> {
@@ -805,7 +900,7 @@ async function readAiCurationReviews(setNumber: number, storageRoot = CURATION_R
   }
   const reviews = await Promise.all(entries
     .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
-    .map(async (entry) => JSON.parse(await readFile(path.join(directory, entry.name), 'utf8')) as AiCurationReview));
+    .map(async (entry) => normalizeReview(JSON.parse(await readFile(path.join(directory, entry.name), 'utf8')) as AiCurationReview)));
   reviews.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return reviews;
 }
@@ -825,16 +920,25 @@ export async function getAiCurationReviewHistory(
 ): Promise<{ reviews: AiCurationReviewSummary[]; latestReview: AiCurationReview | null }> {
   const reviews = await readAiCurationReviews(setNumber, storageRoot);
   if (reviews.length === 0) return { reviews: [], latestReview: null };
-  const [current, runs, librarySet] = await Promise.all([
-    currentSnapshot ?? buildAiCurationSnapshot(setNumber),
-    listRuns(),
-    readCuratedSet(setNumber)
-  ]);
-  const hydrated = reviews.map((storedReview) => withFreshnessAgainstSnapshot(storedReview, current, runs, librarySet));
+  const [runs, librarySet] = await Promise.all([listRuns(), readCuratedSet(setNumber)]);
+  const hydrated = await Promise.all(reviews.map(async (storedReview) => {
+    let current = currentSnapshot;
+    const storedRunIds = selectedRunIdsForReview(storedReview);
+    if (!current || current.selectedRunIds.join('|') !== storedRunIds.join('|')) {
+      try {
+        current = await buildAiCurationSnapshot(setNumber, storedRunIds);
+      } catch (error) {
+        if (!(error instanceof AiCurationInputError)) throw error;
+        current = currentSnapshot ?? await buildAiCurationSnapshot(setNumber);
+      }
+    }
+    return withFreshnessAgainstSnapshot(storedReview, current, runs, librarySet);
+  }));
   return { reviews: hydrated.map((review) => {
     return {
       id: review.id,
       setNumber: review.setNumber,
+      selectedRunIds: review.selectedRunIds,
       targetConversationCount: review.targetConversationCount,
       status: review.status,
       stale: review.stale,
@@ -860,7 +964,7 @@ export async function createAiCurationReview(
 ): Promise<AiCurationReview> {
   const invoker = options.invoker ?? invokeStructuredJson;
   const maxPromptChars = options.maxPromptChars ?? Number(process.env.CURATION_MAX_PROMPT_CHARS || DEFAULT_MAX_PROMPT_CHARS);
-  const snapshot = options.snapshot ?? await buildAiCurationSnapshot(setNumber);
+  const snapshot = options.snapshot ?? await buildAiCurationSnapshot(setNumber, options.selectedRunIds);
   const targetConversationCount = options.targetConversationCount;
   if (!Number.isInteger(targetConversationCount) || targetConversationCount < 1 || targetConversationCount > snapshot.candidateCount) {
     throw new AiCurationInputError(`Portfolio size must be an integer from 1 through ${snapshot.candidateCount}.`);
@@ -869,6 +973,7 @@ export async function createAiCurationReview(
   const base = {
     id: reviewId(setNumber),
     setNumber,
+    selectedRunIds: snapshot.selectedRunIds,
     targetConversationCount,
     stale: false,
     textModel,

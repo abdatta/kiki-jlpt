@@ -79,6 +79,7 @@ export async function recommendLibraryConversations(setNumber: number): Promise<
   const curatedSourceIds = new Set(librarySet.conversations.map((conversation) => `${conversation.sourceRunId}:${conversation.sourceConversationId}`));
   const runs = (await listRuns()).filter((run) => run.setNumber === setNumber);
   const recommendations: LibraryRecommendationCandidate[] = [];
+  const eligibleCountByRun = new Map<string, number>();
 
   for (const run of runs) {
     const evidenceByConversationId = (
@@ -87,6 +88,7 @@ export async function recommendLibraryConversations(setNumber: number): Promise<
     for (const conversation of run.conversations) {
       if (conversation.curatedId || curatedSourceIds.has(`${run.id}:${conversation.id}`)) continue;
       if (librarySet.conversations.some((curated) => curated.id === makeCuratedId(run.id, conversation.id))) continue;
+      eligibleCountByRun.set(run.id, (eligibleCountByRun.get(run.id) ?? 0) + 1);
 
       const conversationWordCounts = wordFrequency(conversation.vocabularyUsed);
       const conversationTargetWords = [...conversationWordCounts.keys()].filter((word) => targetWords.has(word));
@@ -125,11 +127,18 @@ export async function recommendLibraryConversations(setNumber: number): Promise<
     || a.conversation.number - b.conversation.number
   ));
 
+  const runById = new Map(runs.map((run) => [run.id, run]));
+  const eligibleRuns = [...eligibleCountByRun].map(([runId, eligibleCandidateCount]) => {
+    const run = runById.get(runId)!;
+    return { runId, createdAt: run.createdAt, textModel: run.textModel, eligibleCandidateCount };
+  }).sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.runId.localeCompare(b.runId));
+
   return {
     setNumber,
     targetWordCount: targetVocabulary.length,
     libraryConversationCount: librarySet.conversations.length,
     candidateCount: recommendations.length,
+    eligibleRuns,
     leastCoveredWords: leastCoveredWords.slice(0, 40),
     recommendations: recommendations.slice(0, 30)
   };

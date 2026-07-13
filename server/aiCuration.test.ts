@@ -134,6 +134,31 @@ test('snapshot excludes curated sources and accounts for every remaining candida
   assert.deepEqual(snapshot.candidates.find((candidate) => candidate.candidateKey === 'run-a:convo-02')?.contribution.uncoveredWords, ['見る']);
 });
 
+test('snapshot selection scopes candidates and freshness to selected generated runs', async () => {
+  const sourceRuns = [
+    run('run-a', [conversation('convo-01', 'æœ¬ã‚’è¦‹ã¾ã™ã€‚')]),
+    run('run-b', [conversation('convo-01', 'æœ¬ã‚’èª­ã¿ã¾ã™ã€‚')])
+  ];
+  const snapshot = await buildAiCurationSnapshotFromData(2, vocabulary, library([]), sourceRuns, ['run-a']);
+
+  assert.deepEqual(snapshot.selectedRunIds, ['run-a']);
+  assert.deepEqual(snapshot.candidateKeys, ['run-a:convo-01']);
+  assert.deepEqual(snapshot.eligibleRuns.map((item) => [item.runId, item.eligibleCandidateCount]), [['run-a', 1]]);
+
+  const review = { snapshot } as AiCurationReview;
+  const unselectedEdit = await buildAiCurationSnapshotFromData(2, vocabulary, library([]), [
+    sourceRuns[0],
+    run('run-b', [conversation('convo-01', 'æœ¬ã‚’èª­ã¿ã¾ã™ã€‚è¦‹ã¾ã™ã€‚')])
+  ], ['run-a']);
+  assert.equal(isAiCurationReviewStale(review, unselectedEdit), false);
+
+  const selectedEdit = await buildAiCurationSnapshotFromData(2, vocabulary, library([]), [
+    run('run-a', [conversation('convo-01', 'æœ¬ã‚’è¦‹ã¾ã™ã€‚èª­ã¿ã¾ã™ã€‚')]),
+    sourceRuns[1]
+  ], ['run-a']);
+  assert.equal(isAiCurationReviewStale(review, selectedEdit), true);
+});
+
 test('model prompt excludes audio readiness and recording metadata', async () => {
   const snapshot = await fixtureSnapshot();
   const prompt = buildAiCurationPrompt(snapshot, 1);
@@ -339,7 +364,10 @@ test('review storage retains and summarizes history newest first', async () => {
   try {
     await saveAiCurationReview(review, storageRoot);
     await saveAiCurationReview(newerReview, storageRoot);
-    assert.deepEqual(await readAiCurationReview(2, review.id, storageRoot), review);
+    assert.deepEqual(await readAiCurationReview(2, review.id, storageRoot), {
+      ...review,
+      selectedRunIds: review.snapshot.selectedRunIds
+    });
     const summaries = await listAiCurationReviewSummaries(2, storageRoot, snapshot);
     assert.equal(summaries.length, 2);
     assert.equal(summaries[0].id, newerReview.id);
