@@ -4573,8 +4573,10 @@ function StudioApp() {
     const isReadonly = isLibraryCard || Boolean(conversation.curatedId) || historicalReadonly;
     const canAddToLibrary = source === 'run' && conversation.status === 'audio_ready' && Boolean(conversation.audioFileName);
     const canAddRecommendationToLibrary = isRecommendationCard && conversation.status === 'audio_ready' && Boolean(conversation.audioFileName);
-    const isAudioBusy = busy === `audio:${itemKey}` || conversation.status === 'audio_generating'
-      || studioJobs.some((job) => job.runId === sourceRunId && job.conversationId === conversation.id && ['queued', 'running', 'pausing', 'paused', 'interrupted'].includes(job.status));
+    const audioJob = studioJobs.find((job) => job.runId === sourceRunId && job.conversationId === conversation.id && ['queued', 'running', 'pausing', 'paused', 'interrupted'].includes(job.status));
+    const canRetryAudio = conversation.status === 'audio_failed' || Boolean(conversation.error) || audioJob?.status === 'interrupted';
+    const isAudioBusy = busy === `audio:${itemKey}` || conversation.status === 'audio_generating' || (Boolean(audioJob) && !canRetryAudio);
+    const isAudioGenerating = isAudioBusy;
     const isDeleteBusy = busy === `delete-audio:${itemKey}`;
     const currentAudioSrc = audioSrc(conversation);
     const hasAudio = Boolean(currentAudioSrc);
@@ -4793,7 +4795,7 @@ function StudioApp() {
                     disabled={isReadonly || isAudioBusy}
                     title={historicalReadonly ? 'Historical reviews are read-only.' : isReadonly ? 'Remove it from Library before regenerating audio.' : 'Regenerate audio'}
                   >
-                    {isAudioBusy ? <RefreshCw className="spin" size={17} /> : <RefreshCw size={17} />}
+                    {isAudioGenerating ? <RefreshCw className="spin" size={17} /> : <RefreshCw size={17} />}
                     {isAudioBusy ? 'Generating' : 'Regenerate'}
                   </button>
                   <button
@@ -4837,7 +4839,7 @@ function StudioApp() {
                     disabled={isReadonly || isAudioBusy}
                     title={historicalReadonly ? 'Historical reviews are read-only.' : 'Generate audio'}
                   >
-                    {isAudioBusy ? <RefreshCw className="spin" size={17} /> : <Headphones size={17} />}
+                    {isAudioGenerating ? <RefreshCw className="spin" size={17} /> : <Headphones size={17} />}
                     {isAudioBusy ? 'Generating' : 'Generate'}
                   </button>
                   <button

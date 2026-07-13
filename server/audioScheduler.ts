@@ -90,7 +90,15 @@ async function stopParentSiblings(parentJobId: string, failedJobId: string): Pro
   if (!parent.stopOnFailure) return;
   const jobs = await listStudioJobs();
   for (const sibling of jobs.filter((job) => childBelongsToParent(job, parentJobId) && job.id !== failedJobId && job.status === 'queued')) {
-    if (childParentIds(sibling).some((id) => id !== parentJobId)) continue;
+    // Keep a shared child queued only when another parent can still run it.
+    // A failed retry parent must not leave its siblings queued forever merely
+    // because they are also attached to an older terminal parent.
+    const otherParents = await Promise.all(
+      childParentIds(sibling)
+        .filter((id) => id !== parentJobId)
+        .map((id) => readStudioJob(id).catch(() => undefined))
+    );
+    if (otherParents.some((other) => other?.status === 'queued' || other?.status === 'running' || other?.status === 'pausing')) continue;
     await updateStudioJob(sibling.id, (current) => ({
       ...current,
       status: 'paused',
@@ -183,12 +191,16 @@ async function nextQueuedJob(): Promise<StudioJob | undefined> {
   const jobs = (await listStudioJobs()).filter((job) => job.kind === 'audio-child' && job.status === 'queued' && !claimedJobIds.has(job.id));
   const eligible: StudioJob[] = [];
   for (const job of jobs.reverse()) {
-    if (!job.parentJobId) {
+    const parentIds = childParentIds(job);
+    if (!parentIds.length) {
       eligible.push(job);
       continue;
     }
-    const parent = await readStudioJob(job.parentJobId).catch(() => undefined);
-    if (parent?.status === 'running' || parent?.status === 'queued') eligible.push(job);
+    // A retry batch can attach to a paused child left behind by an earlier
+    // failed batch. Its original parent remains failed, so eligibility must
+    // consider every parent, not just parentJobId.
+    const parents = await Promise.all(parentIds.map((parentId) => readStudioJob(parentId).catch(() => undefined)));
+    if (parents.some((parent) => parent?.status === 'running' || parent?.status === 'queued')) eligible.push(job);
   }
   return eligible.find((job) => job.parentJobId !== lastParentId) ?? eligible[0];
 }
@@ -218,14 +230,34 @@ export async function enqueueConversationAudio(args: {
 }): Promise<{ job: StudioJob; attached: boolean }> {
   const deduplicationKey = `${args.runId}:${args.conversationId}`;
   return withDeduplicationQueue(deduplicationKey, async () => {
-    const existing = await findActiveStudioJobByDeduplicationKey(deduplicationKey);
+    let existing = await findActiveStudioJobByDeduplicationKey(deduplicationKey);
+    // A direct card retry after a failed/interrupted batch must not attach to
+    // the stale paused child: it has a terminal parent and cannot run again.
+    // Retire it and create a fresh standalone job instead.
+    if (!args.parentJobId && existing && (existing.status === 'paused' || existing.status === 'interrupted')) {
+      await updateStudioJob(existing.id, (current) => ({
+        ...current,
+        status: 'cancelled',
+        stageLabel: 'Replaced by a direct retry',
+        completedAt: nowIso()
+      }));
+      existing = undefined;
+    }
     if (existing) {
       const attached = args.parentJobId && !childBelongsToParent(existing, args.parentJobId)
-        ? await updateStudioJob(existing.id, (current) => ({
-            ...current,
-            dependentParentJobIds: [...new Set([...(current.dependentParentJobIds ?? []), args.parentJobId!])]
-          }))
+        ? await updateStudioJob(existing.id, (current) => {
+            const retryingPausedChild = current.status === 'paused' || current.status === 'interrupted';
+            return {
+              ...current,
+              status: retryingPausedChild ? 'queued' : current.status,
+              stageLabel: retryingPausedChild ? 'Queued for audio' : current.stageLabel,
+              progress: retryingPausedChild ? { completed: 0, total: 1, queued: 1 } : current.progress,
+              error: retryingPausedChild ? undefined : current.error,
+              dependentParentJobIds: [...new Set([...(current.dependentParentJobIds ?? []), args.parentJobId!])]
+            };
+          })
         : existing;
+      if (attached.status === 'queued') void pumpAudioJobs();
       return { job: attached, attached: true };
     }
     const run = await readRun(args.runId);

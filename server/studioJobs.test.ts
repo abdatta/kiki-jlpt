@@ -313,6 +313,78 @@ test('audio scheduler stops only the failed parent and preserves successful work
   }
 });
 
+test('a retry batch revives paused children left by an earlier failed batch', async () => {
+  const storage = await isolatedStorage();
+  let failFirstAttempt = true;
+  configureAudioSchedulerForTests({
+    concurrency: 1,
+    executor: async (_runId, item) => {
+      if (item.id === 'convo-02' && failFirstAttempt) throw new Error('Injected failure');
+      return { fileName: `${item.id}.wav`, filePath: `${item.id}.wav` };
+    }
+  });
+  try {
+    await saveRun(run('run-retry-paused', 3));
+    const first = await createAudioBatch({
+      runId: 'run-retry-paused',
+      conversationIds: ['convo-01', 'convo-02', 'convo-03'],
+      idempotencyKey: 'batch-first-failure',
+      stopOnFailure: true
+    });
+    assert.equal((await waitForStudioJob(first.id)).status, 'failed');
+    await waitForAudioSchedulerIdle();
+
+    failFirstAttempt = false;
+    const retry = await createAudioBatch({
+      runId: 'run-retry-paused',
+      conversationIds: ['convo-02', 'convo-03'],
+      idempotencyKey: 'batch-retry-paused',
+      stopOnFailure: true
+    });
+    assert.equal((await waitForStudioJob(retry.id)).status, 'succeeded');
+    await waitForAudioSchedulerIdle();
+
+    const saved = await readRun('run-retry-paused');
+    assert.equal(saved.conversations.every((item) => Boolean(item.audioFileName)), true);
+  } finally {
+    configureAudioSchedulerForTests();
+    await storage.cleanup();
+  }
+});
+
+test('a direct retry replaces a paused child from a failed batch', async () => {
+  const storage = await isolatedStorage();
+  let failFirstAttempt = true;
+  configureAudioSchedulerForTests({
+    concurrency: 1,
+    executor: async (_runId, item) => {
+      if (item.id === 'convo-01' && failFirstAttempt) throw new Error('Injected failure');
+      return { fileName: `${item.id}.wav`, filePath: `${item.id}.wav` };
+    }
+  });
+  try {
+    await saveRun(run('run-direct-retry', 2));
+    const first = await createAudioBatch({
+      runId: 'run-direct-retry',
+      conversationIds: ['convo-01', 'convo-02'],
+      idempotencyKey: 'batch-direct-retry',
+      stopOnFailure: true
+    });
+    assert.equal((await waitForStudioJob(first.id)).status, 'failed');
+    await waitForAudioSchedulerIdle();
+
+    failFirstAttempt = false;
+    const retry = await enqueueConversationAudio({ runId: 'run-direct-retry', conversationId: 'convo-02' });
+    assert.equal(retry.attached, false);
+    assert.equal((await waitForStudioJob(retry.job.id)).status, 'succeeded');
+    await waitForAudioSchedulerIdle();
+    assert.equal((await readRun('run-direct-retry')).conversations[1].audioFileName, 'convo-02.wav');
+  } finally {
+    configureAudioSchedulerForTests();
+    await storage.cleanup();
+  }
+});
+
 test('audio scheduler pauses cooperatively and resumes unresolved children', async () => {
   const storage = await isolatedStorage();
   let release!: () => void;
