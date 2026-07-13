@@ -730,7 +730,16 @@ function perCallJob(status: WorkflowJob['status'] = 'complete'): WorkflowJob {
 
 test('per-call audit renders lanes, parallel repairs, stat lines, and conversation trace facts', () => {
   const html = renderToStaticMarkup(<WorkflowAuditFlow job={perCallJob()} selectedNodeId="initial:pick" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
-  const traceHtml = renderToStaticMarkup(<WorkflowAuditFlow job={perCallJob()} selectedNodeId="initial:pick" selectedConversationId="convo-01" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
+  const traceJob = perCallJob();
+  const generationNode = traceJob.nodes.find((node) => node.id === 'initial:generation')!;
+  generationNode.output = { summary: { statLine: '1 conversation generated' }, factsByConversationId: { 'convo-01': evidence } };
+  const repairNode = traceJob.nodes.find((node) => node.id === 'initial:repair-1')!;
+  repairNode.output = {
+    summary: { statLine: '1 conversation repaired' },
+    factsByConversationId: { 'convo-01': { candidate: 'candidate1', selected: true } },
+    details: { comparisons: [{ conversationId: 'convo-01', before: [{ speaker: 'Speaker 1', japanese: 'old text' }], after: [{ speaker: 'Speaker 1', japanese: 'new text' }] }] }
+  };
+  const traceHtml = renderToStaticMarkup(<WorkflowAuditFlow job={traceJob} selectedNodeId="initial:pick" selectedConversationId="convo-01" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
   assert.match(html, /Stage 1 · initial/i);
   assert.match(html, /parallel/i);
   // Version-comparing nodes derive per-version stat stacks from their details
@@ -746,6 +755,11 @@ test('per-call audit renders lanes, parallel repairs, stat lines, and conversati
   assert.doesNotMatch(html, /workflowNodeEyebrow/);
   assert.match(traceHtml, /Conversation trace/i);
   assert.match(traceHtml, /candidate1 · good/i);
+  assert.match(traceHtml, /candidate1 - selected/i);
+  assert.match(traceHtml, /<del>old text<\/del>/i);
+  assert.match(traceHtml, /<ins>new text<\/ins>/i);
+  assert.match(traceHtml, /1 OOV - 3 current-set words/i);
+  assert.doesNotMatch(traceHtml, /evidenceVersion/i);
   assert.doesNotMatch(html, />Attempts</);
 });
 

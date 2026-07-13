@@ -1840,8 +1840,13 @@ function workflowConversationFactText(node: WorkflowAuditNode, conversationId: s
   if (!record) return undefined;
   if (typeof record.verdict === 'string') return `#${conversationId.replace(/^convo-0*/, '')}: ${record.verdict} — ${String(record.rationale ?? '')}`;
   if (typeof record.selected === 'string') return `#${conversationId.replace(/^convo-0*/, '')} → ${record.selected} · ${String(record.selectedQuality ?? '')}`;
+  if (typeof record.candidate === 'string') return `#${conversationId.replace(/^convo-0*/, '')}: ${record.candidate}${record.selected === true ? ' - selected' : ' - not selected'}`;
   if (Array.isArray(record.admissible)) return `#${conversationId.replace(/^convo-0*/, '')}: ${record.admissible.join(', ')} admissible`;
   if (typeof record.quality === 'string') return `#${conversationId.replace(/^convo-0*/, '')}: ${record.quality}`;
+  if (typeof record.outOfVocabularyUniqueCount === 'number') {
+    const currentSetCount = typeof record.currentSetUniqueCount === 'number' ? ` - ${record.currentSetUniqueCount} current-set words` : '';
+    return `#${conversationId.replace(/^convo-0*/, '')}: ${record.outOfVocabularyUniqueCount} OOV${currentSetCount}`;
+  }
   const text = formatAuditValue(record).replace(/\s+/g, ' ');
   return text.length > 90 ? `${text.slice(0, 87)}…` : text;
 }

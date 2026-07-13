@@ -720,7 +720,9 @@ function updateWorkflowJob(jobId: string, updater: (job: WorkflowJob) => Workflo
       : updated.status === 'paused' ? 'paused'
       : ['pausing', 'paused', 'queued'].includes(studioJob.status) ? studioJob.status
       : 'running',
-    stageLabel: updated.status === 'paused' && updated.run?.finalTextAudit
+    stageLabel: updated.status === 'complete'
+      ? 'Complete'
+      : updated.status === 'paused' && updated.run?.finalTextAudit
       ? `Review final audit: accepted ${updated.run.finalTextAudit.acceptedCount} of ${updated.run.finalTextAudit.requestedCount} requested`
       : activeNode?.stage === 'initial' || activeNode?.kind === 'generator'
       ? 'Generating initial set'
@@ -730,7 +732,7 @@ function updateWorkflowJob(jobId: string, updater: (job: WorkflowJob) => Workflo
           ? 'Reviewing final text audit'
         : updated.audioRequestedCount > 0
           ? `${completedAudio}/${updated.audioRequestedCount} audio generated`
-          : updated.status === 'complete' ? 'Complete' : 'Finishing',
+          : 'Finishing',
     progress: {
       completed: completedAudio,
       total: updated.audioRequestedCount,
@@ -822,27 +824,30 @@ function updateWorkflowNode(
   nodeId: string,
   patch: Partial<Omit<WorkflowAuditNode, 'id' | 'kind' | 'title'>>
 ): void {
+  const definedPatch = Object.fromEntries(
+    Object.entries(patch).filter(([, value]) => value !== undefined)
+  ) as Partial<Omit<WorkflowAuditNode, 'id' | 'kind' | 'title'>>;
   updateWorkflowJob(jobId, (job) => ({
     ...job,
     nodes: job.nodes.some((node) => node.id === nodeId)
       ? job.nodes.map((node) => node.id === nodeId ? {
           ...node,
-          ...patch,
-          output: patch.output && recordValue(node.output) && recordValue(patch.output)
-            ? { ...recordValue(node.output), ...recordValue(patch.output) }
-            : patch.output ?? node.output
+          ...definedPatch,
+          output: definedPatch.output && recordValue(node.output) && recordValue(definedPatch.output)
+            ? { ...recordValue(node.output), ...recordValue(definedPatch.output) }
+            : definedPatch.output ?? node.output
         } : node)
       : [...job.nodes, {
           id: nodeId,
-          kind: (patch.callKind ?? 'generation') as WorkflowAuditNode['kind'],
-          callKind: patch.callKind,
-          stage: patch.stage,
-          pass: patch.pass,
-          candidateIndex: patch.candidateIndex,
-          sequence: patch.sequence ?? job.nodes.length,
+          kind: (definedPatch.callKind ?? 'generation') as WorkflowAuditNode['kind'],
+          callKind: definedPatch.callKind,
+          stage: definedPatch.stage,
+          pass: definedPatch.pass,
+          candidateIndex: definedPatch.candidateIndex,
+          sequence: definedPatch.sequence ?? job.nodes.length,
           title: nodeId,
-          status: patch.status ?? 'pending',
-          ...patch
+          status: definedPatch.status ?? 'pending',
+          ...definedPatch
         }]
   }));
 }

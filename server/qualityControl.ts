@@ -583,6 +583,11 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
     if (!exchange) continue;
     const candidate = candidateSets.find((item) => item.source === `candidate${candidateIndex}`);
     const selectedCount = picks.filter((pick) => pick.selected === `candidate${candidateIndex}`).length;
+    const comparisons = candidate?.conversations.map((conversation) => ({
+      conversationId: conversation.id,
+      before: repairOriginals.find((original) => original.id === conversation.id)?.text ?? [],
+      after: conversation.text
+    })) ?? [];
     await publish(options, {
       id: nodeId(options.stage, pass, 'repair-candidate', candidateIndex), callKind: 'repair-candidate', pass, candidateIndex,
       status: exchange.status === 'failed' ? 'repairWarning' : 'done', title: `Repair candidate ${candidateIndex}`, error: exchange.error,
@@ -590,12 +595,14 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
         summary: { statLine: exchange.status === 'failed' ? 'Call failed · fallback available' : `${candidate?.conversations.length ?? 0} conversations · ${selectedCount} selected`, conversationCount: candidate?.conversations.length ?? 0 },
         exchange,
         conversations: candidate?.conversations,
+        factsByConversationId: Object.fromEntries(comparisons.map((comparison) => [comparison.conversationId, {
+          candidate: `candidate${candidateIndex}`,
+          selected: picks.some((pick) => pick.conversationId === comparison.conversationId && pick.selected === `candidate${candidateIndex}`),
+          before: comparison.before,
+          after: comparison.after
+        }])),
         details: {
-          comparisons: candidate?.conversations.map((conversation) => ({
-            conversationId: conversation.id,
-            before: repairOriginals.find((original) => original.id === conversation.id)?.text ?? [],
-            after: conversation.text
-          })) ?? []
+          comparisons
         }
       }
     });
@@ -626,6 +633,15 @@ export async function runQualityControl(options: RunQualityControlOptions): Prom
   const dropped = [...first.dropped];
   const failures = [...first.failures];
   let rerollGeneratedCount = 0;
+  const skipRerollQualitySteps = async (reason: string) => {
+    await publish(options, { id: nodeId(options.stage, 2, 'vocab-audit'), callKind: 'vocab-audit', pass: 2, status: 'skipped', title: 'Re-roll vocabulary audit', output: { summary: { statLine: reason } } });
+    await publish(options, { id: nodeId(options.stage, 2, 'triage'), callKind: 'triage', pass: 2, status: 'skipped', title: 'Re-roll quality triage', output: { summary: { statLine: reason } } });
+    for (const candidateIndex of [1, 2] as const) {
+      await publish(options, { id: nodeId(options.stage, 2, 'repair-candidate', candidateIndex), callKind: 'repair-candidate', pass: 2, candidateIndex, status: 'skipped', title: `Re-roll repair candidate ${candidateIndex}`, output: { summary: { statLine: reason } } });
+    }
+    await publish(options, { id: nodeId(options.stage, 2, 'dominance-gates'), callKind: 'dominance-gates', pass: 2, status: 'skipped', title: 'Re-roll dominance gates', output: { summary: { statLine: reason } } });
+    await publish(options, { id: nodeId(options.stage, 2, 'pick'), callKind: 'pick', pass: 2, status: 'skipped', title: 'Re-roll pick', output: { summary: { statLine: reason } } });
+  };
 
   if (first.dropped.length) {
     const rerollPrompt = `${options.originalPrompt}\n\nRE-ROLL REQUEST: Return exactly ${first.dropped.length} fresh replacement conversations. Use new coherent scenarios and do not repeat structurally flawed versions from the previous batch.`;
@@ -650,6 +666,8 @@ export async function runQualityControl(options: RunQualityControlOptions): Prom
         picks.push(...second.picks);
         dropped.push(...second.dropped);
         failures.push(...second.failures);
+      } else {
+        await skipRerollQualitySteps('Skipped - no replacements generated');
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -660,12 +678,14 @@ export async function runQualityControl(options: RunQualityControlOptions): Prom
         id: nodeId(options.stage, 2, 'reroll'), callKind: 'reroll', pass: 2, status: 'repairWarning', title: 'Re-roll', error: message,
         output: { summary: { statLine: 'Re-roll failed · shortfall retained', replacementCount: 0 }, exchange: rerollExchange }
       });
+      await skipRerollQualitySteps('Skipped - re-roll failed');
     }
   } else {
     await publish(options, {
       id: nodeId(options.stage, 2, 'reroll'), callKind: 'reroll', pass: 2, status: 'skipped', title: 'Re-roll',
       output: { summary: { statLine: 'Skipped — no regenerate verdicts', replacementCount: 0, droppedCount: 0 } }
     });
+    await skipRerollQualitySteps('Skipped - no regenerate verdicts');
   }
 
   return {

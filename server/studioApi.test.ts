@@ -452,12 +452,16 @@ test('workflow generation quality warning preserves initial and repair LLM excha
     const repairOne = completed.workflow?.nodes.find((node) => node.id === 'initial:repair-1');
     const audit = completed.workflow?.nodes.find((node) => node.id === 'initial:vocab-audit');
     assert.equal(generation?.status, 'done');
+    assert.ok(generation?.startedAt);
+    assert.match(String((generation?.input as { prompt?: string } | undefined)?.prompt ?? ''), /Return|conversation/i);
     assert.equal(repairOne?.status, 'done');
     assert.match(((repairOne?.output as { exchange?: LlmExchange } | undefined)?.exchange?.prompt) ?? '', /Authoritative per-conversation audit findings/);
     assert.ok((audit?.output as { summary?: { statLine?: string } } | undefined)?.summary?.statLine);
     const run = await readRun(completed.runId!);
     assert.ok(run.analytics.outOfAllowedCount > 0);
     assert.ok((run.llmExchanges?.length ?? 0) >= 4);
+    assert.equal(completed.stageLabel, 'Complete');
+    assert.equal(completed.workflow?.nodes.filter((node) => node.pass === 2).every((node) => node.status === 'skipped'), true);
   } finally {
     configureConversationJsonGeneratorForTests();
   }

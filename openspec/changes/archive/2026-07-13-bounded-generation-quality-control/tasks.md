@@ -65,5 +65,5 @@
 - [x] 8.1 Run `npm run test:unit` and fix failures
 - [x] 8.2 Run `npm run build` (typecheck + bundle) and fix failures
 - [x] 8.3 Run `npm run library:check-published` to confirm curated/published content is unaffected
-- [ ] 8.4 Exercise one real workflow generation end-to-end in the studio (small count): verify per-call nodes stream live, node stat lines and deep dives render, trace mode follows a repaired conversation with diffs, the final audit renders and gates audio, a clean run reaches audio automatically, and pick-rate statistics are populated
+- [x] 8.4 Exercise one real workflow generation end-to-end in the studio (small count): verify per-call nodes stream live, node stat lines and deep dives render, trace mode follows a repaired conversation with diffs, the final audit renders and gates audio, a clean run reaches audio automatically, and pick-rate statistics are populated
 - [x] 8.5 Open a pre-change run's audit view and verify the legacy path renders from stored exchanges with the pre-quality-control notice and functioning Attempts tab

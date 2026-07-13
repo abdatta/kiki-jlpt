@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { PracticeConversation, QualityStageAudit, TextModelInfo, VocabItem } from '../shared/types.ts';
-import { buildFinalTextAudit, runQualityControl, type QualityConversationGenerator } from './qualityControl.ts';
+import { buildFinalTextAudit, runQualityControl, type QualityConversationGenerator, type QualityNodeEvent } from './qualityControl.ts';
 import type { StructuredJsonInvoker } from './structuredText.ts';
 
 const model: TextModelInfo = { id: 'test', provider: 'gemini', model: 'test-model', label: 'Test model' };
@@ -75,15 +75,19 @@ test('triage rejects unknown IDs and applies deterministic-only fallback', async
 test('pass conversations keep their learning content and never enter repair', async () => {
   const input = conversation('convo-01', 1);
   const repairCalls: string[] = [];
+  const events: QualityNodeEvent[] = [];
   const result = await runQualityControl({
     stage: 'initial', textModel: model, originalPrompt: 'Generate.', setNumber: 2, expectedCount: 1,
     allowedVocabulary: vocabulary, knownVocabulary: vocabulary, conversations: [input],
     invoker: triage([{ conversationId: input.id, verdict: 'pass' }]),
-    conversationGenerator: generator([], repairCalls)
+    conversationGenerator: generator([], repairCalls),
+    onNode: (event) => { events.push(event); }
   });
   assert.equal(repairCalls.length, 0);
   assert.deepEqual(result.conversations[0].text, input.text);
   assert.equal(result.conversations[0].qualityDecision, 'pass');
+  assert.equal(events.filter((event) => event.pass === 2).length, 7);
+  assert.equal(events.filter((event) => event.pass === 2).every((event) => event.status === 'skipped'), true);
 });
 
 test('dominance gates eliminate OOV-worsening versions and select the clean candidate', async () => {
@@ -104,6 +108,7 @@ test('dominance gates eliminate OOV-worsening versions and select the clean cand
 
 test('picker is forced among admissible versions and its selected quality is persisted', async () => {
   const input = conversation('convo-01', 1);
+  const events: QualityNodeEvent[] = [];
   let invocation = 0;
   const invoker: StructuredJsonInvoker = async (prompt) => {
     invocation += 1;
@@ -118,12 +123,16 @@ test('picker is forced among admissible versions and its selected quality is per
   const result = await runQualityControl({
     stage: 'initial', textModel: model, originalPrompt: 'Generate.', setNumber: 2, expectedCount: 1,
     allowedVocabulary: vocabulary, knownVocabulary: vocabulary, conversations: [input], invoker,
-    conversationGenerator: generator([{ conversations: [rawConversation()] }, { conversations: [rawConversation()] }])
+    conversationGenerator: generator([{ conversations: [rawConversation()] }, { conversations: [rawConversation()] }]),
+    onNode: (event) => { events.push(event); }
   });
   assert.equal(invocation, 2);
   assert.equal(result.stageAudit.picks[0].selected, 'candidate2');
   assert.equal(result.conversations[0].quality, 'okay');
   assert.equal(result.conversations[0].pickerConfidence, 'medium');
+  const selectedCandidate = events.find((event) => event.id === 'initial:repair-2' && event.status === 'done' && event.output?.factsByConversationId);
+  assert.equal((selectedCandidate?.output?.factsByConversationId?.[input.id] as { selected?: boolean })?.selected, true);
+  assert.equal(Array.isArray((selectedCandidate?.output?.details as { comparisons?: unknown[] })?.comparisons), true);
 });
 
 test('repair and picker failures retain a deterministic admissible version', async () => {

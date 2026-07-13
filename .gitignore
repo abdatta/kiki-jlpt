@@ -6,3 +6,4 @@ public/library/audio/
 .env.local
 *.log
 .codex-logs/
+.codex-remote-attachments/
