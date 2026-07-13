@@ -138,8 +138,7 @@
         "有る"
       ],
       "outOfVocabularyAudit": [
-        "こちら",
-        "そう"
+        "こちら"
       ],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
@@ -152,7 +151,21 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-01.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-01",
-      "curatedAt": "2026-05-02T21:23:58.674Z"
+      "curatedAt": "2026-05-02T21:23:58.674Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "こちら",
+          "japanese": "こちら",
+          "reading": "こちら",
+          "meaning": "this person (polite); this way (polite)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Pronoun",
+          "category": "People/Family"
+        }
+      ]
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-02",
@@ -294,9 +307,7 @@
         "赤い",
         "有る"
       ],
-      "outOfVocabularyAudit": [
-        "でも"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-02T21:44:33.064Z",
@@ -308,7 +319,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-02.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-02",
-      "curatedAt": "2026-05-02T21:44:33.064Z"
+      "curatedAt": "2026-05-02T21:44:33.064Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-03",
@@ -451,9 +463,7 @@
         "母",
         "妹"
       ],
-      "outOfVocabularyAudit": [
-        "そして"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-02T21:44:35.769Z",
@@ -465,7 +475,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-03.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-03",
-      "curatedAt": "2026-05-02T21:44:35.769Z"
+      "curatedAt": "2026-05-02T21:44:35.769Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-05",
@@ -611,7 +622,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-05.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-05",
-      "curatedAt": "2026-05-03T04:59:14.151Z"
+      "curatedAt": "2026-05-03T04:59:14.151Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-06",
@@ -735,11 +747,6 @@
         "話す"
       ],
       "outOfVocabularyAudit": [
-        "くださる",
-        "そして",
-        "でも",
-        "まだ",
-        "もう",
         "今"
       ],
       "simplerReplacementSuggestions": [],
@@ -753,7 +760,21 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-06.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-06",
-      "curatedAt": "2026-05-03T05:04:20.055Z"
+      "curatedAt": "2026-05-03T05:04:20.055Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "今",
+          "japanese": "今",
+          "reading": "いま",
+          "meaning": "now",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Misc/Bridge"
+        }
+      ]
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-07",
@@ -896,11 +917,7 @@
         "聞く",
         "六"
       ],
-      "outOfVocabularyAudit": [
-        "くださる",
-        "そして",
-        "よい"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-03T05:05:20.057Z",
@@ -912,7 +929,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-07.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-07",
-      "curatedAt": "2026-05-03T05:05:20.057Z"
+      "curatedAt": "2026-05-03T05:05:20.057Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-08",
@@ -1051,10 +1069,7 @@
         "二",
         "二人"
       ],
-      "outOfVocabularyAudit": [
-        "そう",
-        "そして"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-03T05:06:09.441Z",
@@ -1066,7 +1081,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-08.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-08",
-      "curatedAt": "2026-05-03T05:06:09.441Z"
+      "curatedAt": "2026-05-03T05:06:09.441Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-09",
@@ -1194,8 +1210,6 @@
         "有る"
       ],
       "outOfVocabularyAudit": [
-        "そう",
-        "でも",
         "思う"
       ],
       "simplerReplacementSuggestions": [],
@@ -1209,7 +1223,20 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-09.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-09",
-      "curatedAt": "2026-05-03T05:11:04.083Z"
+      "curatedAt": "2026-05-03T05:11:04.083Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "思う",
+          "japanese": "思う",
+          "reading": "おもう",
+          "meaning": "to think; to feel",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "verb",
+          "category": "thought"
+        }
+      ]
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-10",
@@ -1335,10 +1362,7 @@
         "聞く",
         "有る"
       ],
-      "outOfVocabularyAudit": [
-        "くださる",
-        "でも"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-03T05:11:55.756Z",
@@ -1350,7 +1374,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-10.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-10",
-      "curatedAt": "2026-05-03T05:11:55.756Z"
+      "curatedAt": "2026-05-03T05:11:55.756Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-12",
@@ -1492,7 +1517,33 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-12.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-12",
-      "curatedAt": "2026-05-04T13:49:19.728Z"
+      "curatedAt": "2026-05-04T13:49:19.728Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "一緒",
+          "japanese": "一緒",
+          "reading": "いっしょ",
+          "meaning": "together",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "Numbers/Counters"
+        },
+        {
+          "version": 1,
+          "surface": "分かる",
+          "japanese": "分かる",
+          "reading": "わかる",
+          "meaning": "to understand",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Verb",
+          "category": "Core Verbs/Actions"
+        }
+      ]
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-13",
@@ -1620,10 +1671,7 @@
         "八",
         "六"
       ],
-      "outOfVocabularyAudit": [
-        "そして",
-        "よい"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-04T13:50:12.089Z",
@@ -1635,7 +1683,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-13.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-13",
-      "curatedAt": "2026-05-04T13:50:12.089Z"
+      "curatedAt": "2026-05-04T13:50:12.089Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-14",
@@ -1773,7 +1822,21 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-14.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-14",
-      "curatedAt": "2026-05-04T13:50:59.574Z"
+      "curatedAt": "2026-05-04T13:50:59.574Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "分かる",
+          "japanese": "分かる",
+          "reading": "わかる",
+          "meaning": "to understand",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Verb",
+          "category": "Core Verbs/Actions"
+        }
+      ]
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-15",
@@ -1912,7 +1975,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-15.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-15",
-      "curatedAt": "2026-05-04T13:51:48.850Z"
+      "curatedAt": "2026-05-04T13:51:48.850Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-16",
@@ -2035,10 +2099,7 @@
         "赤い",
         "美味しい"
       ],
-      "outOfVocabularyAudit": [
-        "そう",
-        "でも"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-04T13:56:42.695Z",
@@ -2050,7 +2111,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-16.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-16",
-      "curatedAt": "2026-05-04T13:56:42.695Z"
+      "curatedAt": "2026-05-04T13:56:42.695Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-17",
@@ -2177,9 +2239,7 @@
         "失礼します",
         "有る"
       ],
-      "outOfVocabularyAudit": [
-        "では"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-04T13:58:46.921Z",
@@ -2191,7 +2251,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-17.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-17",
-      "curatedAt": "2026-05-04T13:58:46.921Z"
+      "curatedAt": "2026-05-04T13:58:46.921Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-18",
@@ -2331,7 +2392,45 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-18.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-18",
-      "curatedAt": "2026-05-04T13:59:13.676Z"
+      "curatedAt": "2026-05-04T13:59:13.676Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "今",
+          "japanese": "今",
+          "reading": "いま",
+          "meaning": "now",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Misc/Bridge"
+        },
+        {
+          "version": 1,
+          "surface": "もう一度",
+          "japanese": "もう一度",
+          "reading": "もういちど",
+          "meaning": "once more; again",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Expression",
+          "category": "Numbers/Counters"
+        },
+        {
+          "version": 1,
+          "surface": "分かる",
+          "japanese": "分かる",
+          "reading": "わかる",
+          "meaning": "to understand",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Verb",
+          "category": "Core Verbs/Actions"
+        }
+      ]
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-19",
@@ -2460,7 +2559,6 @@
         "有る"
       ],
       "outOfVocabularyAudit": [
-        "そして",
         "遠い"
       ],
       "simplerReplacementSuggestions": [],
@@ -2474,7 +2572,21 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-19.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-19",
-      "curatedAt": "2026-05-04T14:00:26.611Z"
+      "curatedAt": "2026-05-04T14:00:26.611Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "遠い",
+          "japanese": "遠い",
+          "reading": "とおい",
+          "meaning": "far (away), distant",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 5,
+          "partOfSpeech": "Adjective",
+          "category": "Misc/Bridge"
+        }
+      ]
     },
     {
       "id": "set-01-20260430T042620Z-s4nxnk-convo-20",
@@ -2602,8 +2714,6 @@
         "話す"
       ],
       "outOfVocabularyAudit": [
-        "くださる",
-        "そして",
         "楽しい",
         "思う"
       ],
@@ -2618,7 +2728,32 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260430T042620Z-s4nxnk-convo-20.wav",
       "curatedId": "set-01-20260430T042620Z-s4nxnk-convo-20",
-      "curatedAt": "2026-05-04T14:01:11.726Z"
+      "curatedAt": "2026-05-04T14:01:11.726Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "楽しい",
+          "japanese": "楽しい",
+          "reading": "たのしい",
+          "meaning": "enjoyable, fun",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Adjective",
+          "category": "Leisure/Social"
+        },
+        {
+          "version": 1,
+          "surface": "思う",
+          "japanese": "思う",
+          "reading": "おもう",
+          "meaning": "to think; to feel",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "verb",
+          "category": "thought"
+        }
+      ]
     },
     {
       "id": "set-01-20260429T152528Z-jhir19-convo-11",
@@ -2742,10 +2877,7 @@
         "母",
         "妹"
       ],
-      "outOfVocabularyAudit": [
-        "さくら",
-        "そう"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-05T18:43:19.044Z",
@@ -2757,7 +2889,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260429T152528Z-jhir19-convo-11.wav",
       "curatedId": "set-01-20260429T152528Z-jhir19-convo-11",
-      "curatedAt": "2026-05-05T18:43:19.044Z"
+      "curatedAt": "2026-05-05T18:43:19.044Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260505T191031Z-2qqr8c-convo-01",
@@ -2906,7 +3039,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260505T191031Z-2qqr8c-convo-01.wav",
       "curatedId": "set-01-20260505T191031Z-2qqr8c-convo-01",
-      "curatedAt": "2026-05-05T19:16:48.394Z"
+      "curatedAt": "2026-05-05T19:16:48.394Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260505T191031Z-2qqr8c-convo-04",
@@ -3045,9 +3179,7 @@
         "八",
         "来る"
       ],
-      "outOfVocabularyAudit": [
-        "もう"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-05T19:18:16.362Z",
@@ -3059,7 +3191,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260505T191031Z-2qqr8c-convo-04.wav",
       "curatedId": "set-01-20260505T191031Z-2qqr8c-convo-04",
-      "curatedAt": "2026-05-05T19:18:16.362Z"
+      "curatedAt": "2026-05-05T19:18:16.362Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260505T191031Z-2qqr8c-convo-02",
@@ -3210,10 +3343,7 @@
         "弟",
         "美味しい"
       ],
-      "outOfVocabularyAudit": [
-        "まだ",
-        "もう"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-05T19:21:00.204Z",
@@ -3225,7 +3355,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260505T191031Z-2qqr8c-convo-02.wav",
       "curatedId": "set-01-20260505T191031Z-2qqr8c-convo-02",
-      "curatedAt": "2026-05-05T19:21:00.204Z"
+      "curatedAt": "2026-05-05T19:21:00.204Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-01",
@@ -3352,10 +3483,7 @@
         "二"
       ],
       "outOfVocabularyAudit": [
-        "こちら",
-        "そう",
-        "花",
-        "健"
+        "こちら"
       ],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
@@ -3368,7 +3496,21 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-01.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-01",
-      "curatedAt": "2026-05-31T02:35:27.030Z"
+      "curatedAt": "2026-05-31T02:35:27.030Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "こちら",
+          "japanese": "こちら",
+          "reading": "こちら",
+          "meaning": "this person (polite); this way (polite)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Pronoun",
+          "category": "People/Family"
+        }
+      ]
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-02",
@@ -3497,7 +3639,6 @@
       ],
       "outOfVocabularyAudit": [
         "お茶",
-        "でも",
         "魚",
         "肉"
       ],
@@ -3512,7 +3653,45 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-02.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-02",
-      "curatedAt": "2026-05-31T02:35:28.987Z"
+      "curatedAt": "2026-05-31T02:35:28.987Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "お茶",
+          "japanese": "お茶",
+          "reading": "おちゃ",
+          "meaning": "(green) tea",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Food/Shopping"
+        },
+        {
+          "version": 1,
+          "surface": "魚",
+          "japanese": "魚",
+          "reading": "さかな",
+          "meaning": "fish",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Food/Shopping"
+        },
+        {
+          "version": 1,
+          "surface": "肉",
+          "japanese": "肉",
+          "reading": "にく",
+          "meaning": "meat",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Food/Shopping"
+        }
+      ]
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-03",
@@ -3655,7 +3834,6 @@
         "話す"
       ],
       "outOfVocabularyAudit": [
-        "姉さん",
         "多い"
       ],
       "simplerReplacementSuggestions": [],
@@ -3669,7 +3847,21 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-03.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-03",
-      "curatedAt": "2026-05-31T02:35:31.357Z"
+      "curatedAt": "2026-05-31T02:35:31.357Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "多い",
+          "japanese": "多い",
+          "reading": "おおい",
+          "meaning": "many; there are a lot",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Adjective",
+          "category": "Adjectives/Adverbs/Abstract"
+        }
+      ]
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-04",
@@ -3814,8 +4006,6 @@
         "有る"
       ],
       "outOfVocabularyAudit": [
-        "くださる",
-        "でも",
         "鞄",
         "誰",
         "二つ"
@@ -3831,7 +4021,44 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-04.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-04",
-      "curatedAt": "2026-05-31T02:35:32.573Z"
+      "curatedAt": "2026-05-31T02:35:32.573Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "誰",
+          "japanese": "誰",
+          "reading": "だれ",
+          "meaning": "who",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Pronoun",
+          "category": "Misc/Bridge"
+        },
+        {
+          "version": 1,
+          "surface": "二つ",
+          "japanese": "二つ",
+          "reading": "ふたつ",
+          "meaning": "two things",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Noun",
+          "category": "Numbers/Counters"
+        },
+        {
+          "version": 1,
+          "surface": "鞄",
+          "japanese": "鞄",
+          "reading": "かばん",
+          "meaning": "bag; briefcase",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "noun",
+          "category": "objects"
+        }
+      ]
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-05",
@@ -3992,7 +4219,21 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-05.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-05",
-      "curatedAt": "2026-05-31T02:35:35.433Z"
+      "curatedAt": "2026-05-31T02:35:35.433Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "学校",
+          "japanese": "学校",
+          "reading": "がっこう",
+          "meaning": "a school",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "School/Work/Language"
+        }
+      ]
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-06",
@@ -4121,7 +4362,6 @@
         "六"
       ],
       "outOfVocabularyAudit": [
-        "そして",
         "学校",
         "今",
         "早い",
@@ -4138,7 +4378,57 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-06.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-06",
-      "curatedAt": "2026-05-31T02:35:37.029Z"
+      "curatedAt": "2026-05-31T02:35:37.029Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "学校",
+          "japanese": "学校",
+          "reading": "がっこう",
+          "meaning": "a school",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "School/Work/Language"
+        },
+        {
+          "version": 1,
+          "surface": "明日",
+          "japanese": "明日",
+          "reading": "あした",
+          "meaning": "tomorrow",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "Time/Calendar"
+        },
+        {
+          "version": 1,
+          "surface": "今",
+          "japanese": "今",
+          "reading": "いま",
+          "meaning": "now",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Misc/Bridge"
+        },
+        {
+          "version": 1,
+          "surface": "早い",
+          "japanese": "早い",
+          "reading": "はやい",
+          "meaning": "early",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 7,
+          "partOfSpeech": "Adjective",
+          "category": "Adjectives/Adverbs/Abstract"
+        }
+      ]
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-07",
@@ -4272,8 +4562,6 @@
         "有る"
       ],
       "outOfVocabularyAudit": [
-        "くださる",
-        "でも",
         "とても",
         "教室",
         "本"
@@ -4289,7 +4577,45 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-07.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-07",
-      "curatedAt": "2026-05-31T02:35:39.738Z"
+      "curatedAt": "2026-05-31T02:35:39.738Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "教室",
+          "japanese": "教室",
+          "reading": "きょうしつ",
+          "meaning": "classroom",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "Misc/Bridge"
+        },
+        {
+          "version": 1,
+          "surface": "本",
+          "japanese": "本",
+          "reading": "ほん",
+          "meaning": "book",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "Home/Objects"
+        },
+        {
+          "version": 1,
+          "surface": "とても",
+          "japanese": "とても",
+          "reading": "とても",
+          "meaning": "very (much), greatly, exceedingly",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Adverb",
+          "category": "Adjectives/Adverbs/Abstract"
+        }
+      ]
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-08",
@@ -4432,7 +4758,6 @@
         "聞く"
       ],
       "outOfVocabularyAudit": [
-        "くださる",
         "言葉"
       ],
       "simplerReplacementSuggestions": [],
@@ -4446,7 +4771,21 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-08.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-08",
-      "curatedAt": "2026-05-31T02:35:42.425Z"
+      "curatedAt": "2026-05-31T02:35:42.425Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "言葉",
+          "japanese": "言葉",
+          "reading": "ことば",
+          "meaning": "language; word(s); expression(s)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "School/Work/Language"
+        }
+      ]
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-09",
@@ -4587,9 +4926,7 @@
         "二",
         "二人"
       ],
-      "outOfVocabularyAudit": [
-        "そう"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-05-31T02:55:03.909Z",
@@ -4601,7 +4938,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-09.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-09",
-      "curatedAt": "2026-05-31T02:55:03.909Z"
+      "curatedAt": "2026-05-31T02:55:03.909Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-10",
@@ -4726,10 +5064,7 @@
         "青い",
         "赤い"
       ],
-      "outOfVocabularyAudit": [
-        "くださる",
-        "そして"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-06-04T04:38:23.630Z",
@@ -4741,7 +5076,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-10.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-10",
-      "curatedAt": "2026-06-04T04:38:23.630Z"
+      "curatedAt": "2026-06-04T04:38:23.630Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-11",
@@ -4890,7 +5226,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-11.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-11",
-      "curatedAt": "2026-06-04T04:38:27.565Z"
+      "curatedAt": "2026-06-04T04:38:27.565Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260528T044005Z-o02dwx-convo-12",
@@ -5028,9 +5365,7 @@
         "食べる",
         "友達"
       ],
-      "outOfVocabularyAudit": [
-        "そして"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-06-04T04:38:29.483Z",
@@ -5042,7 +5377,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260528T044005Z-o02dwx-convo-12.wav",
       "curatedId": "set-01-20260528T044005Z-o02dwx-convo-12",
-      "curatedAt": "2026-06-04T04:38:29.483Z"
+      "curatedAt": "2026-06-04T04:38:29.483Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260508T083030Z-bnsxwi-convo-01",
@@ -5234,9 +5570,7 @@
         "妹",
         "友達"
       ],
-      "outOfVocabularyAudit": [
-        "そして"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-06-04T04:51:37.536Z",
@@ -5248,7 +5582,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260508T083030Z-bnsxwi-convo-01.wav",
       "curatedId": "set-01-20260508T083030Z-bnsxwi-convo-01",
-      "curatedAt": "2026-06-04T04:51:37.536Z"
+      "curatedAt": "2026-06-04T04:51:37.536Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260508T083030Z-bnsxwi-convo-02",
@@ -5440,10 +5775,7 @@
         "有る",
         "六"
       ],
-      "outOfVocabularyAudit": [
-        "くださる",
-        "でも"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-06-04T04:51:39.406Z",
@@ -5455,7 +5787,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260508T083030Z-bnsxwi-convo-02.wav",
       "curatedId": "set-01-20260508T083030Z-bnsxwi-convo-02",
-      "curatedAt": "2026-06-04T04:51:39.406Z"
+      "curatedAt": "2026-06-04T04:51:39.406Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260508T083030Z-bnsxwi-convo-03",
@@ -5636,9 +5969,7 @@
         "二人",
         "美味しい"
       ],
-      "outOfVocabularyAudit": [
-        "そして"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-06-04T04:51:42.087Z",
@@ -5650,7 +5981,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260508T083030Z-bnsxwi-convo-03.wav",
       "curatedId": "set-01-20260508T083030Z-bnsxwi-convo-03",
-      "curatedAt": "2026-06-04T04:51:42.087Z"
+      "curatedAt": "2026-06-04T04:51:42.087Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260508T083030Z-bnsxwi-convo-04",
@@ -5832,9 +6164,6 @@
         "話す"
       ],
       "outOfVocabularyAudit": [
-        "そして",
-        "まだ",
-        "もう",
         "話"
       ],
       "simplerReplacementSuggestions": [],
@@ -5848,7 +6177,21 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260508T083030Z-bnsxwi-convo-04.wav",
       "curatedId": "set-01-20260508T083030Z-bnsxwi-convo-04",
-      "curatedAt": "2026-06-04T04:51:43.883Z"
+      "curatedAt": "2026-06-04T04:51:43.883Z",
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "話",
+          "japanese": "話",
+          "reading": "はなし",
+          "meaning": "talk (chat), story",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Noun",
+          "category": "Misc/Bridge"
+        }
+      ]
     },
     {
       "id": "set-01-20260508T083030Z-bnsxwi-convo-05",
@@ -6018,7 +6361,8 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260508T083030Z-bnsxwi-convo-05.wav",
       "curatedId": "set-01-20260508T083030Z-bnsxwi-convo-05",
-      "curatedAt": "2026-06-04T04:51:45.993Z"
+      "curatedAt": "2026-06-04T04:51:45.993Z",
+      "vocabularyReferences": []
     },
     {
       "id": "set-01-20260508T083030Z-bnsxwi-convo-06",
@@ -6203,10 +6547,7 @@
         "美味しい",
         "有る"
       ],
-      "outOfVocabularyAudit": [
-        "そして",
-        "もう"
-      ],
+      "outOfVocabularyAudit": [],
       "simplerReplacementSuggestions": [],
       "status": "audio_ready",
       "createdAt": "2026-06-04T04:51:47.520Z",
@@ -6218,11 +6559,12 @@
       "setNumber": 1,
       "curatedAudioPath": "curated/audio/set-01/set-01-20260508T083030Z-bnsxwi-convo-06.wav",
       "curatedId": "set-01-20260508T083030Z-bnsxwi-convo-06",
-      "curatedAt": "2026-06-04T04:51:47.520Z"
+      "curatedAt": "2026-06-04T04:51:47.520Z",
+      "vocabularyReferences": []
     }
   ],
   "createdAt": "2026-05-02T21:23:58.666Z",
-  "updatedAt": "2026-06-04T04:51:47.520Z",
+  "updatedAt": "2026-07-13T00:37:30.347Z",
   "analytics": {
     "currentSetTotal": 100,
     "currentSetUsedCount": 100,
@@ -6231,33 +6573,21 @@
     "allowedVocabTotal": 100,
     "allowedVocabUsedCount": 100,
     "allowedVocabUsedPercentage": 100,
-    "outOfAllowedCount": 35,
+    "outOfAllowedCount": 23,
     "outOfAllowedWords": [
       "お茶",
-      "くださる",
       "こちら",
-      "さくら",
-      "そう",
-      "そして",
-      "では",
-      "でも",
       "とても",
-      "まだ",
-      "もう",
       "もう一度",
-      "よい",
       "一緒",
       "遠い",
-      "花",
       "学校",
       "楽しい",
       "鞄",
       "魚",
       "教室",
-      "健",
       "言葉",
       "今",
-      "姉さん",
       "思う",
       "早い",
       "多い",

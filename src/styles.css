@@ -2123,8 +2123,8 @@ button.conversationQualityChip { min-height: 27px; cursor: pointer; }
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  max-height: 96px;
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 .miniChips span {
@@ -2139,8 +2139,8 @@ button.conversationQualityChip { min-height: 27px; cursor: pointer; }
   color: var(--studio-danger);
 }
 
-.miniChips.coverage span,
-.vocabChips.coverage span {
+.miniChips.coverage > span,
+.vocabChips.coverage > span {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2149,8 +2149,8 @@ button.conversationQualityChip { min-height: 27px; cursor: pointer; }
   color: var(--studio-info);
 }
 
-.miniChips.coverage b,
-.vocabChips.coverage b {
+.miniChips.coverage > span > b,
+.vocabChips.coverage > span > b {
   min-width: 18px;
   height: 18px;
   border-radius: 999px;
@@ -2164,63 +2164,63 @@ button.conversationQualityChip { min-height: 27px; cursor: pointer; }
   line-height: 1;
 }
 
-.miniChips.coverage .coverageCount0,
-.vocabChips.coverage .coverageCount0 {
+.miniChips.coverage > .coverageCount0,
+.vocabChips.coverage > .coverageCount0 {
   background: #fff1e8;
   border-color: #e6a47f;
   color: #8a3b13;
 }
 
-.miniChips.coverage .coverageCount1,
-.vocabChips.coverage .coverageCount1 {
+.miniChips.coverage > .coverageCount1,
+.vocabChips.coverage > .coverageCount1 {
   background: #edf7fb;
   border-color: #9fc3cf;
   color: #225c71;
 }
 
-.miniChips.coverage .coverageCount2,
-.vocabChips.coverage .coverageCount2 {
+.miniChips.coverage > .coverageCount2,
+.vocabChips.coverage > .coverageCount2 {
   background: #eef7ed;
   border-color: #9cc59a;
   color: #2f6835;
 }
 
-.miniChips.coverage .coverageCount3,
-.vocabChips.coverage .coverageCount3 {
+.miniChips.coverage > .coverageCount3,
+.vocabChips.coverage > .coverageCount3 {
   background: #f6f0ff;
   border-color: #b9a0d8;
   color: #604184;
 }
 
-.miniChips.coverage .coverageCount4,
-.vocabChips.coverage .coverageCount4 {
+.miniChips.coverage > .coverageCount4,
+.vocabChips.coverage > .coverageCount4 {
   background: #f4f2ed;
   border-color: #beb7a9;
   color: #514b43;
 }
 
-.miniChips.coverage .coverageCount0 b,
-.vocabChips.coverage .coverageCount0 b {
+.miniChips.coverage > .coverageCount0 > b,
+.vocabChips.coverage > .coverageCount0 > b {
   background: #8a3b13;
 }
 
-.miniChips.coverage .coverageCount1 b,
-.vocabChips.coverage .coverageCount1 b {
+.miniChips.coverage > .coverageCount1 > b,
+.vocabChips.coverage > .coverageCount1 > b {
   background: #225c71;
 }
 
-.miniChips.coverage .coverageCount2 b,
-.vocabChips.coverage .coverageCount2 b {
+.miniChips.coverage > .coverageCount2 > b,
+.vocabChips.coverage > .coverageCount2 > b {
   background: #2f6835;
 }
 
-.miniChips.coverage .coverageCount3 b,
-.vocabChips.coverage .coverageCount3 b {
+.miniChips.coverage > .coverageCount3 > b,
+.vocabChips.coverage > .coverageCount3 > b {
   background: #604184;
 }
 
-.miniChips.coverage .coverageCount4 b,
-.vocabChips.coverage .coverageCount4 b {
+.miniChips.coverage > .coverageCount4 > b,
+.vocabChips.coverage > .coverageCount4 > b {
   background: #514b43;
 }
 
@@ -3365,6 +3365,73 @@ button.conversationQualityChip { min-height: 27px; cursor: pointer; }
   background: var(--studio-danger-soft);
   border-color: var(--studio-danger-border);
   color: var(--studio-danger);
+}
+
+.studioWordChip {
+  position: relative;
+  cursor: help;
+  outline: none;
+}
+
+.studioWordChip:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--studio-accent) 28%, transparent);
+}
+
+.vocabChips .studioWordTooltip,
+.miniChips .studioWordTooltip {
+  position: absolute;
+  z-index: 50;
+  left: 0;
+  bottom: calc(100% + 9px);
+  display: none;
+  width: max-content;
+  min-width: 210px;
+  max-width: min(300px, 80vw);
+  padding: 12px 14px;
+  border: 1px solid var(--studio-border);
+  border-radius: 10px;
+  background: var(--studio-surface-raised);
+  color: var(--studio-text);
+  box-shadow: 0 14px 38px rgba(31, 26, 18, 0.2);
+  line-height: 1.35;
+  text-align: left;
+  white-space: normal;
+}
+
+.studioWordChip:hover .studioWordTooltip,
+.studioWordChip:focus .studioWordTooltip {
+  display: grid;
+  gap: 4px;
+}
+
+.studioWordTooltip strong {
+  font-size: 20px;
+  line-height: 1.15;
+}
+
+.studioWordTooltip > span {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--studio-text-muted);
+  font-size: 13px;
+}
+
+.studioWordTooltip p {
+  margin: 4px 0;
+  color: var(--studio-text);
+  font-size: 13px;
+}
+
+.studioWordTooltip small {
+  color: var(--studio-text-subtle);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.analyticsCard .studioWordTooltip {
+  right: 0;
+  left: auto;
 }
 
 .conversationError {

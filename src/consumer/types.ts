@@ -1,4 +1,4 @@
-import type { ConversationLine, EnglishLine } from '../../shared/types.ts';
+import type { ConversationLine, ConversationVocabularyReference, EnglishLine } from '../../shared/types.ts';
 
 export type PracticeArea = 'vocab' | 'conversations';
 export type ReviewResult = 'gotIt' | 'missed';
@@ -30,6 +30,7 @@ export interface VocabCard {
   partOfSpeech: string;
   category: string;
   frequencyRank?: number;
+  informationalKind?: 'future_set' | 'external';
 }
 
 export interface PracticeCard {
@@ -68,6 +69,7 @@ export interface StaticLibraryConversation {
   listeningQuestions: string[];
   answerKey: string[];
   vocabularyUsed: string[];
+  vocabularyReferences?: ConversationVocabularyReference[];
   createdAt?: string;
 }
 

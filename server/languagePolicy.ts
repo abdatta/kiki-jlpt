@@ -1,4 +1,4 @@
-export const CURATION_EVIDENCE_VERSION = '1';
+export const CURATION_EVIDENCE_VERSION = '5';
 
 export const ALLOWED_PARTICLES = [
   'は', 'が', 'を', 'に', 'で', 'へ', 'と', 'も', 'の', 'か', 'ね', 'よ', 'から', 'まで', 'より', 'だけ'

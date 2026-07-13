@@ -4,6 +4,7 @@ import type {
   DeclaredNonVocabularyTerm,
   EnglishLine,
   PracticeConversation,
+  ConversationVocabularyReference,
   ConversationLine
 } from '../shared/types.ts';
 
@@ -32,6 +33,32 @@ function asStringArray(value: unknown): string[] {
       .filter(Boolean);
   }
   return [];
+}
+
+function normalizeVocabularyReferences(value: unknown): ConversationVocabularyReference[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    const record = asRecord(item);
+    const kind = record.kind === 'future_set' || record.kind === 'external' ? record.kind : null;
+    const source = record.source === 'master_vocabulary' || record.source === 'supplemental_catalog' ? record.source : null;
+    const japanese = asString(record.japanese);
+    const surface = asString(record.surface);
+    const reading = asString(record.reading);
+    const meaning = asString(record.meaning);
+    if (!kind || !source || !japanese || !surface || !reading || !meaning) return [];
+    return [{
+      version: 1,
+      surface,
+      japanese,
+      reading,
+      meaning,
+      kind,
+      source,
+      setNumber: Number.isInteger(record.setNumber) ? record.setNumber as number : undefined,
+      partOfSpeech: asString(record.partOfSpeech) || undefined,
+      category: asString(record.category) || undefined
+    } satisfies ConversationVocabularyReference];
+  });
 }
 
 const DECLARED_NON_VOCABULARY_KINDS = new Set<DeclaredNonVocabularyKind>(['proper_noun', 'cultural_reference']);
@@ -149,6 +176,7 @@ export function normalizeGeneratedConversations(payload: unknown, expectedCount:
       declaredNonVocabularyTerms,
       vocabularyUsed: asStringArray(conversation.vocabularyUsed ?? conversation.vocabulary_used),
       outOfVocabularyAudit: asStringArray(conversation.outOfVocabularyAudit ?? conversation.out_of_vocabulary_audit),
+      vocabularyReferences: normalizeVocabularyReferences(conversation.vocabularyReferences ?? conversation.vocabulary_references),
       simplerReplacementSuggestions: asStringArray(conversation.simplerReplacementSuggestions ?? conversation.simpler_replacement_suggestions),
       status: 'draft',
       createdAt: timestamp,

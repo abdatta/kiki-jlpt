@@ -71,6 +71,15 @@ describe('conversation vocabulary terms', () => {
     });
     assert.equal(fullyMastered[0].mastered, true);
   });
+
+  it('does not create mastery terms from informational vocabulary references', () => {
+    const referenceConversation = {
+      ...conversation('reference', 1, []),
+      vocabularyUsed: [],
+      vocabularyReferences: [{ version: 1 as const, surface: '猫', japanese: '猫', reading: 'ねこ', meaning: 'cat', kind: 'external' as const, source: 'supplemental_catalog' as const }]
+    };
+    assert.deepEqual(conversationVocabularyTerms(referenceConversation, [card('watashi', '私')], {}), []);
+  });
 });
 
 describe('conversation ordering', () => {

@@ -1843,6 +1843,10 @@ app.get('/api/sets', asyncHandler(async (_req, res) => {
   res.json({ sets: await getSetSummaries() });
 }));
 
+app.get('/api/vocabulary', asyncHandler(async (_req, res) => {
+  res.json({ vocabulary: await readVocabulary() });
+}));
+
 app.get('/api/text-models', asyncHandler(async (_req, res) => {
   res.json({ models: await getTextModelOptions() });
 }));

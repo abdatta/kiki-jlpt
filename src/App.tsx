@@ -51,6 +51,7 @@ import type {
   StudioSnapshot,
   TextModelInfo,
   TextModelProvider,
+  VocabItem,
   WorkflowAuditNode,
   WorkflowJob,
   WorkflowRepairResponse,
@@ -66,6 +67,8 @@ import { selectStudioRunForSet } from './studioRunSelection.ts';
 import {
   AiRecommendationReason,
   CurationEvidencePanel,
+  StudioWordChip,
+  type StudioWordMetadata,
   WordFrequencyDistribution
 } from './components/CurationEvidence.tsx';
 import {
@@ -1456,10 +1459,12 @@ function WorkflowMetricCard({
 
 function WorkflowStatsPanel({
   selectedNode,
-  generatorNode
+  generatorNode,
+  wordMetadata
 }: {
   selectedNode: WorkflowAuditNode;
   generatorNode?: WorkflowAuditNode;
+  wordMetadata?: Map<string, StudioWordMetadata>;
 }) {
   const analytics = workflowNodeAnalytics(selectedNode);
   if (!analytics || selectedNode.kind === 'audio') return null;
@@ -1522,7 +1527,7 @@ function WorkflowStatsPanel({
           <span>Recovered Words</span>
           <div className="miniChips coverage">
             {recoveredWords.length === 0 ? <span>None</span> : null}
-            {recoveredWords.slice(0, 48).map((word) => <span key={word}>{word}</span>)}
+            {recoveredWords.slice(0, 48).map((word) => <StudioWordChip key={word} word={word} metadata={wordMetadata?.get(word)} />)}
             {recoveredWords.length > 48 ? <span>+{recoveredWords.length - 48}</span> : null}
           </div>
         </div>
@@ -1565,7 +1570,7 @@ function WorkflowStatsPanel({
         <span>Needs Balancing</span>
         <div className="miniChips">
           {analytics.currentSetMissingWords.length === 0 ? <span>None</span> : null}
-          {analytics.currentSetMissingWords.slice(0, 48).map((word) => <span key={word}>{word}</span>)}
+          {analytics.currentSetMissingWords.slice(0, 48).map((word) => <StudioWordChip key={word} word={word} metadata={wordMetadata?.get(word)} />)}
           {analytics.currentSetMissingWords.length > 48 ? <span>+{analytics.currentSetMissingWords.length - 48}</span> : null}
         </div>
       </div>
@@ -2275,7 +2280,8 @@ export function WorkflowAuditFlow({
   regenerateAudioDisabled,
   onRerunRepair,
   rerunRepairDisabled,
-  onDiscard
+  onDiscard,
+  wordMetadata
 }: {
   job: WorkflowJob;
   selectedNodeId?: string;
@@ -2288,6 +2294,7 @@ export function WorkflowAuditFlow({
   onRerunRepair?: (nodeId: string) => void;
   rerunRepairDisabled?: boolean;
   onDiscard?: () => void;
+  wordMetadata?: Map<string, StudioWordMetadata>;
 }) {
   const [inputTab, setInputTab] = useState<'prompt' | 'settings'>('prompt');
   const [outputTab, setOutputTab] = useState<'response' | 'attempts' | 'metadata'>('response');
@@ -2555,7 +2562,7 @@ export function WorkflowAuditFlow({
               )}
             </div>
           </section>
-          <WorkflowStatsPanel selectedNode={selectedNode} generatorNode={generator} />
+          <WorkflowStatsPanel selectedNode={selectedNode} generatorNode={generator} wordMetadata={wordMetadata} />
         </section>
         </div>
       ) : null}
@@ -2917,7 +2924,7 @@ function BalanceModal({
   );
 }
 
-function AnalyticsPanel({ analytics, setNumber, label }: { analytics: PracticeRun['analytics']; setNumber: number; label: string }) {
+function AnalyticsPanel({ analytics, setNumber, label, wordMetadata }: { analytics: PracticeRun['analytics']; setNumber: number; label: string; wordMetadata: Map<string, StudioWordMetadata> }) {
   return (
     <section className="analyticsPanel" aria-label={label}>
       <div className="analyticsCard">
@@ -2927,7 +2934,7 @@ function AnalyticsPanel({ analytics, setNumber, label }: { analytics: PracticeRu
         <div className="miniChips">
           {analytics.currentSetMissingWords.length === 0 ? <span>None</span> : null}
           {analytics.currentSetMissingWords.slice(0, 40).map((word) => (
-            <span key={word}>{word}</span>
+            <StudioWordChip key={word} word={word} metadata={wordMetadata.get(word)} />
           ))}
           {analytics.currentSetMissingWords.length > 40 ? <span>+{analytics.currentSetMissingWords.length - 40}</span> : null}
         </div>
@@ -2946,7 +2953,7 @@ function AnalyticsPanel({ analytics, setNumber, label }: { analytics: PracticeRu
         <div className="miniChips warning">
           {analytics.outOfAllowedWords.length === 0 ? <span>None</span> : null}
           {analytics.outOfAllowedWords.map((word) => (
-            <span key={word}>{word}</span>
+            <StudioWordChip key={word} word={word} metadata={wordMetadata.get(word)} />
           ))}
         </div>
       </div>
@@ -2954,9 +2961,36 @@ function AnalyticsPanel({ analytics, setNumber, label }: { analytics: PracticeRu
   );
 }
 
+function metadataWithConversationReferences(
+  base: Map<string, StudioWordMetadata>,
+  conversations: PracticeConversation[]
+): Map<string, StudioWordMetadata> {
+  const metadata = new Map(base);
+  for (const conversation of conversations) {
+    for (const reference of conversation.vocabularyReferences ?? []) {
+      const value: StudioWordMetadata = {
+        japanese: reference.japanese,
+        reading: reference.reading,
+        meaning: reference.meaning,
+        set: reference.setNumber ?? 0,
+        partOfSpeech: reference.partOfSpeech ?? '',
+        category: reference.category ?? '',
+        classification: reference.kind === 'future_set' ? 'Future set' : 'Outside course'
+      };
+      metadata.set(reference.surface, value);
+      metadata.set(reference.japanese, value);
+    }
+  }
+  return metadata;
+}
+
 function StudioApp() {
   const [studioRoute, setStudioRoute] = useState(parseStudioRoute);
   const [sets, setSets] = useState<SetSummary[]>([]);
+  const [vocabulary, setVocabulary] = useState<VocabItem[]>([]);
+  const vocabularyMetadata = useMemo(() => new Map<string, StudioWordMetadata>(
+    vocabulary.map((item) => [item.japanese, item])
+  ), [vocabulary]);
   const [runs, setRuns] = useState<PracticeRun[]>([]);
   const [studioJobs, setStudioJobs] = useState<StudioJob[]>([]);
   const [runShells, setRunShells] = useState<StudioRunShellSummary[]>([]);
@@ -3193,14 +3227,16 @@ function StudioApp() {
   }
 
   async function loadInitial() {
-    const [setPayload, snapshotPayload, modelPayload, libraryPayload] = await Promise.all([
+    const [setPayload, vocabularyPayload, snapshotPayload, modelPayload, libraryPayload] = await Promise.all([
       api<{ sets: SetSummary[] }>('/api/sets'),
+      api<{ vocabulary: VocabItem[] }>('/api/vocabulary'),
       api<{ snapshot: StudioSnapshot }>('/api/studio/snapshot'),
       api<{ models: TextModelInfo[] }>('/api/text-models'),
       api<{ sets: CuratedSet[] }>('/api/library')
     ]);
     const runPayload = { runs: snapshotPayload.snapshot.runs };
     setSets(setPayload.sets);
+    setVocabulary(vocabularyPayload.vocabulary);
     setRuns(runPayload.runs);
     setStudioJobs(snapshotPayload.snapshot.jobs);
     setRunShells(snapshotPayload.snapshot.runSummaries.filter((summary): summary is StudioRunShellSummary => summary.kind === 'job'));
@@ -4518,6 +4554,7 @@ function StudioApp() {
     const evidence = recommendation?.evidence ?? deterministicRecommendation?.evidence
       ?? (source === 'run' ? currentRunEvidence[conversation.id] : source === 'library' ? currentLibraryEvidence[conversation.id] : undefined);
     const outOfVocabularyWords = evidence?.outOfVocabularyUniqueWords ?? conversation.outOfVocabularyAudit;
+    const conversationWordMetadata = metadataWithConversationReferences(vocabularyMetadata, [conversation]);
     const deterministicCoverageWords = deterministicRecommendation?.leastCoveredWords.filter((word) => leastCoveredWordSet.has(word.japanese)) ?? [];
     const deterministicWordIncreases = deterministicRecommendation ? wordFrequency(conversation.vocabularyUsed) : new Map<string, number>();
 
@@ -4669,26 +4706,24 @@ function StudioApp() {
               </div>
             </div>
 
-            <CurationEvidencePanel evidence={evidence} />
+            <CurationEvidencePanel evidence={evidence} metadata={conversationWordMetadata} />
 
             <div className="vocabChips warning">
               {outOfVocabularyWords.length === 0 ? <span>None</span> : null}
               {outOfVocabularyWords.map((word) => (
-                <span key={word}>{word}</span>
+                <StudioWordChip key={word} word={word} metadata={conversationWordMetadata.get(word)} />
               ))}
             </div>
 
             {recommendation ? (
               <div className="vocabChips coverage">
-                {recommendation.contribution.uncoveredWords.map((word) => <span className="coverageCount0" key={`new-${word}`}>{word}<b>new</b></span>)}
-                {recommendation.contribution.underexposedWords.map((word) => <span className="coverageCount1" key={`low-${word}`}>{word}<b>low</b></span>)}
+                {recommendation.contribution.uncoveredWords.map((word) => <StudioWordChip className="coverageCount0" key={`new-${word}`} word={word} metadata={conversationWordMetadata.get(word)} adornment={<b>new</b>} />)}
+                {recommendation.contribution.underexposedWords.map((word) => <StudioWordChip className="coverageCount1" key={`low-${word}`} word={word} metadata={conversationWordMetadata.get(word)} adornment={<b>low</b>} />)}
               </div>
             ) : deterministicRecommendation ? (
               <div className="vocabChips coverage">
                 {deterministicCoverageWords.slice(0, 12).map((word) => (
-                  <span className={coverageCountClass(word.libraryCount)} key={word.japanese}>
-                    {word.japanese}<b>{deterministicWordIncreases.get(word.japanese) ?? 1}</b>
-                  </span>
+                  <StudioWordChip className={coverageCountClass(word.libraryCount)} key={word.japanese} word={word.japanese} metadata={conversationWordMetadata.get(word.japanese)} adornment={<b>{deterministicWordIncreases.get(word.japanese) ?? 1}</b>} />
                 ))}
               </div>
             ) : null}
@@ -5211,6 +5246,7 @@ function StudioApp() {
             onDiscard={visibleWorkflowJob.status === 'paused'
               ? () => commandStudioJob(visibleWorkflowJob.id, 'cancel')
               : !visibleWorkflowJob.run && visibleWorkflowJob.status === 'failed' ? () => discardGenerationShell(visibleWorkflowJob.id) : undefined}
+            wordMetadata={vocabularyMetadata}
           />
         ) : null}
 
@@ -5229,9 +5265,9 @@ function StudioApp() {
           </>
         ) : null}
 
-        {showRunContent && currentRun ? <AnalyticsPanel analytics={currentRun.analytics} setNumber={currentRun.setNumber} label="Generation analytics" /> : null}
+        {showRunContent && currentRun ? <AnalyticsPanel analytics={currentRun.analytics} setNumber={currentRun.setNumber} label="Generation analytics" wordMetadata={metadataWithConversationReferences(vocabularyMetadata, currentRun.conversations)} /> : null}
 
-        {showLibraryContent && currentLibrarySet ? <AnalyticsPanel analytics={currentLibrarySet.analytics} setNumber={setNumber} label="Library analytics" /> : null}
+        {showLibraryContent && currentLibrarySet ? <AnalyticsPanel analytics={currentLibrarySet.analytics} setNumber={setNumber} label="Library analytics" wordMetadata={metadataWithConversationReferences(vocabularyMetadata, currentLibrarySet.conversations)} /> : null}
 
         {showLibraryContent && currentLibraryBalance ? (
           <section className="recommendationSummary" aria-label="Library balance plan">
@@ -5239,10 +5275,7 @@ function StudioApp() {
               <span>Balance Priority</span>
               <div className="miniChips coverage">
                 {currentLibraryBalance.priorityWords.slice(0, 24).map((word) => (
-                  <span className={coverageCountClass(word.libraryCount)} key={word.japanese}>
-                    {word.japanese}
-                    <b>{word.libraryCount}</b>
-                  </span>
+                  <StudioWordChip className={coverageCountClass(word.libraryCount)} key={word.japanese} word={word.japanese} metadata={vocabularyMetadata.get(word.japanese)} adornment={<b>{word.libraryCount}</b>} />
                 ))}
                 {currentLibraryBalance.priorityWords.length === 0 ? <span>Balanced</span> : null}
               </div>
@@ -5268,10 +5301,7 @@ function StudioApp() {
                   <span>Least Covered</span>
                   <div className="miniChips coverage">
                     {currentRecommendations.leastCoveredWords.slice(0, 24).map((word) => (
-                      <span className={coverageCountClass(word.libraryCount)} key={word.japanese}>
-                        {word.japanese}
-                        <b>{word.libraryCount}</b>
-                      </span>
+                      <StudioWordChip className={coverageCountClass(word.libraryCount)} key={word.japanese} word={word.japanese} metadata={vocabularyMetadata.get(word.japanese)} adornment={<b>{word.libraryCount}</b>} />
                     ))}
                   </div>
                 </div>
@@ -5355,7 +5385,7 @@ function StudioApp() {
                   <span>Current Least Covered</span>
                   <div className="miniChips coverage">
                     {currentRecommendations?.leastCoveredWords.slice(0, 24).map((word) => (
-                      <span className={coverageCountClass(word.libraryCount)} key={word.japanese}>{word.japanese}<b>{word.libraryCount}</b></span>
+                      <StudioWordChip className={coverageCountClass(word.libraryCount)} key={word.japanese} word={word.japanese} metadata={vocabularyMetadata.get(word.japanese)} adornment={<b>{word.libraryCount}</b>} />
                     ))}
                   </div>
                 </div>
@@ -5375,7 +5405,7 @@ function StudioApp() {
                   )}
                   <div className="miniChips coverage">
                     {projectedCoverageWords.slice(0, 24).map((word) => (
-                      <span className={coverageCountClass(word.projectedLibraryCount)} key={word.japanese}>{word.japanese}<b>{word.projectedLibraryCount}</b></span>
+                      <StudioWordChip className={coverageCountClass(word.projectedLibraryCount)} key={word.japanese} word={word.japanese} metadata={vocabularyMetadata.get(word.japanese)} adornment={<b>{word.projectedLibraryCount}</b>} />
                     ))}
                   </div>
                 </div>

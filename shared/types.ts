@@ -101,6 +101,29 @@ export interface VocabularyAuditRejectedDeclaration {
   reason: string;
 }
 
+export const CONVERSATION_VOCABULARY_REFERENCE_VERSION = 1 as const;
+export type ConversationVocabularyReferenceKind = 'future_set' | 'external';
+export type ConversationVocabularyReferenceSource = 'master_vocabulary' | 'supplemental_catalog';
+
+export interface ConversationVocabularyReference {
+  version: typeof CONVERSATION_VOCABULARY_REFERENCE_VERSION;
+  surface: string;
+  japanese: string;
+  reading: string;
+  meaning: string;
+  kind: ConversationVocabularyReferenceKind;
+  source: ConversationVocabularyReferenceSource;
+  setNumber?: number;
+  partOfSpeech?: string;
+  category?: string;
+}
+
+export interface ConversationVocabularyValidationFailure {
+  conversationId: string;
+  surface: string;
+  reason: 'unresolved' | 'incomplete_metadata' | 'invalid_candidate';
+}
+
 export interface PracticeConversation {
   id: string;
   number: number;
@@ -114,6 +137,7 @@ export interface PracticeConversation {
   declaredNonVocabularyTerms?: DeclaredNonVocabularyTerm[];
   vocabularyUsed: string[];
   outOfVocabularyAudit: string[];
+  vocabularyReferences?: ConversationVocabularyReference[];
   simplerReplacementSuggestions: string[];
   quality?: 'good' | 'okay';
   qualityDecision?: 'pass' | 'repair';

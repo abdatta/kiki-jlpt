@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto';
-import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import type { CuratedSet } from '../shared/types.ts';
 import type { StaticLibraryConversation, StaticLibraryManifest } from '../src/consumer/types.ts';
 import { CURATED_AUDIO_DIR, PRACTICE_LIBRARY_DIR } from './paths.ts';
 import { listCuratedSets } from './library.ts';
+import { atomicWriteFile } from './atomic.ts';
+import { validateConversationVocabularyReferences } from './vocabularyReferences.ts';
 
 const libraryAudioDir = path.join(PRACTICE_LIBRARY_DIR, 'audio');
 const manifestPath = path.join(PRACTICE_LIBRARY_DIR, 'library.json');
@@ -125,6 +127,12 @@ export async function getPracticeLibraryPublishStatus() {
 
 export async function publishPracticeLibrary() {
   const sets = await listCuratedSets();
+  const validationFailures = sets.flatMap((set) => set.conversations
+    .filter((conversation) => conversation.status === 'audio_ready' && Boolean(conversation.audioFileName))
+    .flatMap(validateConversationVocabularyReferences));
+  if (validationFailures.length) {
+    throw new Error(`Practice library publication blocked by unresolved vocabulary references: ${validationFailures.map((failure) => `${failure.conversationId}:${failure.surface}`).join(', ')}`);
+  }
   const previousManifest = await readPracticeManifest();
   const reusableConversations = previousConversationsByFingerprint(previousManifest);
   const usedIds = new Set<string>();
@@ -166,6 +174,7 @@ export async function publishPracticeLibrary() {
         listeningQuestions: conversation.listeningQuestions,
         answerKey: conversation.answerKey,
         vocabularyUsed: conversation.vocabularyUsed,
+        vocabularyReferences: conversation.vocabularyReferences ?? [],
         createdAt: conversation.curatedAt ?? conversation.createdAt,
         publishOrder: reusableConversation?.order ?? nextNewConversationOrder++
       });
@@ -175,12 +184,12 @@ export async function publishPracticeLibrary() {
   conversations.sort((a, b) => a.publishOrder - b.publishOrder || (b.createdAt ?? '').localeCompare(a.createdAt ?? ''));
 
   const manifest: StaticLibraryManifest = {
-    version: 2,
+    version: 3,
     generatedAt: curatedUpdatedAt(sets),
     conversations: conversations.map(({ publishOrder: _publishOrder, ...conversation }) => conversation)
   };
 
-  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  await atomicWriteFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
   return {
     ...(await getPracticeLibraryPublishStatus()),

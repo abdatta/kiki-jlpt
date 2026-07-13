@@ -6,7 +6,7 @@ import { cleanShellModelLabel, formatClaudeModelVersion, formatCodexModelName, f
 import { AddAllProgressModal } from './components/AddAllProgressModal.tsx';
 import { AiCurationReconciliationPanel } from './components/AiCurationReconciliationPanel.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
-import { AiRecommendationReason, CurationEvidencePanel, WordFrequencyDistribution } from './components/CurationEvidence.tsx';
+import { AiRecommendationReason, CurationEvidencePanel, StudioWordChip, WordFrequencyDistribution } from './components/CurationEvidence.tsx';
 import {
   SourceRunDistribution,
   SourceRunLabel,
@@ -58,6 +58,19 @@ test('Studio evidence summary renders current, cumulative, and OOV measurements'
   assert.match(html, /3\/98/);
   assert.match(html, /1 unique, 2 uses/);
   assert.match(html, /猫/);
+});
+
+test('Studio word chips expose lexical metadata without mastery statistics', () => {
+  const html = renderToStaticMarkup(<StudioWordChip word="猫" className="coverageCount1" adornment={<b>2</b>} metadata={{
+    japanese: '猫', reading: 'ねこ', meaning: 'cat', set: 3, partOfSpeech: 'noun', category: 'animals'
+  }} />);
+  assert.match(html, /role="tooltip"/);
+  assert.match(html, /ねこ/);
+  assert.match(html, /cat/);
+  assert.match(html, /Set 3/);
+  assert.match(html, /coverageCount1/);
+  assert.match(html, /<b>2<\/b>/);
+  assert.doesNotMatch(html, /master|review|stat/i);
 });
 
 test('Studio AI recommendation renders rationale, strengths, and concerns', () => {

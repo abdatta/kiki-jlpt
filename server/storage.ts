@@ -2,7 +2,7 @@ import { mkdir, readFile, readdir, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { RUNS_DIR } from './paths.ts';
 import type { PracticeConversation, PracticeRun } from '../shared/types.ts';
-import { getAllowedVocabulary } from './vocab.ts';
+import { getAllowedVocabulary, readVocabulary } from './vocab.ts';
 import { calculateRunAnalytics } from './analytics.ts';
 import { legacyTextModel } from './textModels.ts';
 import { auditConversationsWithVocabulary } from './vocabAudit.ts';
@@ -107,7 +107,8 @@ export async function deleteRun(runId: string): Promise<void> {
 export async function reanalyzeRun(runId: string): Promise<PracticeRun> {
   return mutateRun(runId, async (run) => {
     const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
-    run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations);
+    const knownVocabulary = await readVocabulary();
+    run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations, knownVocabulary);
     run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
     run.updatedAt = nowIso();
     return run;
@@ -127,8 +128,9 @@ export async function updateConversation(
     }
 
     const allowedVocabulary = await getAllowedVocabulary(run.setNumber);
+    const knownVocabulary = await readVocabulary();
     run.conversations[index] = updater(run.conversations[index], run);
-    run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations);
+    run.conversations = await auditConversationsWithVocabulary(allowedVocabulary, run.conversations, knownVocabulary);
     run.analytics = calculateRunAnalytics(run.setNumber, allowedVocabulary, run.conversations);
     run.updatedAt = nowIso();
     run.status = run.conversations.every((conversation) => conversation.status === 'audio_ready') ? 'complete' : run.conversations.some((conversation) => conversation.audioFileName) ? 'partial_audio' : 'generated';

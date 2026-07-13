@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "entries": [
+    { "japanese": "嬉しい", "aliases": ["うれしい"], "reading": "うれしい", "meaning": "happy; glad", "partOfSpeech": "adjective", "category": "feelings" },
+    { "japanese": "直ぐ", "aliases": ["すぐ"], "reading": "すぐ", "meaning": "immediately; soon", "partOfSpeech": "adverb", "category": "time" },
+    { "japanese": "駄目", "aliases": ["だめ"], "reading": "だめ", "meaning": "no good; not allowed", "partOfSpeech": "adjectival noun", "category": "description" },
+    { "japanese": "為さる", "aliases": ["なさる"], "reading": "なさる", "meaning": "to do (honorific)", "partOfSpeech": "verb", "category": "action" },
+    { "japanese": "申す", "aliases": ["もうす"], "reading": "もうす", "meaning": "to say; to be called (humble)", "partOfSpeech": "verb", "category": "communication" },
+    { "japanese": "ゆっくり", "reading": "ゆっくり", "meaning": "slowly; at ease", "partOfSpeech": "adverb", "category": "manner" },
+    { "japanese": "良い", "aliases": ["よい"], "reading": "よい", "meaning": "good", "partOfSpeech": "adjective", "category": "description" },
+    { "japanese": "兄さん", "reading": "にいさん", "meaning": "older brother", "partOfSpeech": "noun", "category": "people" },
+    { "japanese": "姉さん", "reading": "ねえさん", "meaning": "older sister", "partOfSpeech": "noun", "category": "people" },
+    { "japanese": "後で", "reading": "あとで", "meaning": "later; afterward", "partOfSpeech": "adverb", "category": "time" },
+    { "japanese": "思う", "reading": "おもう", "meaning": "to think; to feel", "partOfSpeech": "verb", "category": "thought" },
+    { "japanese": "本当に", "reading": "ほんとうに", "meaning": "really; truly", "partOfSpeech": "adverb", "category": "manner" },
+    { "japanese": "楽しみ", "reading": "たのしみ", "meaning": "pleasure; something to look forward to", "partOfSpeech": "noun", "category": "feelings" },
+    { "japanese": "眠い", "reading": "ねむい", "meaning": "sleepy", "partOfSpeech": "adjective", "category": "condition" },
+    { "japanese": "精度", "reading": "せいど", "meaning": "accuracy; precision", "partOfSpeech": "noun", "category": "measurement" },
+    { "japanese": "終わる", "reading": "おわる", "meaning": "to end; to finish", "partOfSpeech": "verb", "category": "action" },
+    { "japanese": "行う", "reading": "おこなう", "meaning": "to carry out; to perform", "partOfSpeech": "verb", "category": "action" },
+    { "japanese": "遊び", "reading": "あそび", "meaning": "play; recreation", "partOfSpeech": "noun", "category": "activity" },
+    { "japanese": "鞄", "reading": "かばん", "meaning": "bag; briefcase", "partOfSpeech": "noun", "category": "objects" }
+  ]
+}

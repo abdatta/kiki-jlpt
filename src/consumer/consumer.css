@@ -827,6 +827,15 @@
   font-size: 18px;
 }
 
+.wordStatSection h3 small {
+  margin-left: 7px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+
 .wordStatSection header > span,
 .hiddenWordsControls > span {
   color: var(--muted);

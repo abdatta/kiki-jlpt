@@ -1,9 +1,35 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type {
   AiCurationProjectedWord,
   AiCurationRecommendation,
-  ConversationCurationEvidence
+  ConversationCurationEvidence,
+  VocabItem
 } from '../../shared/types.ts';
+
+export type StudioWordMetadata = Pick<VocabItem, 'japanese' | 'reading' | 'meaning' | 'set' | 'partOfSpeech' | 'category'> & {
+  classification?: string;
+};
+
+export function StudioWordChip({ word, metadata, className, adornment }: { word: string; metadata?: StudioWordMetadata; className?: string; adornment?: ReactNode }) {
+  return (
+    <span className={`studioWordChip${className ? ` ${className}` : ''}`} tabIndex={0}>
+      {word}
+      {adornment}
+      <span className="studioWordTooltip" role="tooltip">
+        <strong>{metadata?.japanese ?? word}</strong>
+        {metadata?.reading ? <span>{metadata.reading}</span> : null}
+        {metadata?.meaning ? <p>{metadata.meaning}</p> : <p>Vocabulary metadata unavailable.</p>}
+        {metadata ? (
+          <small>
+            {metadata.set > 0 ? `Set ${metadata.set}` : metadata.classification ?? 'Outside course'}
+            {metadata.partOfSpeech ? ` · ${metadata.partOfSpeech}` : ''}
+            {metadata.category ? ` · ${metadata.category}` : ''}
+          </small>
+        ) : null}
+      </span>
+    </span>
+  );
+}
 
 type FrequencyPlotMode = 'stacked' | 'before' | 'after';
 
@@ -129,12 +155,12 @@ export function WordFrequencyDistribution({ words }: { words: AiCurationProjecte
   );
 }
 
-function EvidenceWordList({ label, words }: { label: string; words: string[] }) {
+function EvidenceWordList({ label, words, metadata }: { label: string; words: string[]; metadata?: Map<string, StudioWordMetadata> }) {
   return (
     <div>
       <span>{label}</span>
       <div className="vocabChips">
-        {words.length === 0 ? <span>None</span> : words.map((word) => <span key={word}>{word}</span>)}
+        {words.length === 0 ? <span>None</span> : words.map((word) => <StudioWordChip key={word} word={word} metadata={metadata?.get(word)} />)}
       </div>
     </div>
   );
@@ -152,7 +178,7 @@ function EvidenceDetailList({ label, items }: { label: string; items: string[] }
   );
 }
 
-export function CurationEvidencePanel({ evidence }: { evidence?: ConversationCurationEvidence }) {
+export function CurationEvidencePanel({ evidence, metadata }: { evidence?: ConversationCurationEvidence; metadata?: Map<string, StudioWordMetadata> }) {
   if (!evidence) return null;
   const exemptions = evidence.vocabularyExemptions ?? [];
   const rejected = evidence.rejectedVocabularyDeclarations ?? [];
@@ -164,9 +190,9 @@ export function CurationEvidencePanel({ evidence }: { evidence?: ConversationCur
         <span><b>{evidence.outOfVocabularyUniqueCount}</b> OOV</span>
       </summary>
       <div className="curationEvidenceDetails">
-        <EvidenceWordList label={`Set ${evidence.setNumber} unique (${evidence.currentSetUniqueCount}/${evidence.currentSetTotal})`} words={evidence.currentSetUniqueWords} />
-        <EvidenceWordList label={`Allowed unique (${evidence.allowedVocabUniqueCount}/${evidence.allowedVocabTotal})`} words={evidence.allowedVocabUniqueWords} />
-        <EvidenceWordList label={`True out of vocabulary (${evidence.outOfVocabularyUniqueCount} unique, ${evidence.outOfVocabularyOccurrenceCount} uses)`} words={evidence.outOfVocabularyUniqueWords} />
+        <EvidenceWordList label={`Set ${evidence.setNumber} unique (${evidence.currentSetUniqueCount}/${evidence.currentSetTotal})`} words={evidence.currentSetUniqueWords} metadata={metadata} />
+        <EvidenceWordList label={`Allowed unique (${evidence.allowedVocabUniqueCount}/${evidence.allowedVocabTotal})`} words={evidence.allowedVocabUniqueWords} metadata={metadata} />
+        <EvidenceWordList label={`True out of vocabulary (${evidence.outOfVocabularyUniqueCount} unique, ${evidence.outOfVocabularyOccurrenceCount} uses)`} words={evidence.outOfVocabularyUniqueWords} metadata={metadata} />
         <EvidenceDetailList
           label={`Accepted exemptions (${exemptions.length})`}
           items={exemptions.map((item) => `${item.surface} · ${item.kind}${item.category ? ` · ${item.category}` : ''}`)}

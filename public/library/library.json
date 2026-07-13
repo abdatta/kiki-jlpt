@@ -1,6 +1,6 @@
 {
-  "version": 2,
-  "generatedAt": "2026-07-07T01:09:40.644Z",
+  "version": 3,
+  "generatedAt": "2026-07-13T00:37:30.354Z",
   "conversations": [
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-02",
@@ -123,6 +123,7 @@
         "入れる",
         "有る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-25T22:08:27.427Z"
     },
     {
@@ -253,6 +254,7 @@
         "部屋",
         "隣"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-25T21:44:24.752Z"
     },
     {
@@ -370,6 +372,7 @@
         "来る",
         "六"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-25T21:44:22.597Z"
     },
     {
@@ -522,6 +525,7 @@
         "弟",
         "美味しい"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-05T19:21:00.204Z"
     },
     {
@@ -662,6 +666,7 @@
         "八",
         "来る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-05T19:18:16.362Z"
     },
     {
@@ -800,6 +805,7 @@
         "先生",
         "男"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-05T19:16:48.394Z"
     },
     {
@@ -925,6 +931,7 @@
         "母",
         "妹"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-05T18:43:19.044Z"
     },
     {
@@ -1052,6 +1059,31 @@
         "二人",
         "友達",
         "話す"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "楽しい",
+          "japanese": "楽しい",
+          "reading": "たのしい",
+          "meaning": "enjoyable, fun",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Adjective",
+          "category": "Leisure/Social"
+        },
+        {
+          "version": 1,
+          "surface": "思う",
+          "japanese": "思う",
+          "reading": "おもう",
+          "meaning": "to think; to feel",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "verb",
+          "category": "thought"
+        }
       ],
       "createdAt": "2026-05-04T14:01:11.726Z"
     },
@@ -1182,6 +1214,20 @@
         "二人",
         "有る"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "遠い",
+          "japanese": "遠い",
+          "reading": "とおい",
+          "meaning": "far (away), distant",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 5,
+          "partOfSpeech": "Adjective",
+          "category": "Misc/Bridge"
+        }
+      ],
       "createdAt": "2026-05-04T14:00:26.611Z"
     },
     {
@@ -1306,6 +1352,44 @@
         "四",
         "先生",
         "聞く"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "今",
+          "japanese": "今",
+          "reading": "いま",
+          "meaning": "now",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Misc/Bridge"
+        },
+        {
+          "version": 1,
+          "surface": "もう一度",
+          "japanese": "もう一度",
+          "reading": "もういちど",
+          "meaning": "once more; again",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Expression",
+          "category": "Numbers/Counters"
+        },
+        {
+          "version": 1,
+          "surface": "分かる",
+          "japanese": "分かる",
+          "reading": "わかる",
+          "meaning": "to understand",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Verb",
+          "category": "Core Verbs/Actions"
+        }
       ],
       "createdAt": "2026-05-04T13:59:13.676Z"
     },
@@ -1435,6 +1519,7 @@
         "失礼します",
         "有る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-04T13:58:46.921Z"
     },
     {
@@ -1559,6 +1644,7 @@
         "赤い",
         "美味しい"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-04T13:56:42.695Z"
     },
     {
@@ -1687,6 +1773,7 @@
         "父",
         "母"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-04T13:51:48.850Z"
     },
     {
@@ -1811,6 +1898,20 @@
         "千",
         "百",
         "有る"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "分かる",
+          "japanese": "分かる",
+          "reading": "わかる",
+          "meaning": "to understand",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Verb",
+          "category": "Core Verbs/Actions"
+        }
       ],
       "createdAt": "2026-05-04T13:50:59.574Z"
     },
@@ -1941,6 +2042,7 @@
         "八",
         "六"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-04T13:50:12.089Z"
     },
     {
@@ -2069,6 +2171,32 @@
         "友達",
         "有る"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "一緒",
+          "japanese": "一緒",
+          "reading": "いっしょ",
+          "meaning": "together",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "Numbers/Counters"
+        },
+        {
+          "version": 1,
+          "surface": "分かる",
+          "japanese": "分かる",
+          "reading": "わかる",
+          "meaning": "to understand",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Verb",
+          "category": "Core Verbs/Actions"
+        }
+      ],
       "createdAt": "2026-05-04T13:49:19.728Z"
     },
     {
@@ -2196,6 +2324,7 @@
         "聞く",
         "有る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-03T05:11:55.756Z"
     },
     {
@@ -2323,6 +2452,19 @@
         "新しい",
         "大きい",
         "有る"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "思う",
+          "japanese": "思う",
+          "reading": "おもう",
+          "meaning": "to think; to feel",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "verb",
+          "category": "thought"
+        }
       ],
       "createdAt": "2026-05-03T05:11:04.083Z"
     },
@@ -2464,6 +2606,7 @@
         "二",
         "二人"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-03T05:06:09.441Z"
     },
     {
@@ -2608,6 +2751,7 @@
         "聞く",
         "六"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-03T05:05:20.057Z"
     },
     {
@@ -2731,6 +2875,20 @@
         "寝る",
         "来る",
         "話す"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "今",
+          "japanese": "今",
+          "reading": "いま",
+          "meaning": "now",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Misc/Bridge"
+        }
       ],
       "createdAt": "2026-05-03T05:04:20.055Z"
     },
@@ -2867,6 +3025,7 @@
         "食べる",
         "美味しい"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-03T04:59:14.151Z"
     },
     {
@@ -3011,6 +3170,7 @@
         "母",
         "妹"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-02T21:44:35.769Z"
     },
     {
@@ -3154,6 +3314,7 @@
         "赤い",
         "有る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-02T21:44:33.064Z"
     },
     {
@@ -3292,6 +3453,20 @@
         "初めまして",
         "先生",
         "有る"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "こちら",
+          "japanese": "こちら",
+          "reading": "こちら",
+          "meaning": "this person (polite); this way (polite)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Pronoun",
+          "category": "People/Family"
+        }
       ],
       "createdAt": "2026-05-02T21:23:58.674Z"
     },
@@ -3435,6 +3610,7 @@
         "二",
         "二人"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-05-31T02:55:03.909Z"
     },
     {
@@ -3578,6 +3754,20 @@
         "先生",
         "聞く"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "言葉",
+          "japanese": "言葉",
+          "reading": "ことば",
+          "meaning": "language; word(s); expression(s)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "School/Work/Language"
+        }
+      ],
       "createdAt": "2026-05-31T02:35:42.425Z"
     },
     {
@@ -3712,6 +3902,44 @@
         "二",
         "有る"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "教室",
+          "japanese": "教室",
+          "reading": "きょうしつ",
+          "meaning": "classroom",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "Misc/Bridge"
+        },
+        {
+          "version": 1,
+          "surface": "本",
+          "japanese": "本",
+          "reading": "ほん",
+          "meaning": "book",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "Home/Objects"
+        },
+        {
+          "version": 1,
+          "surface": "とても",
+          "japanese": "とても",
+          "reading": "とても",
+          "meaning": "very (much), greatly, exceedingly",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Adverb",
+          "category": "Adjectives/Adverbs/Abstract"
+        }
+      ],
       "createdAt": "2026-05-31T02:35:39.738Z"
     },
     {
@@ -3840,6 +4068,56 @@
         "二",
         "来る",
         "六"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "学校",
+          "japanese": "学校",
+          "reading": "がっこう",
+          "meaning": "a school",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "School/Work/Language"
+        },
+        {
+          "version": 1,
+          "surface": "明日",
+          "japanese": "明日",
+          "reading": "あした",
+          "meaning": "tomorrow",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "Time/Calendar"
+        },
+        {
+          "version": 1,
+          "surface": "今",
+          "japanese": "今",
+          "reading": "いま",
+          "meaning": "now",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Misc/Bridge"
+        },
+        {
+          "version": 1,
+          "surface": "早い",
+          "japanese": "早い",
+          "reading": "はやい",
+          "meaning": "early",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 7,
+          "partOfSpeech": "Adjective",
+          "category": "Adjectives/Adverbs/Abstract"
+        }
       ],
       "createdAt": "2026-05-31T02:35:37.029Z"
     },
@@ -3989,6 +4267,20 @@
         "妹",
         "六"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "学校",
+          "japanese": "学校",
+          "reading": "がっこう",
+          "meaning": "a school",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Noun",
+          "category": "School/Work/Language"
+        }
+      ],
       "createdAt": "2026-05-31T02:35:35.433Z"
     },
     {
@@ -4134,6 +4426,43 @@
         "大きい",
         "有る"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "誰",
+          "japanese": "誰",
+          "reading": "だれ",
+          "meaning": "who",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Pronoun",
+          "category": "Misc/Bridge"
+        },
+        {
+          "version": 1,
+          "surface": "二つ",
+          "japanese": "二つ",
+          "reading": "ふたつ",
+          "meaning": "two things",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Noun",
+          "category": "Numbers/Counters"
+        },
+        {
+          "version": 1,
+          "surface": "鞄",
+          "japanese": "鞄",
+          "reading": "かばん",
+          "meaning": "bag; briefcase",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "noun",
+          "category": "objects"
+        }
+      ],
       "createdAt": "2026-05-31T02:35:32.573Z"
     },
     {
@@ -4277,6 +4606,20 @@
         "六",
         "話す"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "多い",
+          "japanese": "多い",
+          "reading": "おおい",
+          "meaning": "many; there are a lot",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Adjective",
+          "category": "Adjectives/Adverbs/Abstract"
+        }
+      ],
       "createdAt": "2026-05-31T02:35:31.357Z"
     },
     {
@@ -4405,6 +4748,44 @@
         "新しい",
         "美味しい"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "お茶",
+          "japanese": "お茶",
+          "reading": "おちゃ",
+          "meaning": "(green) tea",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Food/Shopping"
+        },
+        {
+          "version": 1,
+          "surface": "魚",
+          "japanese": "魚",
+          "reading": "さかな",
+          "meaning": "fish",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Food/Shopping"
+        },
+        {
+          "version": 1,
+          "surface": "肉",
+          "japanese": "肉",
+          "reading": "にく",
+          "meaning": "meat",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Food/Shopping"
+        }
+      ],
       "createdAt": "2026-05-31T02:35:28.987Z"
     },
     {
@@ -4532,6 +4913,20 @@
         "先生",
         "二"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "こちら",
+          "japanese": "こちら",
+          "reading": "こちら",
+          "meaning": "this person (polite); this way (polite)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Pronoun",
+          "category": "People/Family"
+        }
+      ],
       "createdAt": "2026-05-31T02:35:27.030Z"
     },
     {
@@ -4658,6 +5053,7 @@
         "青い",
         "赤い"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-04T04:38:23.630Z"
     },
     {
@@ -4796,6 +5192,7 @@
         "妹",
         "友達"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-04T04:38:27.565Z"
     },
     {
@@ -4935,6 +5332,7 @@
         "食べる",
         "友達"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-04T04:38:29.483Z"
     },
     {
@@ -5128,6 +5526,7 @@
         "妹",
         "友達"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-04T04:51:37.536Z"
     },
     {
@@ -5321,6 +5720,7 @@
         "有る",
         "六"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-04T04:51:39.406Z"
     },
     {
@@ -5503,6 +5903,7 @@
         "二人",
         "美味しい"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-04T04:51:42.087Z"
     },
     {
@@ -5685,6 +6086,20 @@
         "来る",
         "話す"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "話",
+          "japanese": "話",
+          "reading": "はなし",
+          "meaning": "talk (chat), story",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Noun",
+          "category": "Misc/Bridge"
+        }
+      ],
       "createdAt": "2026-06-04T04:51:43.883Z"
     },
     {
@@ -5844,6 +6259,7 @@
         "母",
         "妹"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-04T04:51:45.993Z"
     },
     {
@@ -6030,6 +6446,7 @@
         "美味しい",
         "有る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-04T04:51:47.520Z"
     },
     {
@@ -6161,6 +6578,20 @@
         "二",
         "入れる",
         "有る"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "寒い",
+          "japanese": "寒い",
+          "reading": "さむい",
+          "meaning": "cold (in reference to weather)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 7,
+          "partOfSpeech": "Adjective",
+          "category": "Weather/Nature/Health"
+        }
       ],
       "createdAt": "2026-06-26T02:22:05.066Z"
     },
@@ -6298,6 +6729,7 @@
         "服",
         "有る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-26T02:22:09.497Z"
     },
     {
@@ -6426,6 +6858,20 @@
         "二",
         "入れる",
         "有る"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "手",
+          "japanese": "手",
+          "reading": "て",
+          "meaning": "hand",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 7,
+          "partOfSpeech": "Noun",
+          "category": "Weather/Nature/Health"
+        }
       ],
       "createdAt": "2026-06-26T02:22:12.237Z"
     },
@@ -6559,6 +7005,7 @@
         "失礼します",
         "隣"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-26T02:22:15.369Z"
     },
     {
@@ -6687,6 +7134,20 @@
         "閉める",
         "毎晩"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "入る",
+          "japanese": "入る",
+          "reading": "はいる",
+          "meaning": "to enter, to contain, to hold",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Verb",
+          "category": "Misc/Bridge"
+        }
+      ],
       "createdAt": "2026-06-26T02:22:17.697Z"
     },
     {
@@ -6799,6 +7260,7 @@
         "They choose Saturday."
       ],
       "vocabularyUsed": [
+        "～日",
         "いい",
         "暇",
         "火曜日",
@@ -6813,6 +7275,43 @@
         "日曜日",
         "有る",
         "遊ぶ"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "忙しい",
+          "japanese": "忙しい",
+          "reading": "いそがしい",
+          "meaning": "busy (people, days)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 3,
+          "partOfSpeech": "Adjective",
+          "category": "People/Family"
+        },
+        {
+          "version": 1,
+          "surface": "どう",
+          "japanese": "どう",
+          "reading": "どう",
+          "meaning": "how, in what way",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Adverb",
+          "category": "Misc/Bridge"
+        },
+        {
+          "version": 1,
+          "surface": "だめ",
+          "japanese": "駄目",
+          "reading": "だめ",
+          "meaning": "no good; not allowed",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "adjectival noun",
+          "category": "description"
+        }
       ],
       "createdAt": "2026-06-26T02:22:21.411Z"
     },
@@ -6947,6 +7446,7 @@
         "時間",
         "二"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-26T02:22:23.849Z"
     },
     {
@@ -7061,6 +7561,7 @@
       "vocabularyUsed": [
         "～月",
         "～日",
+        "～年",
         "あなた",
         "いい",
         "する",
@@ -7084,6 +7585,7 @@
         "友達",
         "有る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-26T02:22:27.435Z"
     },
     {
@@ -7196,6 +7698,7 @@
         "He wants to play every day."
       ],
       "vocabularyUsed": [
+        "～月",
         "～日",
         "はい",
         "何",
@@ -7211,6 +7714,20 @@
         "毎日",
         "有る",
         "遊ぶ"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "短い",
+          "japanese": "短い",
+          "reading": "みじかい",
+          "meaning": "short (length)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Adjective",
+          "category": "Adjectives/Adverbs/Abstract"
+        }
       ],
       "createdAt": "2026-06-26T02:22:31.098Z"
     },
@@ -7324,6 +7841,7 @@
         "The winter two years ago was bad."
       ],
       "vocabularyUsed": [
+        "～年",
         "いい",
         "おととし",
         "さ来年",
@@ -7339,6 +7857,44 @@
         "秋",
         "春",
         "冬"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "どちら",
+          "japanese": "どちら",
+          "reading": "どちら",
+          "meaning": "which (one) (way); where (polite)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 5,
+          "partOfSpeech": "Pronoun",
+          "category": "Numbers/Counters"
+        },
+        {
+          "version": 1,
+          "surface": "少し",
+          "japanese": "少し",
+          "reading": "すこし",
+          "meaning": "little, few",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Noun",
+          "category": "Adjectives/Adverbs/Abstract"
+        },
+        {
+          "version": 1,
+          "surface": "どう",
+          "japanese": "どう",
+          "reading": "どう",
+          "meaning": "how, in what way",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Adverb",
+          "category": "Misc/Bridge"
+        }
       ],
       "createdAt": "2026-06-26T02:22:34.804Z"
     },
@@ -7464,7 +8020,10 @@
         "He goes with his family."
       ],
       "vocabularyUsed": [
+        "～月",
         "～時",
+        "～日",
+        "～年",
         "あそこ",
         "いつも",
         "どこ",
@@ -7489,6 +8048,7 @@
         "六",
         "話す"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-26T02:22:37.596Z"
     },
     {
@@ -7619,6 +8179,7 @@
         "万年筆",
         "有る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-26T02:22:41.502Z"
     },
     {
@@ -7746,6 +8307,31 @@
         "晩",
         "晩御飯",
         "閉める"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "どう",
+          "japanese": "どう",
+          "reading": "どう",
+          "meaning": "how, in what way",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Adverb",
+          "category": "Misc/Bridge"
+        },
+        {
+          "version": 1,
+          "surface": "終わる",
+          "japanese": "終わる",
+          "reading": "おわる",
+          "meaning": "to end; to finish",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "verb",
+          "category": "action"
+        }
       ],
       "createdAt": "2026-06-27T19:00:17.109Z"
     },
@@ -7882,6 +8468,32 @@
         "母",
         "来る"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "座る",
+          "japanese": "座る",
+          "reading": "すわる",
+          "meaning": "to sit",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Verb",
+          "category": "Core Verbs/Actions"
+        },
+        {
+          "version": 1,
+          "surface": "入る",
+          "japanese": "入る",
+          "reading": "はいる",
+          "meaning": "to enter, to contain, to hold",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Verb",
+          "category": "Misc/Bridge"
+        }
+      ],
       "createdAt": "2026-06-27T19:00:20.443Z"
     },
     {
@@ -8017,6 +8629,7 @@
         "妹",
         "隣"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-27T19:00:23.621Z"
     },
     {
@@ -8129,6 +8742,7 @@
         "The 20th is Thursday."
       ],
       "vocabularyUsed": [
+        "～月",
         "～日",
         "ありがとうございます",
         "はい",
@@ -8148,6 +8762,20 @@
         "二",
         "二十日",
         "日曜日"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "どう",
+          "japanese": "どう",
+          "reading": "どう",
+          "meaning": "how, in what way",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Adverb",
+          "category": "Misc/Bridge"
+        }
       ],
       "createdAt": "2026-06-27T19:00:27.822Z"
     },
@@ -8261,6 +8889,7 @@
         "Last month, last week, this month, and this week."
       ],
       "vocabularyUsed": [
+        "～月",
         "いいえ",
         "うち",
         "どこ",
@@ -8275,6 +8904,7 @@
         "友達",
         "遊ぶ"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-27T19:00:30.468Z"
     },
     {
@@ -8390,6 +9020,20 @@
         "小さい",
         "人",
         "母"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "つける",
+          "japanese": "つける",
+          "reading": "つける",
+          "meaning": "to turn on (e.g., a light); to take",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Verb",
+          "category": "Adjectives/Adverbs/Abstract"
+        }
       ],
       "createdAt": "2026-06-27T19:00:34.320Z"
     },
@@ -8511,6 +9155,7 @@
         "服",
         "有る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-27T19:00:37.106Z"
     },
     {
@@ -8631,6 +9276,7 @@
         "大きい",
         "部屋"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-27T19:00:41.201Z"
     },
     {
@@ -8729,6 +9375,9 @@
         "He played with friends in the afternoon."
       ],
       "vocabularyUsed": [
+        "～日",
+        "～年",
+        "いい",
         "する",
         "はい",
         "何",
@@ -8751,6 +9400,7 @@
         "友達",
         "遊ぶ"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-27T19:00:44.986Z"
     },
     {
@@ -8873,6 +9523,7 @@
         "父",
         "母"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-06-27T19:00:48.545Z"
     },
     {
@@ -8985,6 +9636,43 @@
         "美味しい",
         "母"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "早い",
+          "japanese": "早い",
+          "reading": "はやい",
+          "meaning": "early",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 7,
+          "partOfSpeech": "Adjective",
+          "category": "Adjectives/Adverbs/Abstract"
+        },
+        {
+          "version": 1,
+          "surface": "入る",
+          "japanese": "入る",
+          "reading": "はいる",
+          "meaning": "to enter, to contain, to hold",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Verb",
+          "category": "Misc/Bridge"
+        },
+        {
+          "version": 1,
+          "surface": "眠い",
+          "japanese": "眠い",
+          "reading": "ねむい",
+          "meaning": "sleepy",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "adjective",
+          "category": "condition"
+        }
+      ],
       "createdAt": "2026-06-27T19:00:52.595Z"
     },
     {
@@ -9084,6 +9772,7 @@
       ],
       "vocabularyUsed": [
         "ああ",
+        "いい",
         "いいえ",
         "それ",
         "テーブル",
@@ -9096,6 +9785,20 @@
         "箱",
         "万年筆",
         "有る"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "使う",
+          "japanese": "使う",
+          "reading": "つかう",
+          "meaning": "to use",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Verb",
+          "category": "Core Verbs/Actions"
+        }
       ],
       "createdAt": "2026-06-27T19:00:56.394Z"
     },
@@ -9197,6 +9900,7 @@
         "They are there by the bed."
       ],
       "vocabularyUsed": [
+        "～日",
         "コート",
         "シャツ",
         "スカート",
@@ -9211,6 +9915,19 @@
         "服",
         "毎週",
         "有る"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "後で",
+          "japanese": "後で",
+          "reading": "あとで",
+          "meaning": "later; afterward",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "adverb",
+          "category": "time"
+        }
       ],
       "createdAt": "2026-06-27T19:00:59.478Z"
     },
@@ -9312,6 +10029,7 @@
         "It is his first autumn outing or play time."
       ],
       "vocabularyUsed": [
+        "～月",
         "～日",
         "いい",
         "はい",
@@ -9331,6 +10049,31 @@
         "友達",
         "有る",
         "遊ぶ"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "どちら",
+          "japanese": "どちら",
+          "reading": "どちら",
+          "meaning": "which (one) (way); where (polite)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 5,
+          "partOfSpeech": "Pronoun",
+          "category": "Numbers/Counters"
+        },
+        {
+          "version": 1,
+          "surface": "遊び",
+          "japanese": "遊び",
+          "reading": "あそび",
+          "meaning": "play; recreation",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "noun",
+          "category": "activity"
+        }
       ],
       "createdAt": "2026-06-27T19:01:03.926Z"
     },
@@ -9449,6 +10192,20 @@
         "八",
         "有る"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "持つ",
+          "japanese": "持つ",
+          "reading": "もつ",
+          "meaning": "to hold, to carry; to possess",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 5,
+          "partOfSpeech": "Verb",
+          "category": "Misc/Bridge"
+        }
+      ],
       "createdAt": "2026-06-27T19:01:07.282Z"
     },
     {
@@ -9563,6 +10320,7 @@
         "行く",
         "隣"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:31.318Z"
     },
     {
@@ -9680,6 +10438,7 @@
         "入れる",
         "有る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:31.896Z"
     },
     {
@@ -9791,6 +10550,19 @@
         "二",
         "入れる"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "なさる",
+          "japanese": "為さる",
+          "reading": "なさる",
+          "meaning": "to do (honorific)",
+          "kind": "external",
+          "source": "supplemental_catalog",
+          "partOfSpeech": "verb",
+          "category": "action"
+        }
+      ],
       "createdAt": "2026-07-07T01:09:32.326Z"
     },
     {
@@ -9889,7 +10661,9 @@
         "His father and mother come every year."
       ],
       "vocabularyUsed": [
+        "～月",
         "～日",
+        "～年",
         "いいえ",
         "ここ",
         "はい",
@@ -9908,6 +10682,7 @@
         "有る",
         "来る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:32.778Z"
     },
     {
@@ -10022,6 +10797,7 @@
         "毎晩",
         "友達"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:33.304Z"
     },
     {
@@ -10135,6 +10911,7 @@
         "二",
         "二日"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:33.739Z"
     },
     {
@@ -10233,6 +11010,7 @@
         "It is next to the bed."
       ],
       "vocabularyUsed": [
+        "～月",
         "いいえ",
         "かばん",
         "その",
@@ -10250,6 +11028,7 @@
         "有る",
         "隣"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:34.275Z"
     },
     {
@@ -10348,6 +11127,7 @@
         "He should put it in the box."
       ],
       "vocabularyUsed": [
+        "～月",
         "ありがとうございます",
         "いい",
         "この",
@@ -10361,6 +11141,20 @@
         "入れる",
         "箱",
         "万年筆"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "使う",
+          "japanese": "使う",
+          "reading": "つかう",
+          "meaning": "to use",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 8,
+          "partOfSpeech": "Verb",
+          "category": "Core Verbs/Actions"
+        }
       ],
       "createdAt": "2026-07-07T01:09:34.694Z"
     },
@@ -10494,6 +11288,20 @@
         "二十日",
         "来る"
       ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "短い",
+          "japanese": "短い",
+          "reading": "みじかい",
+          "meaning": "short (length)",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 6,
+          "partOfSpeech": "Adjective",
+          "category": "Adjectives/Adverbs/Abstract"
+        }
+      ],
       "createdAt": "2026-07-07T01:09:35.230Z"
     },
     {
@@ -10609,6 +11417,20 @@
         "二",
         "晩",
         "毎朝"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "今",
+          "japanese": "今",
+          "reading": "いま",
+          "meaning": "now",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 4,
+          "partOfSpeech": "Noun",
+          "category": "Misc/Bridge"
+        }
       ],
       "createdAt": "2026-07-07T01:09:35.705Z"
     },
@@ -10739,6 +11561,7 @@
         "入れる",
         "箱"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:36.189Z"
     },
     {
@@ -10859,6 +11682,7 @@
         "部屋",
         "隣"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:36.659Z"
     },
     {
@@ -10959,6 +11783,7 @@
         "He went to his older brother's home."
       ],
       "vocabularyUsed": [
+        "～年",
         "いいえ",
         "うち",
         "おととし",
@@ -10971,6 +11796,7 @@
         "秋",
         "二"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:37.146Z"
     },
     {
@@ -11085,6 +11911,7 @@
         "毎年",
         "来る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:37.634Z"
     },
     {
@@ -11183,6 +12010,7 @@
         "He says there will be delicious dinner."
       ],
       "vocabularyUsed": [
+        "～月",
         "～日",
         "うち",
         "はい",
@@ -11202,6 +12030,7 @@
         "有る",
         "来る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:38.039Z"
     },
     {
@@ -11301,6 +12130,7 @@
       ],
       "vocabularyUsed": [
         "～日",
+        "～年",
         "いい",
         "いいえ",
         "はい",
@@ -11322,6 +12152,7 @@
         "遊ぶ",
         "来る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:38.600Z"
     },
     {
@@ -11470,6 +12301,7 @@
         "二日",
         "来る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:39.098Z"
     },
     {
@@ -11595,6 +12427,7 @@
         "Speaker 1 will be here until the year after next."
       ],
       "vocabularyUsed": [
+        "～月",
         "～年",
         "アパート",
         "いい",
@@ -11614,6 +12447,7 @@
         "有る",
         "来る"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:39.625Z"
     },
     {
@@ -11758,6 +12592,20 @@
         "土曜日",
         "二",
         "隣"
+      ],
+      "vocabularyReferences": [
+        {
+          "version": 1,
+          "surface": "どういたしまして",
+          "japanese": "どういたしまして",
+          "reading": "どういたしまして",
+          "meaning": "You’re welcome",
+          "kind": "future_set",
+          "source": "master_vocabulary",
+          "setNumber": 7,
+          "partOfSpeech": "Interjection",
+          "category": "Greetings/Responses"
+        }
       ],
       "createdAt": "2026-07-07T01:09:40.115Z"
     },
@@ -11910,6 +12758,7 @@
         "閉める",
         "毎晩"
       ],
+      "vocabularyReferences": [],
       "createdAt": "2026-07-07T01:09:40.644Z"
     }
   ]

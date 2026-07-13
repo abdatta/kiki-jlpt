@@ -359,31 +359,33 @@ function WordTile({
   onSelect
 }: {
   card: VocabCard;
-  label: string;
+  label?: string;
   isNew?: boolean;
   onSelect: () => void;
 }) {
   return (
     <button className={isNew ? 'wordStatTile newWordTile' : 'wordStatTile'} onClick={onSelect} type="button">
       <strong>{card.japanese}</strong>
-      <span>{label}</span>
+      {label ? <span>{label}</span> : null}
     </button>
   );
 }
 
 function WordStatSection({
   title,
+  qualifier,
   count,
   children
 }: {
   title: string;
+  qualifier?: string;
   count: number;
   children: ReactNode;
 }) {
   return (
     <section className="wordStatSection">
       <header>
-        <h3>{title}</h3>
+        <h3>{title}{qualifier ? <small>{qualifier}</small> : null}</h3>
         <span>{count}</span>
       </header>
       {count === 0 ? <p className="emptyStatText">Nothing here yet.</p> : children}
@@ -407,7 +409,7 @@ function WordDetailModal({
       <section className="wordDetailPanel">
         <header>
           <div>
-            <p>Set {card.level} · Word details</p>
+            <p>{card.informationalKind === 'external' ? 'Outside Course Vocabulary' : `Set ${card.level}`} · Word details</p>
             <h3 id="word-detail-title">{card.japanese}</h3>
             <span>{card.romaji || card.reading}</span>
           </div>
@@ -446,7 +448,7 @@ function WordDetailModal({
           ) : (
             <div>
               <span>Status</span>
-              <strong>New</strong>
+              <strong>{card.informationalKind ? 'Conversation reference' : 'New'}</strong>
             </div>
           )}
         </div>
@@ -763,9 +765,9 @@ function QuestionCard({
   );
 }
 
-function unmasteredWordLabel(count: number): string {
-  if (count === 0) return 'All words mastered';
-  return `${count} unmastered ${count === 1 ? 'word' : 'words'}`;
+function wordsToReviewLabel(count: number): string {
+  if (count === 0) return 'No words to review';
+  return `${count} ${count === 1 ? 'word' : 'words'} to review`;
 }
 
 function ConversationVocabularyModal({
@@ -804,6 +806,22 @@ function ConversationVocabularyModal({
     ] as const);
   const unmasteredTermCount = terms.filter((term) => !term.mastered).length;
   const masteredCardCount = [...masteredCardsByLevel.values()].reduce((count, cards) => count + cards.length, 0);
+  const references = conversation.vocabularyReferences ?? [];
+  const futureSetNumbers = [...new Set(references.filter((reference) => reference.kind === 'future_set').map((reference) => reference.setNumber!))].sort((a, b) => a - b);
+  const externalReferences = references.filter((reference) => reference.kind === 'external');
+  const referenceCard = (reference: (typeof references)[number]): VocabCard => ({
+    id: `reference:${reference.kind}:${reference.japanese}`,
+    level: reference.setNumber ?? conversation.level,
+    setTheme: '',
+    withinSetNumber: 0,
+    japanese: reference.japanese,
+    reading: reference.reading,
+    romaji: '',
+    meaning: reference.meaning,
+    partOfSpeech: reference.partOfSpeech ?? '',
+    category: reference.category ?? '',
+    informationalKind: reference.kind
+  });
 
   return (
     <div className="statsModal" role="dialog" aria-modal="true" aria-labelledby="conversation-vocabulary-title">
@@ -812,7 +830,7 @@ function ConversationVocabularyModal({
         <header className="statsModalHeader">
           <div>
             <p>{conversation.title}</p>
-            <h2 id="conversation-vocabulary-title">{unmasteredWordLabel(unmasteredTermCount)}</h2>
+            <h2 id="conversation-vocabulary-title">{wordsToReviewLabel(unmasteredTermCount + (conversation.vocabularyReferences?.length ?? 0))}</h2>
           </div>
           <button className="modalCloseButton" aria-label="Close conversation vocabulary" onClick={onClose} type="button">
             <X size={18} />
@@ -838,6 +856,31 @@ function ConversationVocabularyModal({
             </WordStatSection>
           ))
         )}
+
+        {futureSetNumbers.map((setNumber) => {
+          const group = references.filter((reference) => reference.kind === 'future_set' && reference.setNumber === setNumber);
+          return (
+            <WordStatSection title={`Set ${setNumber}`} qualifier="Future Set" count={group.length} key={`future-${setNumber}`}>
+              <div className="wordStatList">
+                {group.map((reference) => {
+                  const card = referenceCard(reference);
+                  return <WordTile card={card} key={card.id} onSelect={() => setSelectedWord(card)} />;
+                })}
+              </div>
+            </WordStatSection>
+          );
+        })}
+
+        {externalReferences.length ? (
+          <WordStatSection title="Extra Vocab" qualifier="Outside Course" count={externalReferences.length}>
+            <div className="wordStatList">
+              {externalReferences.map((reference) => {
+                const card = referenceCard(reference);
+                return <WordTile card={card} key={card.id} onSelect={() => setSelectedWord(card)} />;
+              })}
+            </div>
+          </WordStatSection>
+        ) : null}
 
         <section className="wordStatSection">
           <header>
@@ -1032,6 +1075,7 @@ function ConversationPractice({
   const hasAnsweredAny = Object.values(questionStates).some((state) => Boolean(state.result));
   const canStar = isStarred || isCompleted || hasCompletedInitialPlay;
   const unmasteredTerms = vocabularyTerms.filter((term) => !term.mastered);
+  const wordsToReviewCount = unmasteredTerms.length + (conversation.vocabularyReferences?.length ?? 0);
 
   useEffect(() => {
     if (allAttempted && !completionNotifiedRef.current) {
@@ -1047,17 +1091,17 @@ function ConversationPractice({
         <span>{conversation.scene}</span>
         <button
           className="conversationVocabularyPill"
-          aria-label={unmasteredWordLabel(unmasteredTerms.length)}
+          aria-label={wordsToReviewLabel(wordsToReviewCount)}
           onClick={() => setIsVocabularyModalOpen(true)}
-          title={unmasteredWordLabel(unmasteredTerms.length)}
+          title={wordsToReviewLabel(wordsToReviewCount)}
           type="button"
         >
-          {unmasteredTerms.length === 0 ? (
+          {wordsToReviewCount === 0 ? (
             <CheckCheck size={18} />
           ) : (
             <>
               <TriangleAlert size={15} />
-              <span>{unmasteredTerms.length}</span>
+              <span>{wordsToReviewCount}</span>
             </>
           )}
         </button>
@@ -1686,7 +1730,7 @@ export function ConsumerApp() {
   const [mikanTheme, setMikanTheme] = useState<MikanTheme>(deviceMikanTheme);
   const [vocabStats, setVocabStats] = useState<StatsMap>(loadVocabStats);
   const [conversationProgress, setConversationProgress] = useState<ConversationProgress>(loadConversationProgress);
-  const [library, setLibrary] = useState<StaticLibraryManifest>({ version: 2, generatedAt: '', conversations: [] });
+  const [library, setLibrary] = useState<StaticLibraryManifest>({ version: 3, generatedAt: '', conversations: [] });
   const [libraryError, setLibraryError] = useState<string | null>(null);
 
   useEffect(() => {

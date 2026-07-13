@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { CuratedConversation, CuratedSet, PracticeConversation } from '../shared/types.ts';
 import { CURATED_AUDIO_DIR, CURATED_SETS_DIR } from './paths.ts';
 import { runAudioDir } from './storage.ts';
-import { getAllowedVocabulary } from './vocab.ts';
+import { getAllowedVocabulary, readVocabulary } from './vocab.ts';
 import { calculateRunAnalytics } from './analytics.ts';
 import { auditConversationsWithVocabulary } from './vocabAudit.ts';
 
@@ -87,7 +87,8 @@ export async function listCuratedSets(): Promise<CuratedSet[]> {
 export async function reanalyzeCuratedSet(setNumber: number): Promise<CuratedSet> {
   const set = await readCuratedSet(setNumber);
   const allowedVocabulary = await getAllowedVocabulary(setNumber);
-  const conversations = await auditConversationsWithVocabulary(allowedVocabulary, set.conversations) as CuratedConversation[];
+  const knownVocabulary = await readVocabulary();
+  const conversations = await auditConversationsWithVocabulary(allowedVocabulary, set.conversations, knownVocabulary) as CuratedConversation[];
   const updated = {
     ...set,
     conversations,

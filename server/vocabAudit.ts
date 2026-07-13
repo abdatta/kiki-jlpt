@@ -12,6 +12,7 @@ import type {
   VocabularyAuditExemption,
   VocabularyAuditRejectedDeclaration
 } from '../shared/types.ts';
+import { isLearnerVisibleVocabularyCandidate, resolveVocabularyReferences, VOCABULARY_REFERENCE_RESOLVER_VERSION } from './vocabularyReferences.ts';
 import { ROOT_DIR } from './paths.ts';
 import { APPROVED_GENERATED_NAMES, CURATION_EVIDENCE_VERSION, isAuditExemptForm } from './languagePolicy.ts';
 
@@ -20,6 +21,12 @@ type JapaneseTokenizer = Tokenizer<IpadicFeatures>;
 interface VocabPattern {
   item: VocabItem;
   formsByToken: string[][];
+}
+
+interface AffixPattern {
+  item: VocabItem;
+  form: string;
+  side: 'prefix' | 'suffix';
 }
 
 interface MatchResult {
@@ -68,6 +75,10 @@ function normalizeForm(value: string): string {
   return katakanaToHiragana(value.trim());
 }
 
+function isKanaForm(value: string): boolean {
+  return /^[\u3040-\u30ffー]+$/.test(value);
+}
+
 function isPatternMarker(value: string): boolean {
   return /^[\u301c\uff5e~]+$/.test(value);
 }
@@ -98,10 +109,43 @@ function uniqueSorted(words: Iterable<string>): string[] {
 }
 
 function vocabCandidates(item: VocabItem): string[] {
-  return [...new Set([item.japanese, item.reading]
+  const reviewedAliases: Record<string, string[]> = {
+    'いい': ['よい'],
+    '兄': ['お兄さん'],
+    '姉': ['お姉さん'],
+    '本当': ['本当に']
+  };
+  return [...new Set([item.japanese, item.reading, ...(reviewedAliases[item.japanese] ?? [])]
     .flatMap((value) => value.split(/[;；、,]/))
     .map((value) => value.trim())
     .filter(Boolean))];
+}
+
+function affixPattern(candidate: string, item: VocabItem): AffixPattern | null {
+  const normalized = normalizeForm(candidate);
+  const leadingMarker = /^[\u301c\uff5e~]+/.exec(normalized)?.[0] ?? '';
+  const trailingMarker = /[\u301c\uff5e~]+$/.exec(normalized)?.[0] ?? '';
+  if (leadingMarker && !trailingMarker) {
+    const form = normalized.slice(leadingMarker.length);
+    return form ? { item, form, side: 'suffix' } : null;
+  }
+  if (trailingMarker && !leadingMarker) {
+    const form = normalized.slice(0, -trailingMarker.length);
+    return form ? { item, form, side: 'prefix' } : null;
+  }
+  return null;
+}
+
+function buildAffixPatterns(allowedVocabulary: VocabItem[]): AffixPattern[] {
+  const seen = new Set<string>();
+  return allowedVocabulary.flatMap((item) => vocabCandidates(item).flatMap((candidate) => {
+    const pattern = affixPattern(candidate, item);
+    if (!pattern) return [];
+    const key = `${item.japanese}\u0000${pattern.side}\u0000${pattern.form}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [pattern];
+  }));
 }
 
 function buildPatterns(tokenizer: JapaneseTokenizer, allowedVocabulary: VocabItem[]): VocabPattern[] {
@@ -118,7 +162,7 @@ function buildPatterns(tokenizer: JapaneseTokenizer, allowedVocabulary: VocabIte
     .sort((a, b) => b.formsByToken.length - a.formsByToken.length || b.item.japanese.length - a.item.japanese.length);
 }
 
-function findVocabularyMatches(tokenFormSets: Set<string>[], patterns: VocabPattern[]): MatchResult {
+function findVocabularyMatches(tokenFormSets: Set<string>[], patterns: VocabPattern[], affixPatterns: AffixPattern[]): MatchResult {
   const usedWords = new Set<string>();
   const coveredTokenIndexes = new Set<number>();
   const wordOccurrences = new Map<string, number>();
@@ -142,11 +186,45 @@ function findVocabularyMatches(tokenFormSets: Set<string>[], patterns: VocabPatt
     }
   }
 
+  tokenFormSets.forEach((forms, index) => {
+    for (const pattern of affixPatterns) {
+      const matches = [...forms].some((form) => {
+        const normalized = normalizeForm(form);
+        return pattern.side === 'suffix'
+          ? normalized.length > pattern.form.length && normalized.endsWith(pattern.form)
+          : normalized.length > pattern.form.length && normalized.startsWith(pattern.form);
+      });
+      if (!matches) continue;
+
+      usedWords.add(pattern.item.japanese);
+      coveredTokenIndexes.add(index);
+      const matchKey = `${pattern.item.japanese}\u0000${index}\u00001`;
+      if (!countedMatches.has(matchKey)) {
+        countedMatches.add(matchKey);
+        wordOccurrences.set(pattern.item.japanese, (wordOccurrences.get(pattern.item.japanese) ?? 0) + 1);
+      }
+    }
+  });
+
   return { usedWords, coveredTokenIndexes, wordOccurrences };
 }
 
 function buildAllowedFormSet(tokenizer: JapaneseTokenizer, allowedVocabulary: VocabItem[]): Set<string> {
   return new Set(allowedVocabulary.flatMap((item) => vocabCandidates(item).flatMap((candidate) => tokenizer.tokenize(candidate).flatMap(tokenForms))));
+}
+
+function buildKnownCanonicalByForm(knownVocabulary: VocabItem[]): Map<string, string> {
+  const canonicalByForm = new Map<string, string>();
+  for (const item of knownVocabulary) {
+    canonicalByForm.set(normalizeForm(item.japanese), item.japanese);
+  }
+  for (const item of knownVocabulary) {
+    for (const reading of item.reading.split(/[;；、,]/).map((value) => value.trim()).filter(Boolean)) {
+      const normalized = normalizeForm(reading);
+      if (!canonicalByForm.has(normalized)) canonicalByForm.set(normalized, item.japanese);
+    }
+  }
+  return canonicalByForm;
 }
 
 function uniqueVocabularyWords(vocabulary: VocabItem[]): string[] {
@@ -164,8 +242,10 @@ function occurrenceRecord(counts: Map<string, number>): Record<string, number> {
 // pass synthetic vocabularies.
 interface VocabularyArtifacts {
   patterns: VocabPattern[];
+  affixPatterns: AffixPattern[];
   allowedForms: Set<string>;
   knownVocabularyWords: Set<string>;
+  knownCanonicalByForm: Map<string, string>;
 }
 
 const vocabularyArtifactsCache = new Map<string, VocabularyArtifacts>();
@@ -174,6 +254,7 @@ const MAX_VOCABULARY_ARTIFACT_ENTRIES = 8;
 interface CachedConversationAudit {
   vocabularyUsed: string[];
   outOfVocabularyAudit: string[];
+  vocabularyReferences: PracticeConversation['vocabularyReferences'];
   evidence: ConversationCurationEvidence;
 }
 
@@ -195,8 +276,10 @@ function getVocabularyArtifacts(tokenizer: JapaneseTokenizer, allowedVocabulary:
 
   const artifacts = {
     patterns: buildPatterns(tokenizer, allowedVocabulary),
+    affixPatterns: buildAffixPatterns(allowedVocabulary),
     allowedForms: buildAllowedFormSet(tokenizer, allowedVocabulary),
-    knownVocabularyWords: new Set(knownVocabulary.map((item) => item.japanese))
+    knownVocabularyWords: new Set(knownVocabulary.map((item) => item.japanese)),
+    knownCanonicalByForm: buildKnownCanonicalByForm(knownVocabulary)
   };
   while (vocabularyArtifactsCache.size >= MAX_VOCABULARY_ARTIFACT_ENTRIES) {
     vocabularyArtifactsCache.delete(vocabularyArtifactsCache.keys().next().value!);
@@ -250,6 +333,38 @@ function findSurfaceTokenIndexes(tokens: IpadicFeatures[], surface: string): num
     }
   }
   return [];
+}
+
+function findAllSurfaceTokenIndexes(tokens: IpadicFeatures[], surface: string): number[][] {
+  const matches: number[][] = [];
+  for (let start = 0; start < tokens.length; start += 1) {
+    let value = '';
+    for (let end = start; end < tokens.length && value.length < surface.length; end += 1) {
+      value += tokens[end].surface_form;
+      if (value === surface) {
+        matches.push(Array.from({ length: end - start + 1 }, (_, offset) => start + offset));
+        break;
+      }
+    }
+  }
+  return matches;
+}
+
+function approvedNameMatches(tokens: IpadicFeatures[]): Array<{ surface: string; indexes: number[] }> {
+  const surfaces = APPROVED_GENERATED_NAMES
+    .flatMap((name) => [...HONORIFIC_SUFFIXES.map((suffix) => `${name}${suffix}`), name])
+    .sort((a, b) => b.length - a.length);
+  const covered = new Set<number>();
+  const matches: Array<{ surface: string; indexes: number[] }> = [];
+
+  for (const surface of surfaces) {
+    for (const indexes of findAllSurfaceTokenIndexes(tokens, surface)) {
+      if (indexes.some((index) => covered.has(index))) continue;
+      indexes.forEach((index) => covered.add(index));
+      matches.push({ surface, indexes });
+    }
+  }
+  return matches;
 }
 
 function declarationRejection(term: DeclaredNonVocabularyTerm, reason: string): VocabularyAuditRejectedDeclaration {
@@ -318,9 +433,12 @@ function uniqueRejections(rejections: VocabularyAuditRejectedDeclaration[]): Voc
 function auditConversation(
   tokenizer: JapaneseTokenizer,
   patterns: VocabPattern[],
+  affixPatterns: AffixPattern[],
   allowedForms: Set<string>,
   knownVocabularyWords: Set<string>,
+  knownCanonicalByForm: Map<string, string>,
   allowedVocabulary: VocabItem[],
+  knownVocabulary: VocabItem[],
   setNumber: number,
   conversation: PracticeConversation,
   auditCachePrefix: string
@@ -340,6 +458,7 @@ function auditConversation(
         ...conversation,
         vocabularyUsed: cached.vocabularyUsed,
         outOfVocabularyAudit: cached.outOfVocabularyAudit,
+        vocabularyReferences: cached.vocabularyReferences,
         simplerReplacementSuggestions: []
       },
       evidence: cached.evidence
@@ -350,7 +469,8 @@ function auditConversation(
   const tokenFormsList = tokens.map(tokenForms);
   const { usedWords, coveredTokenIndexes, wordOccurrences } = findVocabularyMatches(
     tokenFormsList.map((forms) => new Set(forms)),
-    patterns
+    patterns,
+    affixPatterns
   );
   const outOfVocabularyOccurrences = new Map<string, number>();
   const declaredCoveredTokenIndexes = new Set<number>();
@@ -367,6 +487,11 @@ function auditConversation(
     vocabularyExemptions.push(result.exemption);
   }
 
+  for (const match of approvedNameMatches(tokens)) {
+    match.indexes.forEach((index) => declaredCoveredTokenIndexes.add(index));
+    vocabularyExemptions.push({ surface: match.surface, kind: 'approved_name', category: 'person' });
+  }
+
   tokens.forEach((token, index) => {
     if (!isContentToken(token)) return;
     if (coveredTokenIndexes.has(index)) return;
@@ -381,7 +506,13 @@ function auditConversation(
       vocabularyExemptions.push({ surface: token.surface_form, kind: 'language_policy' });
       return;
     }
-    const word = auditWordForToken(token);
+    const auditedWord = auditWordForToken(token);
+    if (!isLearnerVisibleVocabularyCandidate(auditedWord)) return;
+    const exactCanonical = knownCanonicalByForm.get(normalizeForm(auditedWord));
+    const readingCanonical = isKanaForm(auditedWord)
+      ? forms.map((form) => knownCanonicalByForm.get(normalizeForm(form))).find(Boolean)
+      : undefined;
+    const word = exactCanonical ?? readingCanonical ?? auditedWord;
     outOfVocabularyOccurrences.set(word, (outOfVocabularyOccurrences.get(word) ?? 0) + 1);
   });
 
@@ -390,10 +521,16 @@ function auditConversation(
   const currentSetUniqueWords = uniqueSorted([...usedWords].filter((word) => currentSetWords.has(word)));
   const allowedVocabUniqueWords = uniqueSorted([...usedWords].filter((word) => allowedWords.includes(word)));
   const outOfVocabularyUniqueWords = uniqueSorted(outOfVocabularyOccurrences.keys());
+  const vocabularyReferences = resolveVocabularyReferences(
+    outOfVocabularyUniqueWords,
+    setNumber,
+    knownVocabulary
+  ).references;
 
   const audit: CachedConversationAudit = {
     vocabularyUsed: uniqueSorted(usedWords),
     outOfVocabularyAudit: outOfVocabularyUniqueWords,
+    vocabularyReferences,
     evidence: {
       evidenceVersion: CURATION_EVIDENCE_VERSION,
       setNumber,
@@ -422,6 +559,7 @@ function auditConversation(
       ...conversation,
       vocabularyUsed: audit.vocabularyUsed,
       outOfVocabularyAudit: audit.outOfVocabularyAudit,
+      vocabularyReferences: audit.vocabularyReferences,
       simplerReplacementSuggestions: []
     },
     evidence: audit.evidence
@@ -436,14 +574,17 @@ export async function analyzeConversationsWithVocabulary(
 ): Promise<ConversationVocabularyAnalysis> {
   const tokenizer = await getTokenizer();
   const vocabularyKey = vocabularyContentKey(allowedVocabulary, knownVocabulary);
-  const { patterns, allowedForms, knownVocabularyWords } = getVocabularyArtifacts(tokenizer, allowedVocabulary, knownVocabulary, vocabularyKey);
-  const auditCachePrefix = `${CURATION_EVIDENCE_VERSION}:${setNumber}:${vocabularyKey}:`;
+  const { patterns, affixPatterns, allowedForms, knownVocabularyWords, knownCanonicalByForm } = getVocabularyArtifacts(tokenizer, allowedVocabulary, knownVocabulary, vocabularyKey);
+  const auditCachePrefix = `${CURATION_EVIDENCE_VERSION}:${VOCABULARY_REFERENCE_RESOLVER_VERSION}:${setNumber}:${vocabularyKey}:`;
   const results = conversations.map((conversation) => auditConversation(
     tokenizer,
     patterns,
+    affixPatterns,
     allowedForms,
     knownVocabularyWords,
+    knownCanonicalByForm,
     allowedVocabulary,
+    knownVocabulary,
     setNumber,
     conversation,
     auditCachePrefix
@@ -457,8 +598,9 @@ export async function analyzeConversationsWithVocabulary(
 
 export async function auditConversationsWithVocabulary(
   allowedVocabulary: VocabItem[],
-  conversations: PracticeConversation[]
+  conversations: PracticeConversation[],
+  knownVocabulary: VocabItem[] = allowedVocabulary
 ): Promise<PracticeConversation[]> {
   const setNumber = Math.max(0, ...allowedVocabulary.map((item) => item.set));
-  return (await analyzeConversationsWithVocabulary(setNumber, allowedVocabulary, conversations)).conversations;
+  return (await analyzeConversationsWithVocabulary(setNumber, allowedVocabulary, conversations, knownVocabulary)).conversations;
 }

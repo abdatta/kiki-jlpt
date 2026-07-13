@@ -6,6 +6,28 @@ Defines how the studio validates, generates, audits, edits, voices, and manages 
 
 ## Requirements
 
+### Requirement: Provider-grouped model selection
+Studio text-model pickers SHALL present model options grouped under provider headings, ordered Gemini, GPT, Claude, with each option listed inside its provider's group. A historical run whose model is absent from the current option list SHALL remain selectable inside its provider's group.
+
+#### Scenario: Grouped picker rendering
+- **WHEN** the operator opens a text-model picker
+- **THEN** options appear under Gemini, GPT, and Claude group headings in that order
+
+#### Scenario: Historical model stays selectable
+- **WHEN** the operator views a run generated with a model no longer offered
+- **THEN** that model appears selectable within its provider's group
+
+### Requirement: Resolved model version provenance
+When a provider reports the exact model version that served a generation, the generation exchange SHALL record that resolved version, and the run's stored model information SHALL be stamped with the resolved version from its first successful generation exchange. Surfaces that display a run's or exchange's model identity SHALL show the resolved version when present, and MAY present it in a shortened human-readable form (model family and version, date suffix omitted) provided the exact identifier remains inspectable in the exchange statistics.
+
+#### Scenario: Run stamped with resolved version
+- **WHEN** a run is generated with a model alias and the provider reports the exact serving model version
+- **THEN** the persisted run's model information includes the resolved version alongside the alias-based selection
+
+#### Scenario: Audit shows the per-call version
+- **WHEN** the operator inspects a generation exchange whose provider reported a resolved model version
+- **THEN** the audit surface displays that resolved version
+
 ### Requirement: Validated generation requests
 The studio SHALL require a positive vocabulary set containing vocabulary, a resolvable text model, and an integer conversation count within the supported mode's range before generation. Standard generation SHALL accept 4 through 30 conversations; workflow generation SHALL accept 6 through 30 total conversations. Generated conversation vocabulary SHALL be constrained and audited against the vocabulary allowed through the selected set.
 
@@ -215,19 +237,31 @@ The studio SHALL instruct standard and complementary conversation-generation mod
 - **AND** states that those references are audit exemptions rather than learned vocabulary coverage
 
 ### Requirement: Deterministic conversation curation evidence
-The studio SHALL calculate authoritative per-conversation curation evidence from the conversation text, vocabulary source, shared language policy, and generated metadata. The evidence SHALL report unique current-set vocabulary, unique cumulative allowed vocabulary, true out-of-allowed content words and occurrences, and any non-vocabulary exemptions that explain why a token was not counted as true OOV. Unique vocabulary SHALL be deduplicated by canonical Japanese spelling. Out-of-vocabulary evidence SHALL exclude shared prompt-permitted grammar and function expressions, valid conjugations, tokenizer-recognized proper nouns and fillers, approved generated names, validated approved-name surfaces with honorific suffixes, and declared proper nouns or cultural references that pass audit guardrails. Model-declared proper nouns and cultural references SHALL be treated as helper metadata only and MUST NOT count as vocabulary coverage.
+The studio SHALL calculate authoritative per-conversation curation evidence from the conversation text, vocabulary source, shared language policy, reviewed morphology policy, and generated metadata. The evidence SHALL report unique current-set vocabulary, unique cumulative allowed vocabulary, true out-of-allowed content words and occurrences, and any non-vocabulary exemptions that explain why a token was not counted as true OOV. Unique vocabulary SHALL be deduplicated by canonical Japanese spelling. Out-of-vocabulary evidence SHALL exclude shared prompt-permitted grammar and function expressions, valid conjugations, reviewed lexical allomorphs, reviewed compositional morphology, tokenizer-recognized proper nouns and fillers, invalid non-lexical tokenizer fragments, approved generated names, validated approved-name surfaces with honorific suffixes, and declared proper nouns or cultural references that pass audit guardrails. Model-declared proper nouns and cultural references SHALL be treated as helper metadata only and MUST NOT count as vocabulary coverage. After each final audit produced by generation, quality repair, editing, or reanalysis, the studio SHALL enrich true OOV terms from deterministic vocabulary sources and persist complete future-set or external conversation references; generation-model self-reporting MUST NOT replace this enrichment.
 
 #### Scenario: Inspect an analyzed conversation
 - **WHEN** an operator reviews a generated, recommended, or curated conversation
-- **THEN** the studio exposes its current-set unique count and words, cumulative allowed unique count and words, true out-of-allowed content evidence, and validated exemption evidence
+- **THEN** the studio exposes its current-set unique count and words, cumulative allowed unique count and words, true out-of-allowed content evidence, validated exemption evidence, and resolved learner-facing references
 
 #### Scenario: Distinguish current and earlier sets
 - **WHEN** a Set 2 conversation uses words from Sets 1 and 2
 - **THEN** its current-set evidence counts only unique Set 2 spellings while its cumulative evidence counts unique allowed spellings from both sets
 
 #### Scenario: Audit permitted language
-- **WHEN** a conversation contains a permitted grammar expression, valid conjugation, filler, or approved proper name that is not a vocabulary-table entry
+- **WHEN** a conversation contains a permitted grammar expression, valid conjugation, reviewed equivalent or composition, filler, or approved proper name that is not a literal vocabulary-table entry
 - **THEN** the system does not count that permitted content as true out-of-allowed content
+
+#### Scenario: Reject non-lexical tokenizer output
+- **WHEN** tokenization produces punctuation-like debris from otherwise permitted filler text
+- **THEN** the system excludes it from true OOV evidence and aggregate totals
+
+#### Scenario: Audit a productive vocabulary pattern
+- **WHEN** an allowed vocabulary entry contains a `～` prefix or suffix marker and a conversation uses a matching compound in one or multiple tokenizer tokens
+- **THEN** the system credits the pattern entry and does not count the matching compound as true out-of-allowed content
+
+#### Scenario: Audit an approved name split by the tokenizer
+- **WHEN** an approved name surface spans multiple tokenizer tokens
+- **THEN** the system exempts the complete name span and does not report its token fragments as true out-of-allowed content
 
 #### Scenario: Audit approved name with honorific suffix
 - **WHEN** a conversation contains an approved generated name with a permitted honorific suffix such as `さん`
@@ -247,9 +281,13 @@ The studio SHALL calculate authoritative per-conversation curation evidence from
 - **WHEN** a generation response declares an ordinary content word as a proper noun or cultural reference but the audit guardrails reject that declaration
 - **THEN** the system counts the word according to deterministic audit rules and does not let the declaration suppress true out-of-allowed content evidence
 
+#### Scenario: Enrich after final audit
+- **WHEN** generation, quality repair, editing, or reanalysis produces a final true OOV list
+- **THEN** the studio resolves and persists future-set and external references from deterministic vocabulary sources after the transcript is final
+
 #### Scenario: Refresh evidence after content or policy changes
 - **WHEN** a conversation is edited or an operator reanalyzes a saved run or curated set
-- **THEN** the studio recalculates curation evidence using the current vocabulary, shared language policy, and validated metadata
+- **THEN** the studio recalculates curation evidence and vocabulary references using the current vocabulary, shared language policy, reviewed morphology policy, validated metadata, and reviewed supplemental catalog
 
 #### Scenario: Supply evidence to a model
 - **WHEN** deterministic evidence is included in a generation audit, repair request, or AI curation request

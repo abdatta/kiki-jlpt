@@ -1,7 +1,7 @@
 import type { StaticLibraryManifest } from './types.ts';
 
 export const emptyLibrary: StaticLibraryManifest = {
-  version: 2,
+  version: 3,
   generatedAt: '',
   conversations: []
 };
@@ -23,7 +23,8 @@ export async function loadLibrary(): Promise<StaticLibraryManifest> {
     conversations: Array.isArray(payload.conversations)
       ? payload.conversations.map((conversation) => ({
         ...conversation,
-        vocabularyUsed: Array.isArray(conversation.vocabularyUsed) ? conversation.vocabularyUsed : []
+        vocabularyUsed: Array.isArray(conversation.vocabularyUsed) ? conversation.vocabularyUsed : [],
+        vocabularyReferences: Array.isArray(conversation.vocabularyReferences) ? conversation.vocabularyReferences : []
       }))
       : []
   };

@@ -89,6 +89,66 @@ test('audit exempts approved kana names with honorific suffixes', async () => {
   assert.ok(evidence.vocabularyExemptions?.some((item) => item.surface === 'けんさん' && item.kind === 'approved_name'));
 });
 
+test('audit exempts approved names that Kuromoji splits across tokens', async () => {
+  const vocabulary = [vocab(1, '窓', 'まど'), vocab(1, '開ける', 'あける')];
+  const source = conversation('けんたさん、この窓を開けてください。');
+
+  const analysis = await analyzeConversationsWithVocabulary(1, vocabulary, [source]);
+  const evidence = analysis.evidenceByConversationId[source.id];
+
+  assert.ok(!analysis.conversations[0].outOfVocabularyAudit.includes('たす'));
+  assert.ok(!analysis.conversations[0].outOfVocabularyAudit.includes('ける'));
+  assert.ok(evidence.vocabularyExemptions?.some((item) => item.surface === 'けんたさん' && item.kind === 'approved_name'));
+});
+
+test('audit canonicalizes kana OOV forms to known vocabulary spelling', async () => {
+  const allowedVocabulary = [vocab(1, '本', 'ほん')];
+  const knownVocabulary = [...allowedVocabulary, vocab(8, '分かる', 'わかる')];
+  const source = conversation('わかります。');
+
+  const analysis = await analyzeConversationsWithVocabulary(1, allowedVocabulary, [source], knownVocabulary);
+
+  assert.deepEqual(analysis.conversations[0].outOfVocabularyAudit, ['分かる']);
+});
+
+test('audit prefers exact Japanese forms over homophonous reading aliases', async () => {
+  const allowedVocabulary = [vocab(1, '本', 'ほん')];
+  const knownVocabulary = [
+    ...allowedVocabulary,
+    vocab(6, '重い', 'おもい'),
+    vocab(8, '思う', 'おもう')
+  ];
+  const source = conversation('そう思います。');
+
+  const analysis = await analyzeConversationsWithVocabulary(1, allowedVocabulary, [source], knownVocabulary);
+
+  assert.ok(analysis.conversations[0].outOfVocabularyAudit.includes('思う'));
+  assert.ok(!analysis.conversations[0].outOfVocabularyAudit.includes('重い'));
+});
+
+test('audit does not canonicalize an unknown kanji word through a homophonous reading', async () => {
+  const allowedVocabulary = [vocab(1, '本', 'ほん')];
+  const knownVocabulary = [...allowedVocabulary, vocab(6, '重い', 'おもい')];
+  const source = conversation('そう思います。');
+
+  const analysis = await analyzeConversationsWithVocabulary(1, allowedVocabulary, [source], knownVocabulary);
+
+  assert.ok(analysis.conversations[0].outOfVocabularyAudit.includes('思う'));
+  assert.ok(!analysis.conversations[0].outOfVocabularyAudit.includes('重い'));
+});
+
+test('audit matches productive tilde vocabulary inside single and split tokens', async () => {
+  const vocabulary = [vocab(2, '～月', '～がつ'), vocab(2, '～冊', '～さつ')];
+  const source = conversation('三月に本を五冊読みます。');
+
+  const analysis = await analyzeConversationsWithVocabulary(2, vocabulary, [source]);
+  const evidence = analysis.evidenceByConversationId[source.id];
+
+  assert.ok(evidence.allowedVocabUniqueWords.includes('～月'));
+  assert.ok(evidence.allowedVocabUniqueWords.includes('～冊'));
+  assert.ok(!analysis.conversations[0].outOfVocabularyAudit.includes('三月'));
+});
+
 test('audit accepts declared cultural references without vocabulary coverage credit', async () => {
   const vocabulary = [vocab(3, '学校', 'がっこう')];
   const source = {
@@ -128,4 +188,46 @@ test('audit rejects ordinary content declarations and keeps later-set words OOV'
 
   assert.deepEqual(analysis.conversations[0].outOfVocabularyAudit, ['難しい']);
   assert.ok(evidence.rejectedVocabularyDeclarations?.some((item) => item.surface === '難しい'));
+});
+
+test('audit credits reviewed good allomorphs and inflections to allowed いい', async () => {
+  const source = conversation('これはよいです。昨日もよかったです。');
+  const analysis = await analyzeConversationsWithVocabulary(1, [vocab(1, 'いい', 'いい')], [source]);
+
+  assert.ok(!analysis.conversations[0].outOfVocabularyAudit.includes('よい'));
+  assert.deepEqual(analysis.conversations[0].vocabularyUsed, ['いい']);
+});
+
+test('audit credits complete polite kinship spans to allowed base words', async () => {
+  const allowed = [vocab(1, '兄', 'あに'), vocab(1, '姉', 'あね')];
+  const source = conversation('お兄さんとお姉さんは学生です。');
+  const analysis = await analyzeConversationsWithVocabulary(1, allowed, [source]);
+
+  assert.ok(!analysis.conversations[0].outOfVocabularyAudit.includes('兄さん'));
+  assert.ok(!analysis.conversations[0].outOfVocabularyAudit.includes('姉さん'));
+  assert.deepEqual(analysis.conversations[0].vocabularyUsed, ['兄', '姉'].sort((a, b) => a.localeCompare(b, 'ja')));
+});
+
+test('audit credits reviewed 本当に composition only when 本当 is allowed', async () => {
+  const source = conversation('本当にいいです。');
+  const allowedAnalysis = await analyzeConversationsWithVocabulary(3, [vocab(3, '本当', 'ほんとう'), vocab(1, 'いい', 'いい')], [source]);
+  const disallowedAnalysis = await analyzeConversationsWithVocabulary(1, [vocab(1, 'いい', 'いい')], [source], [vocab(1, 'いい', 'いい'), vocab(3, '本当', 'ほんとう')]);
+
+  assert.ok(!allowedAnalysis.conversations[0].outOfVocabularyAudit.includes('本当に'));
+  assert.ok(disallowedAnalysis.conversations[0].outOfVocabularyAudit.includes('本当に'));
+});
+
+test('audit discards standalone prolonged-sound debris from a filler', async () => {
+  const analysis = await analyzeConversationsWithVocabulary(1, [], [conversation('んー。')]);
+  assert.deepEqual(analysis.conversations[0].outOfVocabularyAudit, []);
+  assert.equal(analysis.evidenceByConversationId['conversation-1'].outOfVocabularyOccurrenceCount, 0);
+});
+
+test('audit preserves distinct nouns, counters, and compounds without reviewed equivalence', async () => {
+  const allowed = [vocab(2, '話す', 'はなす'), vocab(2, '遊ぶ', 'あそぶ'), vocab(1, '二', 'に'), vocab(1, '食べる', 'たべる'), vocab(1, '飲む', 'のむ')];
+  const known = [...allowed, vocab(8, '話', 'はなし'), vocab(8, '二つ', 'ふたつ'), vocab(4, '食べ物', 'たべもの'), vocab(4, '飲み物', 'のみもの')];
+  const analysis = await analyzeConversationsWithVocabulary(2, allowed, [conversation('話と遊びと二つの食べ物と飲み物です。')], known);
+  const oov = analysis.conversations[0].outOfVocabularyAudit;
+
+  for (const word of ['話', '遊び', '二つ', '食べ物', '飲み物']) assert.ok(oov.includes(word), `${word} should remain OOV`);
 });
