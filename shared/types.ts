@@ -36,6 +36,8 @@ export interface LlmExchange {
   provider: TextModelProvider;
   model: string;
   label: string;
+  /** The purpose this call served in a generation or historical-labeling flow. */
+  role?: 'generator' | 'judge';
   resolvedModel?: string;
   instructions?: string;
   prompt: string;
@@ -139,8 +141,17 @@ export interface PracticeConversation {
   outOfVocabularyAudit: string[];
   vocabularyReferences?: ConversationVocabularyReference[];
   simplerReplacementSuggestions: string[];
-  quality?: 'good' | 'okay';
-  qualityDecision?: 'pass' | 'repair';
+  quality?: 'good' | 'okay' | 'bad';
+  qualityDecision?: 'pass' | 'repair' | 'regenerate';
+  /** Additive provenance for label-only historical quality evaluation. */
+  qualityReview?: {
+    verdict: ConversationQualityVerdictValue;
+    rationale: string;
+    flags: string[];
+    judgeModel: TextModelInfo;
+    rubricVersion: string;
+    reviewedAt: string;
+  };
   pickerSelected?: QualityVersionSource;
   pickerConfidence?: PickerConfidence;
   qualityFlags?: string[];
@@ -199,7 +210,7 @@ export interface ConversationPickOutcome {
 export interface QualityControlFailure {
   stage: 'initial' | 'balance';
   pass: 1 | 2;
-  callKind: 'triage' | 'repair-candidate' | 'pick' | 'reroll';
+  callKind: 'triage' | 'repair-candidate' | 'pick' | 'reroll' | 'final-label';
   candidateIndex?: 1 | 2;
   error: string;
   fallback: string;
@@ -531,6 +542,8 @@ export interface PracticeRun {
   conversationCount: number;
   allowedVocabCount: number;
   textModel: TextModelInfo;
+  /** Quality model selected for this run; absent on legacy runs. */
+  judgeModel?: TextModelInfo;
   analytics: RunAnalytics;
   status: 'generated' | 'partial_audio' | 'complete';
   llmExchanges?: LlmExchange[];
@@ -545,6 +558,7 @@ export interface GenerateRequest {
   setNumber: number;
   conversationCount: number;
   textModelId?: string;
+  judgeModelId?: string;
   idempotencyKey?: string;
 }
 
@@ -555,6 +569,7 @@ export interface RunAudioGenerateRequest {
 
 export interface LibraryComplementGenerateRequest {
   textModelId?: string;
+  judgeModelId?: string;
   balanceMode?: 'stats' | 'ai';
   conversationCount?: number;
   idempotencyKey?: string;
@@ -577,6 +592,7 @@ export type WorkflowAuditCallKind =
   | 'dominance-gates'
   | 'pick'
   | 'reroll'
+  | 'final-label'
   | 'final-audit'
   | 'audio';
 export type WorkflowNodeKind = 'generator' | 'balancer' | WorkflowAuditCallKind;
@@ -700,6 +716,7 @@ export type StudioJobKind =
   | 'audio-single'
   | 'audio-batch'
   | 'add-all-audio'
+  | 'historical-quality-labeling'
   | 'audio-child';
 
 export type StudioJobStatus =

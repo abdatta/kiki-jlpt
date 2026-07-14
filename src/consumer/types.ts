@@ -70,6 +70,7 @@ export interface StaticLibraryConversation {
   answerKey: string[];
   vocabularyUsed: string[];
   vocabularyReferences?: ConversationVocabularyReference[];
+  quality?: 'good' | 'okay' | 'bad';
   createdAt?: string;
 }
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { AiCurationRecommendation, AiCurationReviewReconciliation, ConversationCurationEvidence, CuratedConversation, CuratedSet, FinalTextAuditReport, PracticeConversation, StudioJob, WorkflowJob } from '../shared/types.ts';
-import { cleanShellModelLabel, formatClaudeModelVersion, formatCodexModelName, formatGeminiModelName, formatResolvedModel, libraryCountsBySourceRun, parseStudioRoute, RunLibraryBadge, snakeCellPlacement, snakeColumnCount, TextModelOptionGroups, WorkflowAuditFlow } from './App.tsx';
+import { cleanShellModelLabel, conversationQualityCounts, formatClaudeModelVersion, formatCodexModelName, formatGeminiModelName, formatResolvedModel, libraryCountsBySourceRun, parseStudioRoute, RunLibraryBadge, snakeCellPlacement, snakeColumnCount, TextModelOptionGroups, WorkflowAuditFlow } from './App.tsx';
 import { AddAllProgressModal } from './components/AddAllProgressModal.tsx';
 import { AiCurationReconciliationPanel } from './components/AiCurationReconciliationPanel.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
@@ -48,6 +48,15 @@ const conversation: PracticeConversation = {
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z'
 };
+
+test('Studio quality counts keep unlabeled legacy conversations out of the split', () => {
+  assert.deepEqual(conversationQualityCounts([
+    { quality: 'good' },
+    { quality: 'good' },
+    { quality: 'bad' },
+    {}
+  ]), { good: 2, okay: 0, bad: 1 });
+});
 
 test('Studio evidence summary renders current, cumulative, and OOV measurements', () => {
   const html = renderToStaticMarkup(<CurationEvidencePanel evidence={evidence} />);

@@ -37,6 +37,19 @@ async function saveCuratedSet(set: CuratedSet): Promise<CuratedSet> {
   return set;
 }
 
+/** Applies an additive metadata-only update without rebuilding publication assets. */
+export async function updateCuratedSet(
+  setNumber: number,
+  updater: (set: CuratedSet) => CuratedSet | Promise<CuratedSet>
+): Promise<CuratedSet> {
+  // Read the persisted order directly: historical labeling is metadata-only
+  // and must not inherit the presentation-time sorting used by readCuratedSet.
+  const raw = await readFile(curatedSetPath(setNumber), 'utf8');
+  const existing = JSON.parse(raw.replace(/^\uFEFF/, '')) as CuratedSet;
+  const updated = await updater(existing);
+  return saveCuratedSet({ ...updated, updatedAt: nowIso() });
+}
+
 export async function readCuratedSet(setNumber: number): Promise<CuratedSet> {
   const allowedVocabulary = await getAllowedVocabulary(setNumber);
   try {

@@ -367,6 +367,25 @@
   color: var(--muted);
 }
 
+.conversationQualityBadge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1.25;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.conversationQualityBadge.good { color: var(--success-text); background: var(--success-bg); }
+.conversationQualityBadge.okay { color: #8a5a06; background: #fff8ec; }
+.conversationQualityBadge.bad { color: var(--danger-text); background: var(--danger-bg); }
+
+.practiceShell[data-theme$="dark"] .conversationQualityBadge.okay { color: #f1c976; background: #3e3115; }
+
 .practiceBrand p {
   margin: 4px 0 0;
   font-size: 13px;
@@ -1142,6 +1161,8 @@
   gap: 8px;
 }
 
+.starredConversationItem .conversationQualityBadge { margin-left: 4px; }
+
 .starredConversationItem .conversationItemStar {
   color: var(--accent-text);
 }
@@ -1167,7 +1188,7 @@
   color: var(--accent-text);
 }
 
-.starredConversationItem span {
+.starredConversationItem > span:not(.conversationItemMeta) {
   min-width: 0;
   display: grid;
   gap: 5px;

@@ -124,6 +124,7 @@
         "有る"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-05-25T22:08:27.427Z"
     },
     {
@@ -255,6 +256,7 @@
         "隣"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-05-25T21:44:24.752Z"
     },
     {
@@ -373,6 +375,7 @@
         "六"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-05-25T21:44:22.597Z"
     },
     {
@@ -6593,6 +6596,7 @@
           "category": "Weather/Nature/Health"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-26T02:22:05.066Z"
     },
     {
@@ -6730,6 +6734,7 @@
         "有る"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-06-26T02:22:09.497Z"
     },
     {
@@ -6873,6 +6878,7 @@
           "category": "Weather/Nature/Health"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-26T02:22:12.237Z"
     },
     {
@@ -7006,6 +7012,7 @@
         "隣"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-06-26T02:22:15.369Z"
     },
     {
@@ -7148,6 +7155,7 @@
           "category": "Misc/Bridge"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-26T02:22:17.697Z"
     },
     {
@@ -7313,6 +7321,7 @@
           "category": "description"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-26T02:22:21.411Z"
     },
     {
@@ -7447,6 +7456,7 @@
         "二"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-06-26T02:22:23.849Z"
     },
     {
@@ -7586,6 +7596,7 @@
         "有る"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-06-26T02:22:27.435Z"
     },
     {
@@ -7729,6 +7740,7 @@
           "category": "Adjectives/Adverbs/Abstract"
         }
       ],
+      "quality": "okay",
       "createdAt": "2026-06-26T02:22:31.098Z"
     },
     {
@@ -7896,6 +7908,7 @@
           "category": "Misc/Bridge"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-26T02:22:34.804Z"
     },
     {
@@ -8049,6 +8062,7 @@
         "話す"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-06-26T02:22:37.596Z"
     },
     {
@@ -8180,6 +8194,7 @@
         "有る"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-06-26T02:22:41.502Z"
     },
     {
@@ -8333,6 +8348,7 @@
           "category": "action"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-27T19:00:17.109Z"
     },
     {
@@ -8494,6 +8510,7 @@
           "category": "Misc/Bridge"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-27T19:00:20.443Z"
     },
     {
@@ -8630,6 +8647,7 @@
         "隣"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-06-27T19:00:23.621Z"
     },
     {
@@ -8777,6 +8795,7 @@
           "category": "Misc/Bridge"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-27T19:00:27.822Z"
     },
     {
@@ -8905,6 +8924,7 @@
         "遊ぶ"
       ],
       "vocabularyReferences": [],
+      "quality": "okay",
       "createdAt": "2026-06-27T19:00:30.468Z"
     },
     {
@@ -9035,6 +9055,7 @@
           "category": "Adjectives/Adverbs/Abstract"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-27T19:00:34.320Z"
     },
     {
@@ -9156,6 +9177,7 @@
         "有る"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-06-27T19:00:37.106Z"
     },
     {
@@ -9277,6 +9299,7 @@
         "部屋"
       ],
       "vocabularyReferences": [],
+      "quality": "okay",
       "createdAt": "2026-06-27T19:00:41.201Z"
     },
     {
@@ -9401,6 +9424,7 @@
         "遊ぶ"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-06-27T19:00:44.986Z"
     },
     {
@@ -9524,6 +9548,7 @@
         "母"
       ],
       "vocabularyReferences": [],
+      "quality": "okay",
       "createdAt": "2026-06-27T19:00:48.545Z"
     },
     {
@@ -9673,6 +9698,7 @@
           "category": "condition"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-27T19:00:52.595Z"
     },
     {
@@ -9800,6 +9826,7 @@
           "category": "Core Verbs/Actions"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-27T19:00:56.394Z"
     },
     {
@@ -9929,6 +9956,7 @@
           "category": "time"
         }
       ],
+      "quality": "okay",
       "createdAt": "2026-06-27T19:00:59.478Z"
     },
     {
@@ -10075,6 +10103,7 @@
           "category": "activity"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-27T19:01:03.926Z"
     },
     {
@@ -10206,6 +10235,7 @@
           "category": "Misc/Bridge"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-06-27T19:01:07.282Z"
     },
     {
@@ -10324,6 +10354,7 @@
         "有る"
       ],
       "vocabularyReferences": [],
+      "quality": "okay",
       "createdAt": "2026-07-07T01:09:31.896Z"
     },
     {
@@ -10444,6 +10475,7 @@
         "来る"
       ],
       "vocabularyReferences": [],
+      "quality": "okay",
       "createdAt": "2026-07-07T01:09:32.778Z"
     },
     {
@@ -10561,6 +10593,7 @@
         "隣"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-07T01:09:34.275Z"
     },
     {
@@ -10707,6 +10740,7 @@
           "category": "Adjectives/Adverbs/Abstract"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-07-07T01:09:35.230Z"
     },
     {
@@ -10828,6 +10862,7 @@
         "隣"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-07T01:09:36.659Z"
     },
     {
@@ -10947,6 +10982,7 @@
         "来る"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-07T01:09:38.039Z"
     },
     {
@@ -11069,6 +11105,7 @@
         "来る"
       ],
       "vocabularyReferences": [],
+      "quality": "okay",
       "createdAt": "2026-07-07T01:09:38.600Z"
     },
     {
@@ -11218,6 +11255,7 @@
         "来る"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-07T01:09:39.098Z"
     },
     {
@@ -11377,6 +11415,7 @@
           "category": "Greetings/Responses"
         }
       ],
+      "quality": "good",
       "createdAt": "2026-07-07T01:09:40.115Z"
     },
     {
@@ -11529,6 +11568,7 @@
         "毎晩"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-07T01:09:40.644Z"
     },
     {
@@ -11707,6 +11747,7 @@
         "六"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-13T03:24:22.010Z"
     },
     {
@@ -11888,6 +11929,7 @@
         "有る"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-13T03:24:25.519Z"
     },
     {
@@ -12079,6 +12121,7 @@
         "隣"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-13T03:24:29.021Z"
     },
     {
@@ -12270,6 +12313,7 @@
         "来る"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-13T03:24:35.962Z"
     },
     {
@@ -12457,6 +12501,7 @@
         "有る"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-13T03:24:39.514Z"
     },
     {
@@ -12644,6 +12689,7 @@
         "六"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-13T03:24:42.712Z"
     },
     {
@@ -12836,6 +12882,7 @@
         "話す"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-13T03:24:46.007Z"
     },
     {
@@ -13019,6 +13066,7 @@
         "冬"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-13T03:24:50.642Z"
     },
     {
@@ -13209,6 +13257,7 @@
         "来る"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-13T03:24:53.776Z"
     },
     {
@@ -13395,6 +13444,7 @@
         "話す"
       ],
       "vocabularyReferences": [],
+      "quality": "good",
       "createdAt": "2026-07-13T03:24:56.720Z"
     }
   ]

@@ -61,10 +61,15 @@ function generator(outputs: Array<unknown | Error>, calls: string[] = []): Quali
 
 test('triage rejects unknown IDs and applies deterministic-only fallback', async () => {
   const input = conversation('convo-01', 1);
+  let invocation = 0;
   const result = await runQualityControl({
     stage: 'initial', textModel: model, originalPrompt: 'Generate.', setNumber: 2, expectedCount: 1,
     allowedVocabulary: vocabulary, knownVocabulary: vocabulary, conversations: [input],
-    invoker: triage([{ conversationId: 'unknown', verdict: 'pass' }]),
+    invoker: async () => {
+      invocation += 1;
+      const conversationId = invocation === 1 ? 'unknown' : input.id;
+      return { parsed: { verdicts: [{ conversationId, verdict: 'pass', rationale: 'Reviewed.', flags: [] }] }, output: '{}' };
+    },
     conversationGenerator: generator([])
   });
   assert.equal(result.conversations[0].quality, 'good');
@@ -90,6 +95,22 @@ test('pass conversations keep their learning content and never enter repair', as
   assert.equal(events.filter((event) => event.pass === 2).every((event) => event.status === 'skipped'), true);
 });
 
+test('quality triage uses the distinct judge model while repairs remain generator-backed', async () => {
+  const input = conversation('convo-judge', 1);
+  const judge: TextModelInfo = { id: 'judge', provider: 'codex', model: 'gpt-5.6-sol', label: 'Judge' };
+  const seen: TextModelInfo[] = [];
+  await runQualityControl({
+    stage: 'initial', textModel: model, judgeModel: judge, originalPrompt: 'Generate.', setNumber: 2, expectedCount: 1,
+    allowedVocabulary: vocabulary, knownVocabulary: vocabulary, conversations: [input],
+    invoker: async (_prompt, selected) => {
+      seen.push(selected);
+      return { parsed: { verdicts: [{ conversationId: input.id, verdict: 'pass', rationale: 'Good.', flags: [] }] }, output: '{}' };
+    },
+    conversationGenerator: generator([])
+  });
+  assert.equal(seen[0].id, judge.id);
+});
+
 test('dominance gates eliminate OOV-worsening versions and select the clean candidate', async () => {
   const input = conversation('convo-01', 1, '\u6620\u753b\u3092\u898b\u307e\u3059\u3002');
   const result = await runQualityControl({
@@ -106,7 +127,7 @@ test('dominance gates eliminate OOV-worsening versions and select the clean cand
   assert.equal(result.conversations[0].outOfVocabularyAudit.length, 0);
 });
 
-test('picker is forced among admissible versions and its selected quality is persisted', async () => {
+test('picker is forced among admissible versions and the shared final label replaces picker quality', async () => {
   const input = conversation('convo-01', 1);
   const events: QualityNodeEvent[] = [];
   let invocation = 0;
@@ -118,6 +139,9 @@ test('picker is forced among admissible versions and its selected quality is per
         output: '{}'
       };
     }
+    if (prompt.includes('shared final quality label')) {
+      return { parsed: { verdicts: [{ conversationId: input.id, verdict: 'pass', rationale: 'Clear exchange.', flags: [] }] }, output: '{}' };
+    }
     return { parsed: { verdicts: [{ conversationId: input.id, verdict: 'repair', rationale: 'Awkward.', flags: ['awkward'] }] }, output: '{}' };
   };
   const result = await runQualityControl({
@@ -126,9 +150,11 @@ test('picker is forced among admissible versions and its selected quality is per
     conversationGenerator: generator([{ conversations: [rawConversation()] }, { conversations: [rawConversation()] }]),
     onNode: (event) => { events.push(event); }
   });
-  assert.equal(invocation, 2);
+  assert.equal(invocation, 3);
   assert.equal(result.stageAudit.picks[0].selected, 'candidate2');
-  assert.equal(result.conversations[0].quality, 'okay');
+  assert.equal(result.stageAudit.picks[0].selectedQuality, 'okay');
+  assert.equal(result.conversations[0].quality, 'good');
+  assert.equal(result.conversations[0].qualityReview?.rubricVersion, 'dialogue-quality-v6');
   assert.equal(result.conversations[0].pickerConfidence, 'medium');
   const selectedCandidate = events.find((event) => event.id === 'initial:repair-2' && event.status === 'done' && event.output?.factsByConversationId);
   assert.equal((selectedCandidate?.output?.factsByConversationId?.[input.id] as { selected?: boolean })?.selected, true);
@@ -148,7 +174,7 @@ test('repair and picker failures retain a deterministic admissible version', asy
     allowedVocabulary: vocabulary, knownVocabulary: vocabulary, conversations: [input], invoker,
     conversationGenerator: generator([new Error('candidate one failed'), { conversations: [rawConversation()] }])
   });
-  assert.equal(invocation, 2);
+  assert.equal(invocation, 3);
   assert.equal(result.conversations.length, 1);
   assert.equal(result.stageAudit.failures.some((failure) => failure.callKind === 'repair-candidate'), true);
   assert.equal(result.stageAudit.failures.some((failure) => failure.callKind === 'pick'), true);

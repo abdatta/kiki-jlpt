@@ -21,6 +21,7 @@ import {
   buildBalancedRepairPrompt,
   buildPickerPrompt,
   buildQualityTriagePrompt,
+  FINAL_DIALOGUE_QUALITY_RUBRIC_VERSION,
   type BalancedRepairFinding,
   type PickerPromptSet
 } from './prompt.ts';
@@ -57,7 +58,10 @@ export interface QualityNodeEvent {
 
 export interface RunQualityControlOptions {
   stage: 'initial' | 'balance';
+  /** Content-producing model used for repair and re-roll calls. */
   textModel: TextModelInfo;
+  /** Evaluation model used only for triage and version picking. */
+  judgeModel?: TextModelInfo;
   originalPrompt: string;
   setNumber: number;
   expectedCount: number;
@@ -123,6 +127,7 @@ function pendingExchange(textModel: TextModelInfo, prompt: string, kind: string,
     provider: textModel.provider,
     model: textModel.model,
     label: textModel.label,
+    role: kind === 'triage' || kind === 'pick' || kind === 'final-label' ? 'judge' : 'generator',
     instructions,
     prompt,
     requestedAt,
@@ -349,16 +354,17 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
     evidenceByConversationId: analysis.evidenceByConversationId,
     libraryContext: options.libraryContext
   });
-  const triageExchange = pendingExchange(options.textModel, triagePrompt, 'triage', QUALITY_REVIEW_INSTRUCTIONS, `-${pass}`);
+  const judgeModel = options.judgeModel ?? options.textModel;
+  const triageExchange = pendingExchange(judgeModel, triagePrompt, 'triage', QUALITY_REVIEW_INSTRUCTIONS, `-${pass}`);
   await publish(options, {
     id: nodeId(options.stage, pass, 'triage'), callKind: 'triage', pass, status: 'processing', title: 'Quality triage',
-    input: { prompt: triagePrompt, model: options.textModel }
+    input: { prompt: triagePrompt, model: judgeModel }
   });
   let verdicts: ConversationQualityVerdict[];
   let triageStatus: QualityNodeEvent['status'] = 'done';
   let triageError: string | undefined;
   try {
-    const result = await invoker(triagePrompt, options.textModel, QUALITY_REVIEW_INSTRUCTIONS);
+    const result = await invoker(triagePrompt, judgeModel, QUALITY_REVIEW_INSTRUCTIONS);
     verdicts = applyRepairUnion(validateVerdicts(result.parsed, auditedConversations), findings);
     exchanges.push(completedExchange(triageExchange, result, { qualityTriage: verdicts, qualityPass: pass }));
   } catch (error) {
@@ -500,10 +506,10 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
 
   if (ties.length) {
     const pickerPrompt = buildPickerPrompt(ties);
-    const pickerExchange = pendingExchange(options.textModel, pickerPrompt, 'pick', QUALITY_REVIEW_INSTRUCTIONS, `-${pass}`);
-    await publish(options, { id: nodeId(options.stage, pass, 'pick'), callKind: 'pick', pass, status: 'processing', title: 'Version pick', input: { prompt: pickerPrompt, model: options.textModel } });
+    const pickerExchange = pendingExchange(judgeModel, pickerPrompt, 'pick', QUALITY_REVIEW_INSTRUCTIONS, `-${pass}`);
+    await publish(options, { id: nodeId(options.stage, pass, 'pick'), callKind: 'pick', pass, status: 'processing', title: 'Version pick', input: { prompt: pickerPrompt, model: judgeModel } });
     try {
-      const result = await invoker(pickerPrompt, options.textModel, QUALITY_REVIEW_INSTRUCTIONS);
+      const result = await invoker(pickerPrompt, judgeModel, QUALITY_REVIEW_INSTRUCTIONS);
       const decisions = validatePicks(result.parsed, ties);
       const exchange = completedExchange(pickerExchange, result, { pickOutcomes: decisions, qualityPass: pass });
       exchanges.push(exchange);
@@ -688,6 +694,93 @@ export async function runQualityControl(options: RunQualityControlOptions): Prom
     await skipRerollQualitySteps('Skipped - no regenerate verdicts');
   }
 
+  if (accepted.length) {
+    const finalLabelPrompt = buildQualityTriagePrompt({
+      setNumber: options.setNumber,
+      conversations: accepted,
+      evidenceByConversationId: evidence,
+      reviewPurpose: 'historical-label'
+    });
+    const judgeModel = options.judgeModel ?? options.textModel;
+    const finalLabelExchange = pendingExchange(judgeModel, finalLabelPrompt, 'final-label', QUALITY_REVIEW_INSTRUCTIONS);
+    await publish(options, {
+      id: nodeId(options.stage, 1, 'final-label'),
+      callKind: 'final-label',
+      pass: 1,
+      status: 'processing',
+      title: 'Final dialogue labels',
+      input: { prompt: finalLabelPrompt, model: judgeModel }
+    });
+    try {
+      const result = await (options.invoker ?? invokeStructuredJson)(finalLabelPrompt, judgeModel, QUALITY_REVIEW_INSTRUCTIONS);
+      const finalVerdicts = validateVerdicts(result.parsed, accepted);
+      const finalVerdictById = new Map(finalVerdicts.map((verdict) => [verdict.conversationId, verdict]));
+      const reviewedAt = nowIso();
+      const resolved = asRecord(result.stats).resolvedModel ?? asRecord(result.stats).modelVersion;
+      const resolvedJudge = typeof resolved === 'string' && resolved ? { ...judgeModel, resolvedModel: resolved } : judgeModel;
+      accepted = accepted.map((conversation) => {
+        const verdict = finalVerdictById.get(conversation.id)!;
+        return {
+          ...conversation,
+          quality: verdict.verdict === 'pass' ? 'good' as const : verdict.verdict === 'repair' ? 'okay' as const : 'bad' as const,
+          qualityDecision: verdict.verdict,
+          qualityFlags: verdict.flags,
+          qualityReview: {
+            ...verdict,
+            judgeModel: resolvedJudge,
+            rubricVersion: FINAL_DIALOGUE_QUALITY_RUBRIC_VERSION,
+            reviewedAt
+          }
+        };
+      });
+      const finalLabelCounts = (value: ConversationQualityVerdict['verdict']) => finalVerdicts.filter((verdict) => verdict.verdict === value).length;
+      const exchange = completedExchange(finalLabelExchange, result, {
+        finalDialogueLabels: finalVerdicts,
+        rubricVersion: FINAL_DIALOGUE_QUALITY_RUBRIC_VERSION
+      });
+      exchanges.push(exchange);
+      await publish(options, {
+        id: nodeId(options.stage, 1, 'final-label'),
+        callKind: 'final-label',
+        pass: 1,
+        status: 'done',
+        title: 'Final dialogue labels',
+        output: {
+          summary: {
+            statLine: `${finalLabelCounts('pass')} good Â· ${finalLabelCounts('repair')} okay Â· ${finalLabelCounts('regenerate')} bad`,
+            conversationCount: accepted.length,
+            goodCount: finalLabelCounts('pass'),
+            okayCount: finalLabelCounts('repair')
+          },
+          exchange,
+          factsByConversationId: Object.fromEntries(finalVerdicts.map((verdict) => [verdict.conversationId, verdict])),
+          details: { verdicts: finalVerdicts, rubricVersion: FINAL_DIALOGUE_QUALITY_RUBRIC_VERSION }
+        }
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await publish(options, {
+        id: nodeId(options.stage, 1, 'final-label'),
+        callKind: 'final-label',
+        pass: 1,
+        status: 'error',
+        title: 'Final dialogue labels',
+        error: message,
+        output: { summary: { statLine: 'Final labeling failed Â· run not saved', conversationCount: accepted.length } }
+      });
+      throw new Error(`Final dialogue labeling failed: ${message}`, { cause: error });
+    }
+  } else {
+    await publish(options, {
+      id: nodeId(options.stage, 1, 'final-label'),
+      callKind: 'final-label',
+      pass: 1,
+      status: 'skipped',
+      title: 'Final dialogue labels',
+      output: { summary: { statLine: 'Skipped - no accepted conversations', conversationCount: 0 } }
+    });
+  }
+
   return {
     conversations: accepted,
     exchanges,
@@ -705,6 +798,62 @@ export async function runQualityControl(options: RunQualityControlOptions): Prom
       picks,
       failures
     }
+  };
+}
+
+export interface HistoricalQualityLabelOptions {
+  setNumber: number;
+  conversations: PracticeConversation[];
+  allowedVocabulary: VocabItem[];
+  knownVocabulary: VocabItem[];
+  judgeModel: TextModelInfo;
+  rubricVersion: string;
+  libraryContext?: AiCurationLibraryContext;
+  invoker?: StructuredJsonInvoker;
+}
+
+/**
+ * Verdict-only historical evaluation. Deliberately does not enter repair,
+ * candidate pick, or re-roll paths, so callers can safely enrich old content.
+ */
+export async function labelHistoricalConversations(options: HistoricalQualityLabelOptions): Promise<{
+  conversations: PracticeConversation[];
+  verdicts: ConversationQualityVerdict[];
+  evidenceByConversationId: ConversationCurationEvidenceMap;
+}> {
+  const analysis = await analyzeConversationsWithVocabulary(
+    options.setNumber,
+    options.allowedVocabulary,
+    options.conversations,
+    options.knownVocabulary
+  );
+  const prompt = buildQualityTriagePrompt({
+    setNumber: options.setNumber,
+    conversations: analysis.conversations,
+    evidenceByConversationId: analysis.evidenceByConversationId,
+    libraryContext: options.libraryContext,
+    reviewPurpose: 'historical-label'
+  });
+  const invoker = options.invoker ?? invokeStructuredJson;
+  const result = await invoker(prompt, options.judgeModel, QUALITY_REVIEW_INSTRUCTIONS);
+  const verdicts = validateVerdicts(result.parsed, analysis.conversations);
+  const byId = new Map(verdicts.map((verdict) => [verdict.conversationId, verdict]));
+  const reviewedAt = nowIso();
+  const resolved = asRecord(result.stats).resolvedModel ?? asRecord(result.stats).modelVersion;
+  const judgeModel = typeof resolved === 'string' && resolved ? { ...options.judgeModel, resolvedModel: resolved } : options.judgeModel;
+  return {
+    conversations: analysis.conversations.map((conversation) => {
+      const verdict = byId.get(conversation.id)!;
+      return {
+        ...conversation,
+        quality: verdict.verdict === 'pass' ? 'good' : verdict.verdict === 'repair' ? 'okay' : 'bad',
+        qualityDecision: verdict.verdict,
+        qualityFlags: verdict.flags,
+        qualityReview: { ...verdict, judgeModel, rubricVersion: options.rubricVersion, reviewedAt }
+      };
+    }),
+    verdicts,
+    evidenceByConversationId: analysis.evidenceByConversationId
   };
 }
 

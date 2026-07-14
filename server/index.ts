@@ -33,6 +33,8 @@ import {
   type QualityNodeEvent
 } from './qualityControl.ts';
 import { invokeStructuredJson, type StructuredJsonInvoker } from './structuredText.ts';
+import { labelHistoricalScope, type HistoricalQualityScope } from './historicalQuality.ts';
+import { readHistoricalQualityReviewIndex } from './qualityReviewIndex.ts';
 
 const app = express();
 const port = Number.parseInt(process.env.API_PORT || '8787', 10);
@@ -154,7 +156,7 @@ function validateSetNumber(value: unknown): { setNumber: number } | { error: str
 }
 
 async function getGenerateContext(body: GenerateRequest): Promise<
-  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string; qualityLibraryContext: AiCurationLibraryContext }
+  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; judgeModel: TextModelInfo; prompt: string; qualityLibraryContext: AiCurationLibraryContext }
   | { error: string; status: number }
 > {
   const validated = validateGenerateRequest(body);
@@ -166,14 +168,15 @@ async function getGenerateContext(body: GenerateRequest): Promise<
   }
 
   const textModel = await resolveTextModel(body.textModelId);
+  const judgeModel = await resolveTextModel(body.judgeModelId ?? 'codex:gpt-5.6-sol');
   const knownVocabulary = await readVocabulary();
   const prompt = await buildGenerationPrompt(validated.setNumber, validated.conversationCount, allowedVocabulary);
   const qualityLibraryContext = await getQualityLibraryContext(validated.setNumber);
-  return { ...validated, allowedVocabulary, knownVocabulary, textModel, prompt, qualityLibraryContext };
+  return { ...validated, allowedVocabulary, knownVocabulary, textModel, judgeModel, prompt, qualityLibraryContext };
 }
 
 async function getWorkflowGenerateContext(body: WorkflowGenerateRequest): Promise<
-  | { setNumber: number; conversationCount: number; balanceConversationCount: number; audioCount: number; audioMode: WorkflowAudioMode; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string; qualityLibraryContext: AiCurationLibraryContext }
+  | { setNumber: number; conversationCount: number; balanceConversationCount: number; audioCount: number; audioMode: WorkflowAudioMode; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; judgeModel: TextModelInfo; prompt: string; qualityLibraryContext: AiCurationLibraryContext }
   | { error: string; status: number }
 > {
   const validated = validateWorkflowGenerateRequest(body);
@@ -185,10 +188,11 @@ async function getWorkflowGenerateContext(body: WorkflowGenerateRequest): Promis
   }
 
   const textModel = await resolveTextModel(body.textModelId);
+  const judgeModel = await resolveTextModel(body.judgeModelId ?? 'codex:gpt-5.6-sol');
   const knownVocabulary = await readVocabulary();
   const prompt = await buildGenerationPrompt(validated.setNumber, validated.conversationCount, allowedVocabulary);
   const qualityLibraryContext = await getQualityLibraryContext(validated.setNumber);
-  return { ...validated, allowedVocabulary, knownVocabulary, textModel, prompt, qualityLibraryContext };
+  return { ...validated, allowedVocabulary, knownVocabulary, textModel, judgeModel, prompt, qualityLibraryContext };
 }
 
 async function getQualityLibraryContext(setNumber: number): Promise<AiCurationLibraryContext> {
@@ -216,7 +220,7 @@ async function getLibraryComplementContext(
   setNumberValue: unknown,
   body: LibraryComplementGenerateRequest | undefined
 ): Promise<
-  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; prompt: string; balance: Awaited<ReturnType<typeof buildLibraryBalancePlan>>; balanceMode: 'stats' | 'ai'; librarySnapshotContext?: AiCurationLibraryContext }
+  | { setNumber: number; conversationCount: number; allowedVocabulary: VocabItem[]; knownVocabulary: VocabItem[]; textModel: TextModelInfo; judgeModel: TextModelInfo; prompt: string; balance: Awaited<ReturnType<typeof buildLibraryBalancePlan>>; balanceMode: 'stats' | 'ai'; librarySnapshotContext?: AiCurationLibraryContext }
   | { error: string; status: number }
 > {
   const validated = validateSetNumber(setNumberValue);
@@ -229,6 +233,7 @@ async function getLibraryComplementContext(
 
   const balanceMode = body?.balanceMode === 'ai' ? 'ai' : 'stats';
   const textModel = await resolveTextModel(body?.textModelId);
+  const judgeModel = await resolveTextModel(body?.judgeModelId ?? 'codex:gpt-5.6-sol');
   const knownVocabulary = await readVocabulary();
   const planned = await buildLibraryBalancePlan(validated.setNumber);
 
@@ -252,6 +257,7 @@ async function getLibraryComplementContext(
       allowedVocabulary,
       knownVocabulary,
       textModel,
+      judgeModel,
       prompt: buildAiLibraryBalancePrompt(validated.setNumber, allowedVocabulary, balance, librarySnapshotContext),
       balance,
       balanceMode,
@@ -265,6 +271,7 @@ async function getLibraryComplementContext(
     allowedVocabulary,
     knownVocabulary,
     textModel,
+    judgeModel,
     prompt: buildLibraryComplementPrompt(validated.setNumber, allowedVocabulary, balance),
     balance,
     balanceMode,
@@ -288,6 +295,7 @@ function makeLlmExchange(
     provider: textModel.provider,
     model: textModel.model,
     label: textModel.label,
+    role: 'generator',
     instructions: conversationInstructionsFor(textModel.provider),
     prompt,
     requestedAt,
@@ -670,7 +678,8 @@ function makeWorkflowNodes(audioCount: number): WorkflowAuditNode[] {
       { id: `${stage}:pass2:repair-1`, kind: 'repair-candidate', pass: 2, title: 'Re-roll repair candidate 1', candidateIndex: 1 },
       { id: `${stage}:pass2:repair-2`, kind: 'repair-candidate', pass: 2, title: 'Re-roll repair candidate 2', candidateIndex: 2 },
       { id: `${stage}:pass2:dominance-gates`, kind: 'dominance-gates', pass: 2, title: 'Re-roll dominance gates' },
-      { id: `${stage}:pass2:pick`, kind: 'pick', pass: 2, title: 'Re-roll pick' }
+      { id: `${stage}:pass2:pick`, kind: 'pick', pass: 2, title: 'Re-roll pick' },
+      { id: `${stage}:final-label`, kind: 'final-label', pass: 1, title: 'Final dialogue labels' }
     ];
     return definitions.map((definition, index) => ({
       id: definition.id,
@@ -863,6 +872,7 @@ function publishWorkflowQualityNode(jobId: string, event: QualityNodeEvent): voi
     'dominance-gates': 5,
     pick: 6,
     reroll: 0,
+    'final-label': 14,
     'final-audit': 0,
     audio: 0
   };
@@ -1010,6 +1020,7 @@ async function generateTextBatch(
     stage?: 'initial' | 'balance';
     startNumber?: number;
     libraryContext?: AiCurationLibraryContext;
+    judgeModel?: TextModelInfo;
     onNode?: (event: QualityNodeEvent) => void | Promise<void>;
   } = {}
 ): Promise<{
@@ -1076,6 +1087,7 @@ async function generateTextBatch(
   const controlled = await runQualityControl({
     stage,
     textModel,
+    judgeModel: options.judgeModel,
     originalPrompt: prompt,
     setNumber,
     expectedCount,
@@ -1240,7 +1252,7 @@ async function generateWorkflowAudio(run: PracticeRun, audioCount: number, optio
   return { run: updatedRun, audioGeneratedCount, audioErrors };
 }
 
-const GENERATION_JOB_KINDS = ['run-generation', 'workflow-generation', 'library-complement'];
+const GENERATION_JOB_KINDS = ['run-generation', 'workflow-generation', 'library-complement', 'historical-quality-labeling'];
 
 /** Thrown by generationCheckpoint to unwind a runner whose job was paused or discarded. */
 class GenerationHalted extends Error {
@@ -1281,6 +1293,18 @@ async function runQueuedGenerationJob(jobId: string, runner: () => Promise<void>
   }
 }
 
+async function runHistoricalQualityLabelJob(jobId: string): Promise<void> {
+  const job = await readStudioJob(jobId);
+  const request = job.request as { scope: HistoricalQualityScope; judgeModelId: string; rejudge: boolean };
+  const judgeModel = await resolveTextModel(request.judgeModelId);
+  await updateStudioJob(jobId, (current) => ({ ...current, stageLabel: 'Judging historical conversations', stages: current.stages.map((stage) => ({ ...stage, status: 'running', startedAt: nowIso() })) }));
+  const result = await labelHistoricalScope({ scope: request.scope, judgeModel, rejudge: request.rejudge, onProgress: async (progress) => {
+    await updateStudioJob(jobId, (current) => ({ ...current, progress: { completed: progress.processed, total: progress.total, queued: progress.total - progress.processed - progress.skipped }, checkpoint: progress, stageLabel: `${progress.processed}/${progress.total} labeled` }));
+    await generationCheckpoint(jobId);
+  }});
+  await updateStudioJob(jobId, (current) => ({ ...current, status: 'succeeded', progress: { completed: result.processed, total: result.total }, checkpoint: result, stageLabel: `${result.processed} labeled · ${result.skipped} skipped`, completedAt: nowIso(), stages: current.stages.map((stage) => ({ ...stage, status: 'succeeded', completedAt: nowIso() })) }));
+}
+
 async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, resume = false): Promise<void> {
   try {
     const durableJob = await readStudioJob(jobId);
@@ -1302,6 +1326,7 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
         {
           stage: 'initial',
           libraryContext: context.qualityLibraryContext,
+          judgeModel: context.judgeModel,
           onNode: (event) => publishWorkflowQualityNode(jobId, event)
         }
       );
@@ -1340,6 +1365,7 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
           stage: 'balance',
           startNumber: primary.conversations.length + 1,
           libraryContext: context.qualityLibraryContext,
+          judgeModel: context.judgeModel,
           onNode: (event) => publishWorkflowQualityNode(jobId, event)
         }
       );
@@ -1408,6 +1434,10 @@ async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, r
         ...(primary.exchanges ?? [primary.exchange]),
         ...(complement.exchanges ?? [complement.exchange])
       ]),
+      judgeModel: stampResolvedTextModel(context.judgeModel, [
+        ...(primary.exchanges ?? [primary.exchange]),
+        ...(complement.exchanges ?? [complement.exchange])
+      ].filter((exchange) => exchange.role === 'judge')),
       analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
       status: 'generated',
       finalTextAudit,
@@ -1568,7 +1598,7 @@ async function runStandardGenerationJob(jobId: string): Promise<void> {
       context.knownVocabulary,
       context.setNumber,
       context.conversationCount,
-      { stage: 'initial', libraryContext: context.qualityLibraryContext }
+      { stage: 'initial', libraryContext: context.qualityLibraryContext, judgeModel: context.judgeModel }
     );
     if (!generated.conversations.length) throw new Error('The generation response did not include any usable conversations.');
     await generationCheckpoint(jobId);
@@ -1585,6 +1615,7 @@ async function runStandardGenerationJob(jobId: string): Promise<void> {
       conversationCount: context.conversationCount,
       allowedVocabCount: context.allowedVocabulary.length,
       textModel: stampResolvedTextModel(context.textModel, generated.exchanges),
+      judgeModel: stampResolvedTextModel(context.judgeModel, generated.exchanges.filter((exchange) => exchange.role === 'judge')),
       analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
       status: 'generated',
       llmExchanges: generated.exchanges,
@@ -1632,7 +1663,7 @@ async function runLibraryComplementJob(jobId: string): Promise<void> {
       context.knownVocabulary,
       context.setNumber,
       context.conversationCount,
-      { stage: 'balance', libraryContext: context.librarySnapshotContext }
+      { stage: 'balance', libraryContext: context.librarySnapshotContext, judgeModel: context.judgeModel }
     );
     if (!generated.conversations.length) throw new Error('The generation response did not include any usable conversations.');
     await generationCheckpoint(jobId);
@@ -1651,6 +1682,7 @@ async function runLibraryComplementJob(jobId: string): Promise<void> {
       conversationCount: context.conversationCount,
       allowedVocabCount: context.allowedVocabulary.length,
       textModel: stampResolvedTextModel(context.textModel, exchanges),
+      judgeModel: stampResolvedTextModel(context.judgeModel, exchanges.filter((exchange) => exchange.role === 'judge')),
       analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
       status: 'generated',
       llmExchanges: exchanges,
@@ -1815,6 +1847,12 @@ app.post('/api/studio/jobs/:jobId/resume', asyncHandler(async (req, res) => {
     res.status(202).json({ job: resumed });
     return;
   }
+  if (job.kind === 'historical-quality-labeling') {
+    const resumed = await updateStudioJob(job.id, (current) => ({ ...current, status: 'queued', stageLabel: isGenerationSlotBusy() ? 'Waiting for earlier generation' : 'Resuming historical labels', error: undefined }));
+    void runQueuedGenerationJob(job.id, () => runHistoricalQualityLabelJob(job.id));
+    res.status(202).json({ job: resumed });
+    return;
+  }
   res.status(409).json({ error: 'This job cannot be resumed yet.' });
 }));
 
@@ -1852,8 +1890,50 @@ app.get('/api/vocabulary', asyncHandler(async (_req, res) => {
   res.json({ vocabulary: await readVocabulary() });
 }));
 
+app.get('/api/quality-reviews', asyncHandler(async (_req, res) => {
+  res.json({ reviews: await readHistoricalQualityReviewIndex() });
+}));
+
 app.get('/api/text-models', asyncHandler(async (_req, res) => {
   res.json({ models: await getTextModelOptions() });
+}));
+
+app.post('/api/generation/preflight', asyncHandler(async (req, res) => {
+  const generator = await resolveTextModel(req.body?.textModelId);
+  const judge = await resolveTextModel(req.body?.judgeModelId ?? 'codex:gpt-5.6-sol');
+  const result: Record<string, { ok: boolean; error?: string }> = {};
+  try {
+    const generated = await conversationJsonGenerator('Return exactly one minimal valid JLPT conversation as the requested JSON object.', generator);
+    if (!normalizeGeneratedConversations(generated.parsed, 1).length) throw new Error('Generator returned no usable conversation.');
+    result.generator = { ok: true };
+  } catch (error) {
+    result.generator = { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+  try {
+    const judged = await (qualityStructuredInvokerForTests ?? invokeStructuredJson)('Return only JSON: {"ready":true}.', judge, 'Return only valid JSON.');
+    if (!judged.parsed || typeof judged.parsed !== 'object') throw new Error('Judge returned invalid structured JSON.');
+    result.judge = { ok: true };
+  } catch (error) {
+    result.judge = { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+  const ok = result.generator.ok && result.judge.ok;
+  res.status(ok ? 200 : 422).json({ generator, judge, ...result, ...(ok ? {} : { error: [result.generator.ok ? undefined : `Generator: ${result.generator.error}`, result.judge.ok ? undefined : `Judge: ${result.judge.error}`].filter(Boolean).join(' · ') }) });
+}));
+
+app.post('/api/historical-quality-labels/start', asyncHandler(async (req, res) => {
+  const scope: HistoricalQualityScope = req.body?.scope === 'saved-runs' ? 'saved-runs' : 'curated-library';
+  const judgeModel = await resolveTextModel(req.body?.judgeModelId ?? 'codex:gpt-5.6-sol');
+  const idempotencyKey = req.body?.idempotencyKey ?? `historical-quality-${scope}-${Date.now()}`;
+  const timestamp = nowIso();
+  const candidate = await createStudioJob({
+    id: makeStudioJobId('historical-quality'), idempotencyKey, kind: 'historical-quality-labeling', status: 'queued',
+    title: 'Historical quality labels', detail: scope === 'curated-library' ? 'Curated library' : 'Saved runs',
+    stageLabel: isGenerationSlotBusy() ? 'Waiting for earlier generation' : 'Queued', revision: 1,
+    progress: { completed: 0, total: 0 }, stages: [{ id: 'label', label: 'Judging historical conversations', status: 'pending' }],
+    request: { scope, judgeModelId: judgeModel.id, rejudge: req.body?.rejudge === true }, createdAt: timestamp, updatedAt: timestamp
+  });
+  void runQueuedGenerationJob(candidate.id, () => runHistoricalQualityLabelJob(candidate.id));
+  res.status(202).json({ job: candidate });
 }));
 
 app.get('/api/runs', asyncHandler(async (_req, res) => {
@@ -1953,6 +2033,7 @@ app.post('/api/runs/:runId/workflow-nodes/:nodeId/repair', asyncHandler(async (r
     const result = await runQualityControl({
       stage: node.stage,
       textModel: run.textModel,
+      judgeModel: run.judgeModel ?? run.textModel,
       originalPrompt,
       setNumber: run.setNumber,
       expectedCount: flagged.length,
@@ -2503,7 +2584,7 @@ app.post('/api/generate', asyncHandler(async (req: express.Request<unknown, unkn
     context.knownVocabulary,
     context.setNumber,
     context.conversationCount,
-    { stage: 'initial', libraryContext: context.qualityLibraryContext }
+    { stage: 'initial', libraryContext: context.qualityLibraryContext, judgeModel: context.judgeModel }
   );
 
   if (!generated.conversations.length) {
@@ -2524,6 +2605,7 @@ app.post('/api/generate', asyncHandler(async (req: express.Request<unknown, unkn
     conversationCount: context.conversationCount,
     allowedVocabCount: context.allowedVocabulary.length,
     textModel: stampResolvedTextModel(context.textModel, generated.exchanges),
+    judgeModel: stampResolvedTextModel(context.judgeModel, generated.exchanges.filter((exchange) => exchange.role === 'judge')),
     analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
     status: 'generated',
     llmExchanges: generated.exchanges,
@@ -2550,7 +2632,7 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
     context.knownVocabulary,
     context.setNumber,
     context.conversationCount,
-    { stage: 'initial', libraryContext: context.qualityLibraryContext }
+    { stage: 'initial', libraryContext: context.qualityLibraryContext, judgeModel: context.judgeModel }
   );
 
   if (!primary.conversations.length) {
@@ -2577,7 +2659,7 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
     context.knownVocabulary,
     context.setNumber,
     context.balanceConversationCount,
-    { stage: 'balance', startNumber: primary.conversations.length + 1, libraryContext: context.qualityLibraryContext }
+    { stage: 'balance', startNumber: primary.conversations.length + 1, libraryContext: context.qualityLibraryContext, judgeModel: context.judgeModel }
   );
   const complementConversations = renumberConversations(complement.conversations, primary.conversations.length + 1);
   const conversations = [...primary.conversations, ...complementConversations];
@@ -2602,6 +2684,7 @@ app.post('/api/workflow', asyncHandler(async (req: express.Request<unknown, unkn
     conversationCount: context.conversationCount + context.balanceConversationCount,
     allowedVocabCount: context.allowedVocabulary.length,
     textModel: stampResolvedTextModel(context.textModel, [...primary.exchanges, ...complement.exchanges]),
+    judgeModel: stampResolvedTextModel(context.judgeModel, [...primary.exchanges, ...complement.exchanges].filter((exchange) => exchange.role === 'judge')),
     analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, conversations),
     status: 'generated',
     finalTextAudit,
@@ -2686,7 +2769,7 @@ app.post('/api/library/sets/:setNumber/complement', asyncHandler(async (req: exp
     context.knownVocabulary,
     context.setNumber,
     context.conversationCount,
-    { stage: 'balance', libraryContext: context.librarySnapshotContext }
+    { stage: 'balance', libraryContext: context.librarySnapshotContext, judgeModel: context.judgeModel }
   );
 
   if (!generated.conversations.length) {
@@ -2718,6 +2801,7 @@ app.post('/api/library/sets/:setNumber/complement', asyncHandler(async (req: exp
     conversationCount: context.conversationCount,
     allowedVocabCount: context.allowedVocabulary.length,
     textModel: stampResolvedTextModel(context.textModel, exchanges),
+    judgeModel: stampResolvedTextModel(context.judgeModel, exchanges.filter((exchange) => exchange.role === 'judge')),
     analytics: calculateRunAnalytics(context.setNumber, context.allowedVocabulary, generated.conversations),
     status: 'generated',
     llmExchanges: exchanges,

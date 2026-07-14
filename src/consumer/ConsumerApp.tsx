@@ -770,6 +770,10 @@ function wordsToReviewLabel(count: number): string {
   return `${count} ${count === 1 ? 'word' : 'words'} to review`;
 }
 
+function ConversationQualityBadge({ quality }: { quality?: StaticLibraryConversation['quality'] }) {
+  return quality ? <span className={`conversationQualityBadge ${quality}`}>{quality}</span> : null;
+}
+
 function ConversationVocabularyModal({
   conversation,
   terms,
@@ -829,7 +833,7 @@ function ConversationVocabularyModal({
       <section className="statsModalPanel conversationVocabularyPanel">
         <header className="statsModalHeader">
           <div>
-            <p>{conversation.title}</p>
+            <p>{conversation.title} <ConversationQualityBadge quality={conversation.quality} /></p>
             <h2 id="conversation-vocabulary-title">{wordsToReviewLabel(unmasteredTermCount + (conversation.vocabularyReferences?.length ?? 0))}</h2>
           </div>
           <button className="modalCloseButton" aria-label="Close conversation vocabulary" onClick={onClose} type="button">
@@ -1087,7 +1091,7 @@ function ConversationPractice({
   return (
     <div className="conversationPractice">
       <article className="listenCard">
-        <h2>{conversation.title}</h2>
+        <h2>{conversation.title} <ConversationQualityBadge quality={conversation.quality} /></h2>
         <span>{conversation.scene}</span>
         <button
           className="conversationVocabularyPill"
@@ -1602,6 +1606,7 @@ function ConversationNavigatorModal({
                   >
                     <span>
                       <strong>{number}. {conversation.title}</strong>
+                      <ConversationQualityBadge quality={conversation.quality} />
                       <em>{conversation.scene}</em>
                     </span>
                     <span className="conversationItemMeta">

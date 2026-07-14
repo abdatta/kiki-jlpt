@@ -159,7 +159,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-01.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-01",
       "curatedAt": "2026-05-25T21:44:22.597Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-03",
@@ -301,7 +302,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-03.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-03",
       "curatedAt": "2026-05-25T21:44:24.752Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-02",
@@ -436,7 +438,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-02.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-02",
       "curatedAt": "2026-05-25T22:08:27.427Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-04",
@@ -595,7 +598,8 @@
           "partOfSpeech": "Adjective",
           "category": "Weather/Nature/Health"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-05",
@@ -743,7 +747,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-05.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-05",
       "curatedAt": "2026-06-26T02:22:09.497Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-06",
@@ -899,7 +904,8 @@
           "partOfSpeech": "Noun",
           "category": "Weather/Nature/Health"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-07",
@@ -1043,7 +1049,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-07.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-07",
       "curatedAt": "2026-06-26T02:22:15.369Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-08",
@@ -1198,7 +1205,8 @@
           "partOfSpeech": "Verb",
           "category": "Misc/Bridge"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-09",
@@ -1378,7 +1386,8 @@
           "partOfSpeech": "adjectival noun",
           "category": "description"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-10",
@@ -1523,7 +1532,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-10.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-10",
       "curatedAt": "2026-06-26T02:22:23.849Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-11",
@@ -1673,7 +1683,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-11.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-11",
       "curatedAt": "2026-06-26T02:22:27.435Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-12",
@@ -1829,7 +1840,8 @@
           "partOfSpeech": "Adjective",
           "category": "Adjectives/Adverbs/Abstract"
         }
-      ]
+      ],
+      "quality": "okay"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-13",
@@ -2011,7 +2023,8 @@
           "partOfSpeech": "Adverb",
           "category": "Misc/Bridge"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-14",
@@ -2175,7 +2188,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-14.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-14",
       "curatedAt": "2026-06-26T02:22:37.596Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-15",
@@ -2317,7 +2331,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-15.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-15",
       "curatedAt": "2026-06-26T02:22:41.502Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-16",
@@ -2484,7 +2499,8 @@
           "partOfSpeech": "verb",
           "category": "action"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-17",
@@ -2659,7 +2675,8 @@
           "partOfSpeech": "Verb",
           "category": "Misc/Bridge"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-18",
@@ -2806,7 +2823,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-18.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-18",
       "curatedAt": "2026-06-27T19:00:23.621Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-19",
@@ -2966,7 +2984,8 @@
           "partOfSpeech": "Adverb",
           "category": "Misc/Bridge"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-20",
@@ -3105,7 +3124,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-20.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-20",
       "curatedAt": "2026-06-27T19:00:30.468Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "okay"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-21",
@@ -3248,7 +3268,8 @@
           "partOfSpeech": "Verb",
           "category": "Adjectives/Adverbs/Abstract"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-22",
@@ -3380,7 +3401,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-22.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-22",
       "curatedAt": "2026-06-27T19:00:37.106Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-23",
@@ -3512,7 +3534,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-23.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-23",
       "curatedAt": "2026-06-27T19:00:41.201Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "okay"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-24",
@@ -3647,7 +3670,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-24.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-24",
       "curatedAt": "2026-06-27T19:00:44.986Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-25",
@@ -3781,7 +3805,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T213201Z-fztc4b-convo-25.wav",
       "curatedId": "set-02-20260525T213201Z-fztc4b-convo-25",
       "curatedAt": "2026-06-27T19:00:48.545Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "okay"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-26",
@@ -3945,7 +3970,8 @@
           "partOfSpeech": "adjective",
           "category": "condition"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-27",
@@ -4085,7 +4111,8 @@
           "partOfSpeech": "Verb",
           "category": "Core Verbs/Actions"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-28",
@@ -4227,7 +4254,8 @@
           "partOfSpeech": "adverb",
           "category": "time"
         }
-      ]
+      ],
+      "quality": "okay"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-29",
@@ -4387,7 +4415,8 @@
           "partOfSpeech": "noun",
           "category": "activity"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-30",
@@ -4531,7 +4560,8 @@
           "partOfSpeech": "Verb",
           "category": "Misc/Bridge"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260630T231846Z-aqkary-convo-03",
@@ -4660,7 +4690,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-03.wav",
       "curatedId": "set-02-20260630T231846Z-aqkary-convo-03",
       "curatedAt": "2026-07-07T01:09:31.896Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "okay"
     },
     {
       "id": "set-02-20260630T231846Z-aqkary-convo-05",
@@ -4791,7 +4822,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-05.wav",
       "curatedId": "set-02-20260630T231846Z-aqkary-convo-05",
       "curatedAt": "2026-07-07T01:09:32.778Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "okay"
     },
     {
       "id": "set-02-20260630T231846Z-aqkary-convo-14",
@@ -4919,7 +4951,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260630T231846Z-aqkary-convo-14.wav",
       "curatedId": "set-02-20260630T231846Z-aqkary-convo-14",
       "curatedAt": "2026-07-07T01:09:34.275Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260630T230813Z-rtesfn-convo-03",
@@ -5078,7 +5111,8 @@
           "partOfSpeech": "Adjective",
           "category": "Adjectives/Adverbs/Abstract"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260630T230813Z-rtesfn-convo-09",
@@ -5210,7 +5244,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260630T230813Z-rtesfn-convo-09.wav",
       "curatedId": "set-02-20260630T230813Z-rtesfn-convo-09",
       "curatedAt": "2026-07-07T01:09:36.659Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260630T085023Z-evotis-convo-06",
@@ -5340,7 +5375,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-06.wav",
       "curatedId": "set-02-20260630T085023Z-evotis-convo-06",
       "curatedAt": "2026-07-07T01:09:38.039Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260630T085023Z-evotis-convo-08",
@@ -5473,7 +5509,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-08.wav",
       "curatedId": "set-02-20260630T085023Z-evotis-convo-08",
       "curatedAt": "2026-07-07T01:09:38.600Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "okay"
     },
     {
       "id": "set-02-20260630T085023Z-evotis-convo-15",
@@ -5633,7 +5670,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260630T085023Z-evotis-convo-15.wav",
       "curatedId": "set-02-20260630T085023Z-evotis-convo-15",
       "curatedAt": "2026-07-07T01:09:39.098Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260630T085023Z-evotis-convo-20",
@@ -5805,7 +5843,8 @@
           "partOfSpeech": "Interjection",
           "category": "Greetings/Responses"
         }
-      ]
+      ],
+      "quality": "good"
     },
     {
       "id": "set-02-20260525T211348Z-lrfn89-convo-05",
@@ -5968,7 +6007,8 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260525T211348Z-lrfn89-convo-05.wav",
       "curatedId": "set-02-20260525T211348Z-lrfn89-convo-05",
       "curatedAt": "2026-07-07T01:09:40.644Z",
-      "vocabularyReferences": []
+      "vocabularyReferences": [],
+      "quality": "good"
     },
     {
       "id": "set-02-20260713T013707Z-egqgu4-convo-01",

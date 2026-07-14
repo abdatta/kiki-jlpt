@@ -13,6 +13,8 @@ import type {
 import type { AiCurationLibraryContext } from './aiCuration.ts';
 import { formatLanguagePolicyForPrompt } from './languagePolicy.ts';
 
+export const FINAL_DIALOGUE_QUALITY_RUBRIC_VERSION = 'dialogue-quality-v6';
+
 const CONVERSATION_JSON_SHAPE = `{
   "conversations": [
     {
@@ -63,6 +65,8 @@ export interface QualityTriagePromptInput {
   conversations: PracticeConversation[];
   evidenceByConversationId: ConversationCurationEvidenceMap;
   libraryContext?: AiCurationLibraryContext;
+  /** Final labels assess delivered learner value, not repair eligibility. */
+  reviewPurpose?: 'generation-triage' | 'historical-label';
 }
 
 export interface BalancedRepairFinding {
@@ -84,33 +88,55 @@ export interface PickerPromptSet {
   versions: PickerPromptVersion[];
 }
 
-export function buildQualityTriagePrompt(input: QualityTriagePromptInput): string {
-  const exemplars = input.libraryContext?.conversations.slice(0, 3) ?? [];
-  const conversations = input.conversations.map((conversation) => ({
-    conversationId: conversation.id,
+function dialogueQualitySubject(conversation: Pick<PracticeConversation, 'id' | 'title' | 'scene' | 'text'> & Partial<Pick<PracticeConversation, 'sampleContext'>>) {
+  return {
+    id: conversation.id,
     title: conversation.title,
     scene: conversation.scene,
-    sampleContext: conversation.sampleContext,
-    text: conversation.text,
-    listeningQuestions: conversation.listeningQuestions,
-    answerKey: conversation.answerKey,
-    authoritativeVocabularyEvidence: input.evidenceByConversationId[conversation.id]
+    ...(conversation.sampleContext ? { sampleContext: conversation.sampleContext } : {}),
+    text: conversation.text
+  };
+}
+
+export function buildQualityTriagePrompt(input: QualityTriagePromptInput): string {
+  const exemplars = input.libraryContext?.conversations.slice(0, 3).map(dialogueQualitySubject) ?? [];
+  const finalLabeling = input.reviewPurpose === 'historical-label';
+  const conversations = input.conversations.map((conversation) => ({
+    conversationId: conversation.id,
+    ...dialogueQualitySubject(conversation),
+    ...(!finalLabeling ? { authoritativeVocabularyEvidence: input.evidenceByConversationId[conversation.id] } : {})
   }));
+  const verdictRubric = finalLabeling
+    ? `This is the shared final quality label, not a repair queue or a native-copyediting exercise. Judge only the spoken dialogue as delivered within the constraints of beginner JLPT listening practice. Listening questions, answer keys, translations, deterministic vocabulary findings, generator identity, repair history, and earlier labels are deliberately excluded and MUST NOT affect the label.
+
+Label threshold:
+- pass: the conversation works as an exchange: its situation and progression are coherent, the speakers' intended meanings are readily understandable on first listen, and it is useful beginner listening practice. Judge constrained N5 Japanese by communicative success, not by whether a native copyeditor could improve an individual sentence. Simple grammar, pedagogical repetition, literal or non-idiomatic wording, recoverable ellipsis, a mildly abrupt detail, a plausible unstated inference, a shared visual reference, or one localized awkward expression may still pass when the exchange remains clear and natural-sounding overall.
+- repair: the dialogue remains usable, but either (a) a defect materially obscures or changes the intended meaning of a turn, creates a real contradiction, or models clearly incorrect usage likely to mislead a beginner, or (b) a repeated or sustained pattern of awkward or nonresponsive turns noticeably degrades the conversation as a whole. A phrase having a more idiomatic alternative is not enough. Do NOT use repair for isolated constrained wording whose intended meaning is immediately recoverable, slight formality, benign repetition, a literal observation, a plausible omitted premise, or one mildly abrupt transition.
+- regenerate: reserve for structurally unusable material only, such as an incoherent scenario, a vocabulary-list feel, forced unrelated word groupings, severe topic jumps, or grammar that makes the exchange hard to understand.
+
+Use the full conversation as the unit of judgment. Do not count sentence-level imperfections mechanically. Do not target any desired distribution of labels, compare generators, or infer quality from provenance. Judge each dialogue independently. When the exchange is coherent and readily understood, prefer pass unless the issue crosses the material-impact or sustained-pattern threshold above.`
+    : `Judge only the spoken dialogue. Listening questions, answer keys, and translations are deliberately excluded and MUST NOT affect a verdict.
+
+Verdict rubric:
+- pass: natural, coherent, realistic, level-appropriate, and suitable for listening practice.
+- repair: usable structure with fixable dialogue naturalness, coherence, level-fit, or vocabulary issues.
+- regenerate: structural defects only, such as an unrealistic scenario, vocabulary-list feel, forced unrelated word groupings, severe topic jumps, or clearly above-level grammar.`;
+
+  const evidenceRule = finalLabeling
+    ? 'Final labels assess the delivered spoken dialogue only. No vocabulary, question, answer, translation, generator, repair-history, or earlier-label evidence is supplied or relevant.'
+    : 'The server-calculated vocabulary evidence attached to each conversation is authoritative. Never recalculate, contradict, or override it. Vocabulary findings alone may require repair, but MUST NOT be used as a reason to regenerate.';
 
   return `Review every supplied Set ${input.setNumber} JLPT listening-practice conversation for subjective quality.
 
 Authoritative evidence:
-The server-calculated vocabulary evidence attached to each conversation is authoritative. Never recalculate, contradict, or override it. Vocabulary findings alone may require repair, but MUST NOT be used as a reason to regenerate.
+${evidenceRule}
 
-Verdict rubric:
-- pass: natural, coherent, realistic, level-appropriate, and suitable for listening practice.
-- repair: usable structure with fixable naturalness, clarity, question-quality, level-fit, or vocabulary issues.
-- regenerate: structural defects only, such as an unrealistic scenario, vocabulary-list feel, forced unrelated word groupings, severe topic jumps, or clearly above-level grammar.
+${verdictRubric}
 
 Return exactly one verdict for every supplied conversationId and no unknown IDs. Include a concise rationale and zero or more machine-readable flags.
 
-Curated quality-bar exemplars${exemplars.length ? '' : ' (none available)'}:
-${exemplars.length ? JSON.stringify(exemplars, null, 2) : 'No curated library conversations are available for this set.'}
+${finalLabeling ? '' : `Curated quality-bar exemplars${exemplars.length ? '' : ' (none available)'}:
+${exemplars.length ? JSON.stringify(exemplars, null, 2) : 'No curated library conversations are available for this set.'}\n`}
 
 Conversations with authoritative evidence:
 ${JSON.stringify(conversations, null, 2)}
@@ -172,10 +198,17 @@ ${CONVERSATION_JSON_SHAPE}`;
 }
 
 export function buildPickerPrompt(versionSets: PickerPromptSet[]): string {
+  const dialogueVersionSets = versionSets.map((set) => ({
+    ...set,
+    versions: set.versions.map((version) => ({
+      ...version,
+      conversation: dialogueQualitySubject(version.conversation)
+    }))
+  }));
   return `Choose exactly one admissible version for every supplied JLPT listening-practice conversation.
 
 Authoritative evidence:
-All deterministic vocabulary evidence and gate flags are server-calculated and authoritative. Do not recalculate lexical facts. Judge only naturalness, coherence, realism, JLPT level fit, and listening-question quality.
+All deterministic vocabulary evidence and gate flags are server-calculated and authoritative. Do not recalculate lexical facts. Judge only the spoken dialogue's naturalness, coherence, realism, and JLPT level fit. Listening questions, answer keys, and translations are deliberately excluded and MUST NOT affect the pick or selected quality.
 
 Forced-choice rules:
 1. Select one supplied source for every conversationId and no unknown IDs.
@@ -184,7 +217,7 @@ Forced-choice rules:
 4. Return confidence "high", "medium", or "low", a concise rationale, and zero or more flags.
 
 Admissible version sets:
-${JSON.stringify(versionSets, null, 2)}
+${JSON.stringify(dialogueVersionSets, null, 2)}
 
 Return only valid JSON with this shape:
 {

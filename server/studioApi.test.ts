@@ -240,7 +240,7 @@ test('direct generation succeeds without repair when Set 3 output has no true OO
 
     assert.equal(response.status, 200);
     assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
-    assert.equal(response.body.run.llmExchanges?.length, 2);
+    assert.equal(response.body.run.llmExchanges?.length, 3);
     assert.equal(response.body.run.conversations.every((item) => item.quality === 'good'), true);
   } finally {
     configureConversationJsonGeneratorForTests();
@@ -510,7 +510,7 @@ test('final-audit warning pauses before audio and resume approves the checkpoint
     await waitForAudioSchedulerIdle();
     assert.equal(completed.status, 'succeeded');
     assert.equal(textCalls, beforeResumeTextCalls);
-    assert.equal(triageCalls, 4);
+    assert.equal(triageCalls, 6);
     let finalized = await readStudioJob(paused.id);
     for (let attempt = 0; attempt < 50 && finalized.workflow?.status !== 'complete'; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -783,4 +783,20 @@ test('concurrent run reads never surface transient replacement errors', async ()
   })());
   await Promise.all([writer, ...readers]);
   assert.equal(failures, 0);
+});
+
+test('generation preflight probes the generator and judge without creating a job', async () => {
+  configureConversationJsonGeneratorForTests(async () => ({ parsed: { conversations: [conversation(1)] }, output: '{}' }));
+  configureQualityStructuredJsonInvokerForTests(async () => ({ parsed: { ready: true }, output: '{"ready":true}' }));
+  try {
+    const response = await api<{ generator: { ok: boolean }; judge: { ok: boolean } }>('/api/generation/preflight', {
+      method: 'POST', body: JSON.stringify({ textModelId: 'gemini', judgeModelId: 'codex:gpt-5.6-sol' })
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.generator.ok, true);
+    assert.equal(response.body.judge.ok, true);
+  } finally {
+    configureConversationJsonGeneratorForTests();
+    configureQualityStructuredJsonInvokerForTests();
+  }
 });

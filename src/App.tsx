@@ -137,6 +137,7 @@ interface GenerateModalState {
   setNumber: number;
   conversationCount: string;
   textModelId: string;
+  judgeModelId: string;
   runMode: GenerateRunMode;
 }
 
@@ -152,6 +153,7 @@ interface GenerateRunConfig {
   setNumber: number;
   conversationCount: number;
   textModelId: string;
+  judgeModelId: string;
 }
 
 interface PracticeLibraryPublishStatus {
@@ -537,6 +539,7 @@ function initialGenerateModalState(setNumber: number): GenerateModalState {
     setNumber,
     conversationCount: '',
     textModelId: '',
+    judgeModelId: 'codex:gpt-5.6-sol',
     runMode: 'workflow-text'
   };
 }
@@ -786,12 +789,75 @@ export function TextModelOptionGroups({ models }: { models: TextModelInfo[] }) {
   );
 }
 
-function runHistorySummary(run: PracticeRun): string {
-  return `${run.conversations.length} convos · ${run.analytics.currentSetMissingCount} Missing · ${run.analytics.allowedVocabUsedPercentage}% Used · ${run.analytics.outOfAllowedCount} OOV`;
+type QualityCounts = Record<NonNullable<PracticeConversation['quality']>, number>;
+type ConversationQualityReview = NonNullable<PracticeConversation['qualityReview']>;
+type QualityReviewMap = Record<string, ConversationQualityReview>;
+
+export function conversationQualityCounts(conversations: readonly Pick<PracticeConversation, 'quality'>[]): QualityCounts {
+  return conversations.reduce<QualityCounts>((counts, conversation) => {
+    if (conversation.quality) counts[conversation.quality] += 1;
+    return counts;
+  }, { good: 0, okay: 0, bad: 0 });
 }
 
-function libraryHistorySummary(set: CuratedSet): string {
-  return `${set.conversations.length} convos · ${set.analytics.currentSetMissingCount} Missing · ${set.analytics.allowedVocabUsedPercentage}% Used · ${set.analytics.outOfAllowedCount} OOV`;
+function RunMetricChip({ tone, value, label }: { tone: 'neutral' | 'coverage' | 'good' | 'okay' | 'bad' | 'missing' | 'oov'; value: string | number; label: string }) {
+  return (
+    <span className={`runMetricChip ${tone}`}>
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function ConversationQualityBadge({
+  quality,
+  review,
+  onClick
+}: {
+  quality?: PracticeConversation['quality'];
+  review?: ConversationQualityReview;
+  onClick?: () => void;
+}) {
+  if (!quality) return null;
+  const label = onClick ? (
+    <button className={`conversationQualityChip ${quality}`} onClick={onClick} type="button">{quality}</button>
+  ) : <span className={`conversationQualityChip ${quality}`}>{quality}</span>;
+  if (!review) return label;
+
+  const verdictLabel = review.verdict === 'pass' ? 'Passed final dialogue review'
+    : review.verdict === 'repair' ? 'Needs a meaningful dialogue improvement'
+      : 'Has a structural dialogue problem';
+  return (
+    <span className="conversationQualityBadge" tabIndex={onClick ? undefined : 0}>
+      {label}
+      <span className="conversationQualityTooltip" role="tooltip">
+        <strong>{quality} · {verdictLabel}</strong>
+        <p>{review.rationale}</p>
+        {review.flags.length ? <span className="qualityReviewFlags"><b>Review notes</b>{review.flags.map((flag) => <em key={flag}>{flag.replaceAll('_', ' ')}</em>)}</span> : null}
+        <small>{shortModelLabel(review.judgeModel)} · {review.rubricVersion} · {formatAuditTime(review.reviewedAt)}</small>
+      </span>
+    </span>
+  );
+}
+
+function RunSummaryChips({ conversations, analytics }: { conversations: readonly PracticeConversation[]; analytics: PracticeRun['analytics'] }) {
+  const quality = conversationQualityCounts(conversations);
+
+  return (
+    <div className="runSummaryChips">
+      <span className="runMetricGroup quality" aria-label="Conversation quality">
+        <RunMetricChip tone="neutral" value={conversations.length} label="Convos" />
+        {quality.good > 0 ? <RunMetricChip tone="good" value={quality.good} label="Good" /> : null}
+        {quality.okay > 0 ? <RunMetricChip tone="okay" value={quality.okay} label="Okay" /> : null}
+        {quality.bad > 0 ? <RunMetricChip tone="bad" value={quality.bad} label="Bad" /> : null}
+      </span>
+      <span className="runMetricGroup findings" aria-label="Vocabulary coverage and findings">
+        <RunMetricChip tone="missing" value={analytics.currentSetMissingCount} label="Missing" />
+        <RunMetricChip tone="coverage" value={`${analytics.allowedVocabUsedPercentage}%`} label="Used" />
+        <RunMetricChip tone="oov" value={analytics.outOfAllowedCount} label="OOV" />
+      </span>
+    </div>
+  );
 }
 
 export function libraryCountsBySourceRun(sets: readonly CuratedSet[]): Map<string, number> {
@@ -1999,7 +2065,7 @@ interface TraceOption {
   value: string;
   number?: number | string;
   title: string;
-  quality?: 'good' | 'okay';
+  quality?: 'good' | 'okay' | 'bad';
   repaired?: boolean;
   dropped?: boolean;
 }
@@ -2147,7 +2213,7 @@ function WorkflowKindDetails({ node, conversationId }: { node: WorkflowAuditNode
       <section className="workflowKindDetails">
         <h4>Parsed conversations</h4>
         <div className="workflowParsedConversations">
-          {conversations.map((conversation) => <details key={conversation.id}><summary><strong>{conversation.id}</strong><span>{conversation.title}</span><em>{conversation.outOfVocabularyAudit.length} OOV</em></summary><div>{conversation.text.map((line, index) => <p key={index}><b>{line.speaker}</b><span><HighlightedAuditLine text={line.japanese} words={conversation.outOfVocabularyAudit} /></span></p>)}</div></details>)}
+          {conversations.map((conversation) => <details key={conversation.id}><summary><strong>{conversation.id}</strong><span>{conversation.title}</span><ConversationQualityBadge quality={conversation.quality} /><em>{conversation.outOfVocabularyAudit.length} OOV</em></summary><div>{conversation.text.map((line, index) => <p key={index}><b>{line.speaker}</b><span><HighlightedAuditLine text={line.japanese} words={conversation.outOfVocabularyAudit} /></span></p>)}</div></details>)}
         </div>
       </section>
     );
@@ -2735,6 +2801,9 @@ function GenerateModal({
   onSubmit: () => void;
 }) {
   const selectedSet = sets.find((item) => item.set === state.setNumber);
+  const judgeModels = textModels.some((model) => model.id === 'codex:gpt-5.6-sol')
+    ? textModels
+    : [...textModels, { id: 'codex:gpt-5.6-sol', provider: 'codex' as const, model: 'gpt-5.6-sol', label: 'GPT-5.6-Sol (recommended)', source: 'fallback' as const }];
   const conversationCount = Number(state.conversationCount);
   const isWorkflowMode = state.runMode !== 'text-only';
   const minConversationCount = isWorkflowMode ? 6 : 4;
@@ -2743,7 +2812,8 @@ function GenerateModal({
     && Number.isInteger(conversationCount)
     && conversationCount >= minConversationCount
     && conversationCount <= 30
-    && state.textModelId.length > 0;
+    && state.textModelId.length > 0
+    && state.judgeModelId.length > 0;
 
   return (
     <div className="modalOverlay" role="presentation" onMouseDown={(event) => {
@@ -2787,10 +2857,16 @@ function GenerateModal({
           </label>
 
           <label className="modalWideField">
-            <span>Text model</span>
+            <span>Generator model</span>
             <select value={state.textModelId} onChange={(event) => onChange({ ...state, textModelId: event.target.value })}>
               <option value="" disabled>Select a model</option>
               <TextModelOptionGroups models={textModels} />
+            </select>
+          </label>
+          <label className="modalWideField">
+            <span>Judge model</span>
+            <select value={state.judgeModelId} onChange={(event) => onChange({ ...state, judgeModelId: event.target.value })}>
+              <TextModelOptionGroups models={judgeModels} />
             </select>
           </label>
         </div>
@@ -2931,9 +3007,46 @@ function BalanceModal({
   );
 }
 
-function AnalyticsPanel({ analytics, setNumber, label, wordMetadata }: { analytics: PracticeRun['analytics']; setNumber: number; label: string; wordMetadata: Map<string, StudioWordMetadata> }) {
+function QualityBreakdown({ conversations }: { conversations: readonly PracticeConversation[] }) {
+  const quality = conversationQualityCounts(conversations);
+  const items = (['good', 'okay', 'bad'] as const)
+    .map((kind) => ({ kind, label: kind === 'okay' ? 'Okay' : `${kind[0].toUpperCase()}${kind.slice(1)}`, count: quality[kind] }))
+    .filter((item) => item.count > 0);
+  const labeledCount = items.reduce((total, item) => total + item.count, 0);
+
+  if (labeledCount === 0) return null;
+
+  return (
+    <section className="qualityBreakdown" aria-label="Conversation quality breakdown">
+      {items.map((item) => (
+        <span className={`qualityBreakdownSegment ${item.kind}`} key={item.kind} style={{ flexGrow: item.count }}>
+          <strong>{item.count}</strong>
+          <span>{item.label}</span>
+        </span>
+      ))}
+    </section>
+  );
+}
+
+function RunCardHeader({ createdAt, contextLabel, libraryCount = 0, statusIcon }: { createdAt: string; contextLabel: string; libraryCount?: number; statusIcon?: ReactNode }) {
+  return (
+    <span className="runCardHeader">
+      <time className="runCardTimestamp" dateTime={createdAt}>
+        {statusIcon ?? <Clock size={13} aria-hidden />}
+        {formatRunHistoryTitle(createdAt)}
+      </time>
+      <span className="runCardMeta">
+        <RunLibraryBadge count={libraryCount} />
+        <span className="runCardContextBadge">{contextLabel}</span>
+      </span>
+    </span>
+  );
+}
+
+function AnalyticsPanel({ analytics, setNumber, label, wordMetadata, conversations }: { analytics: PracticeRun['analytics']; setNumber: number; label: string; wordMetadata: Map<string, StudioWordMetadata>; conversations?: readonly PracticeConversation[] }) {
   return (
     <section className="analyticsPanel" aria-label={label}>
+      {conversations ? <QualityBreakdown conversations={conversations} /> : null}
       <div className="analyticsCard">
         <span>Current Set Missing</span>
         <strong>{analytics.currentSetMissingCount}</strong>
@@ -3015,6 +3128,7 @@ function StudioApp() {
   const [aiCurationSelectedRunIds, setAiCurationSelectedRunIds] = useState<string[]>([]);
   const [currentRunEvidence, setCurrentRunEvidence] = useState<ConversationCurationEvidenceMap>({});
   const [currentLibraryEvidence, setCurrentLibraryEvidence] = useState<ConversationCurationEvidenceMap>({});
+  const [historicalQualityReviews, setHistoricalQualityReviews] = useState<QualityReviewMap>({});
   const [libraryBalance, setLibraryBalance] = useState<LibraryBalancePlan | null>(null);
   const [libraryBalanceLoading, setLibraryBalanceLoading] = useState(false);
   const [balanceModal, setBalanceModal] = useState<BalanceModalState | null>(null);
@@ -3239,12 +3353,13 @@ function StudioApp() {
   }
 
   async function loadInitial() {
-    const [setPayload, vocabularyPayload, snapshotPayload, modelPayload, libraryPayload] = await Promise.all([
+    const [setPayload, vocabularyPayload, snapshotPayload, modelPayload, libraryPayload, qualityReviewPayload] = await Promise.all([
       api<{ sets: SetSummary[] }>('/api/sets'),
       api<{ vocabulary: VocabItem[] }>('/api/vocabulary'),
       api<{ snapshot: StudioSnapshot }>('/api/studio/snapshot'),
       api<{ models: TextModelInfo[] }>('/api/text-models'),
-      api<{ sets: CuratedSet[] }>('/api/library')
+      api<{ sets: CuratedSet[] }>('/api/library'),
+      api<{ reviews: QualityReviewMap }>('/api/quality-reviews')
     ]);
     const runPayload = { runs: snapshotPayload.snapshot.runs };
     setSets(setPayload.sets);
@@ -3269,6 +3384,7 @@ function StudioApp() {
     }
     setTextModels(modelPayload.models);
     setLibrarySets(libraryPayload.sets);
+    setHistoricalQualityReviews(qualityReviewPayload.reviews);
     const routedRun = studioRoute.boardMode === 'runs' && studioRoute.runId
       ? runPayload.runs.find((run) => run.id === studioRoute.runId) ?? null
       : null;
@@ -4057,16 +4173,23 @@ function StudioApp() {
     if (!generateModal) return;
     const nextConversationCount = Number(generateModal.conversationCount);
     const minConversationCount = generateModal.runMode === 'text-only' ? 4 : 6;
-    if (!Number.isInteger(nextConversationCount) || nextConversationCount < minConversationCount || nextConversationCount > 30 || !generateModal.textModelId) {
-      setError('Choose a set, conversation count, model, and run type before generating.');
+    if (!Number.isInteger(nextConversationCount) || nextConversationCount < minConversationCount || nextConversationCount > 30 || !generateModal.textModelId || !generateModal.judgeModelId) {
+      setError('Choose a set, conversation count, generator, judge, and run type before generating.');
       return;
     }
 
     const config: GenerateRunConfig = {
       setNumber: generateModal.setNumber,
       conversationCount: nextConversationCount,
-      textModelId: generateModal.textModelId
+      textModelId: generateModal.textModelId,
+      judgeModelId: generateModal.judgeModelId
     };
+    try {
+      await api('/api/generation/preflight', { method: 'POST', body: JSON.stringify(config) });
+    } catch (caught) {
+      setError(`Model preflight failed: ${caught instanceof Error ? caught.message : String(caught)}`);
+      return;
+    }
     setSetNumber(config.setNumber);
     setConversationCount(config.conversationCount);
     setTextModelId(config.textModelId);
@@ -4174,6 +4297,22 @@ function StudioApp() {
           ? { ...node, status: 'error', completedAt: new Date().toISOString(), error: message }
           : node)
       } : previous);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function startHistoricalQualityLabels(scope: 'curated-library' | 'saved-runs', rejudge = false) {
+    setBusy('workflow');
+    setError(null);
+    try {
+      await api('/api/historical-quality-labels/start', {
+        method: 'POST',
+        body: JSON.stringify({ scope, rejudge, judgeModelId: 'codex:gpt-5.6-sol', idempotencyKey: makeSessionId() })
+      });
+      await refreshStudioSnapshot();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
       setBusy(null);
     }
@@ -4565,6 +4704,10 @@ function StudioApp() {
             }
           : {};
     const sourceRunId = sourceRunReference.sourceRunId ?? (source === 'run' ? currentRun?.id : undefined);
+    const sourceConversationId = recommendation?.sourceConversationId
+      ?? deterministicRecommendation?.conversation.id
+      ?? (source === 'library' ? (conversation as CuratedConversation).sourceConversationId : conversation.id);
+    const qualityReview = conversation.qualityReview ?? (sourceRunId ? historicalQualityReviews[`${sourceRunId}/${sourceConversationId}`] : undefined);
     const sourceRunMetadata = source === 'run' ? null : resolveSourceRunMetadata(sourceRunReference, runs, formatRunHistoryTitle, studioRunsRoute);
     const itemKey = actionKey(sourceRunId, conversation.id);
     const isEditing = source === 'run' && edit?.conversationId === conversation.id;
@@ -4595,12 +4738,12 @@ function StudioApp() {
             <h3>{conversation.title}</h3>
           </div>
           <div className="cardHeaderMeta">
-            {source === 'run' && conversation.quality && currentRun ? (
-              <button className={`conversationQualityChip ${conversation.quality}`} onClick={() => navigateToStudioRoute(studioRunsRoute(currentRun.id, true, conversation.id))} type="button">
-                {conversation.quality}
-              </button>
-            ) : null}
-            <span className={`statusPill ${conversation.status}`}>{isLibraryCard ? 'in library' : recommendation ? `AI pick ${recommendation.rank}` : deterministicRecommendation ? `score ${deterministicRecommendation.score}` : statusLabel(conversation.status)}</span>
+            {!isLibraryCard ? <span className={`statusPill ${conversation.status}`}>{recommendation ? `AI pick ${recommendation.rank}` : deterministicRecommendation ? `score ${deterministicRecommendation.score}` : statusLabel(conversation.status)}</span> : null}
+            <ConversationQualityBadge
+              quality={conversation.quality}
+              review={qualityReview}
+              onClick={conversation.quality && source === 'run' && currentRun ? () => navigateToStudioRoute(studioRunsRoute(currentRun.id, true, conversation.id)) : undefined}
+            />
             <SourceRunLabel metadata={sourceRunMetadata} />
           </div>
         </div>
@@ -4933,26 +5076,43 @@ function StudioApp() {
         </a>
 
         <section className="generatorPanel">
-          <label>
-            <span>Set</span>
-            <select value={setNumber} onChange={(event) => handleSetNumberChange(Number(event.target.value))}>
-              {sets.map((set) => (
-                <option key={set.set} value={set.set}>
-                  Set {set.set}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="sidebarSetCard">
+            <label className="sidebarSetPicker">
+              <span>Set</span>
+              <select value={setNumber} onChange={(event) => handleSetNumberChange(Number(event.target.value))}>
+                {sets.map((set) => (
+                  <option key={set.set} value={set.set}>
+                    Set {set.set}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <div className="setMeta">
-            <strong>{currentSet?.theme ?? 'Vocabulary set'}</strong>
-            <span>{currentSet ? `${currentSet.cumulativeCount} allowed words through Set ${currentSet.set}` : 'Loading vocab'}</span>
+            <div className="setMeta">
+              <strong>{currentSet?.theme ?? 'Vocabulary set'}</strong>
+              <span>{currentSet ? `${currentSet.cumulativeCount} allowed words through Set ${currentSet.set}` : 'Loading vocab'}</span>
+            </div>
           </div>
 
-          <button className="primaryButton" onClick={openGenerateModal} disabled={busy !== null}>
-            {busy === 'generate' || busy === 'workflow' ? <RefreshCw className="spin" size={18} /> : <Sparkles size={18} />}
-            Generate
-          </button>
+          <div className="sidebarActions">
+            <button className="primaryButton" onClick={openGenerateModal} disabled={busy !== null}>
+              {busy === 'generate' || busy === 'workflow' ? <RefreshCw className="spin" size={18} /> : <Sparkles size={18} />}
+              Generate
+            </button>
+            <div className="historicalActions" aria-label="Historical quality labeling">
+              <button className="secondaryButton" onClick={() => void startHistoricalQualityLabels('curated-library')} disabled={busy !== null}>
+                Label Library
+              </button>
+              <button className="secondaryButton" onClick={() => void startHistoricalQualityLabels('saved-runs')} disabled={busy !== null}>
+                Label Saved Runs
+              </button>
+              <button className="secondaryButton rejudge" onClick={() => {
+                if (window.confirm('Rejudge every existing library label? This keeps the conversations unchanged but replaces their label provenance.')) void startHistoricalQualityLabels('curated-library', true);
+              }} disabled={busy !== null}>
+                Rejudge Library
+              </button>
+            </div>
+          </div>
         </section>
 
         <div className="boardTabs" aria-label="Boards">
@@ -4996,16 +5156,14 @@ function StudioApp() {
               role="button"
               tabIndex={0}
             >
-              <span className="runButtonHeader">
-                <span className="runJobTitle">
-                  {['running', 'pausing'].includes(shell.status) ? <RefreshCw className="spin" size={14} />
-                    : shell.status === 'queued' ? <Clock size={14} />
-                    : shell.status === 'paused' ? <Pause size={14} />
-                    : <CircleAlert size={14} />}
-                  {formatRunHistoryTitle(shell.createdAt)}
-                </span>
-                <time dateTime={shell.createdAt}>{cleanShellModelLabel(shell.modelLabel)}</time>
-              </span>
+              <RunCardHeader
+                createdAt={shell.createdAt}
+                contextLabel={cleanShellModelLabel(shell.modelLabel)}
+                statusIcon={['running', 'pausing'].includes(shell.status) ? <RefreshCw className="spin" size={13} />
+                  : shell.status === 'queued' ? <Clock size={13} />
+                  : shell.status === 'paused' ? <Pause size={13} />
+                  : <CircleAlert size={13} />}
+              />
               <small>{shell.stageLabel}</small>
               {shell.resumable ? (
                 <span className="runJobActions">
@@ -5041,15 +5199,13 @@ function StudioApp() {
                 className={`runButton ${boardMode === 'runs' && currentRun?.id === run.id && !activeShellVisible ? 'active' : ''}`}
                 href={studioRunsRoute(run.id)}
               >
-                <span className="runButtonHeader">
-                  <span className="runJobTitle">
-                    {liveJob && ['queued', 'running', 'pausing'].includes(liveJob.status) ? <RefreshCw className="spin" size={14} /> : null}
-                    {formatRunHistoryTitle(run.createdAt)}
-                    <RunLibraryBadge count={libraryCountBySourceRun.get(run.id) ?? 0} />
-                  </span>
-                  <time dateTime={run.createdAt}>{shortModelLabel(run.textModel)}</time>
-                </span>
-                <small>{liveJob?.stageLabel ?? runHistorySummary(run)}</small>
+                <RunCardHeader
+                  createdAt={run.createdAt}
+                  contextLabel={`${shortModelLabel(run.textModel)}${run.judgeModel ? ` · judge ${shortModelLabel(run.judgeModel)}` : ''}`}
+                  libraryCount={libraryCountBySourceRun.get(run.id) ?? 0}
+                  statusIcon={liveJob && ['queued', 'running', 'pausing'].includes(liveJob.status) ? <RefreshCw className="spin" size={13} /> : undefined}
+                />
+                {liveJob ? <small>{liveJob.stageLabel}</small> : <RunSummaryChips conversations={run.conversations} analytics={run.analytics} />}
               </a>
             );
           })}
@@ -5069,11 +5225,8 @@ function StudioApp() {
               className={`runButton ${boardMode === 'library' && setNumber === set.setNumber ? 'active' : ''}`}
               href={studioLibraryRoute(set.setNumber)}
             >
-              <span className="runButtonHeader">
-                <span>{formatRunHistoryTitle(set.updatedAt)}</span>
-                <time dateTime={set.updatedAt}>Set {set.setNumber}</time>
-              </span>
-              <small>{libraryHistorySummary(set)}</small>
+              <RunCardHeader createdAt={set.updatedAt} contextLabel={`Set ${set.setNumber}`} />
+              <RunSummaryChips conversations={set.conversations} analytics={set.analytics} />
             </a>
           ))}
         </section>
@@ -5323,7 +5476,7 @@ function StudioApp() {
           </>
         ) : null}
 
-        {showRunContent && currentRun ? <AnalyticsPanel analytics={currentRun.analytics} setNumber={currentRun.setNumber} label="Generation analytics" wordMetadata={metadataWithConversationReferences(vocabularyMetadata, currentRun.conversations)} /> : null}
+        {showRunContent && currentRun ? <AnalyticsPanel analytics={currentRun.analytics} setNumber={currentRun.setNumber} label="Generation analytics" wordMetadata={metadataWithConversationReferences(vocabularyMetadata, currentRun.conversations)} conversations={currentRun.conversations} /> : null}
 
         {showLibraryContent && currentLibrarySet ? <AnalyticsPanel analytics={currentLibrarySet.analytics} setNumber={setNumber} label="Library analytics" wordMetadata={metadataWithConversationReferences(vocabularyMetadata, currentLibrarySet.conversations)} /> : null}
 

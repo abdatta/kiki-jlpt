@@ -137,8 +137,11 @@ export async function generateCodexStructuredJson(
   model: string,
   instructions = 'Return only valid JSON matching the requested shape, with no Markdown fences or explanatory text.'
 ): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
+  const configuredTimeout = Number(process.env.CODEX_REQUEST_TIMEOUT_MS ?? 10 * 60 * 1000);
+  const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 10 * 60 * 1000;
   const response = await codexFetch(CODEX_API_URL, {
     method: 'POST',
+    signal: AbortSignal.timeout(timeoutMs),
     headers: { Accept: 'text/event-stream' },
     body: JSON.stringify({
       model,

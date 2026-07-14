@@ -175,6 +175,7 @@ export async function publishPracticeLibrary() {
         answerKey: conversation.answerKey,
         vocabularyUsed: conversation.vocabularyUsed,
         vocabularyReferences: conversation.vocabularyReferences ?? [],
+        quality: conversation.quality,
         createdAt: conversation.curatedAt ?? conversation.createdAt,
         publishOrder: reusableConversation?.order ?? nextNewConversationOrder++
       });

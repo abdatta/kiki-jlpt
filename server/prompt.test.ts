@@ -143,6 +143,30 @@ test('quality triage prompt marks deterministic evidence authoritative and inclu
   assert.match(prompt, /MUST NOT be used as a reason to regenerate/i);
   assert.match(prompt, /At the library/);
   assert.match(prompt, /exactly one verdict for every supplied conversationId/i);
+  assert.match(prompt, /Judge only the spoken dialogue/i);
+  assert.doesNotMatch(prompt, /What happens\?/);
+  assert.doesNotMatch(prompt, /A book is read\./);
+});
+
+test('historical quality labels separate harmless constraints from noticeable dialogue flaws', () => {
+  const prompt = buildQualityTriagePrompt({
+    setNumber: 2,
+    conversations: promptConversations,
+    evidenceByConversationId: promptEvidence,
+    reviewPurpose: 'historical-label'
+  });
+  assert.match(prompt, /shared final quality label, not a repair queue/i);
+  assert.match(prompt, /communicative success/i);
+  assert.match(prompt, /recoverable ellipsis/i);
+  assert.match(prompt, /materially obscures or changes the intended meaning/i);
+  assert.match(prompt, /repeated or sustained pattern/i);
+  assert.match(prompt, /A phrase having a more idiomatic alternative is not enough/i);
+  assert.match(prompt, /Do not target any desired distribution/i);
+  assert.match(prompt, /No vocabulary, question, answer, translation, generator, repair-history, or earlier-label evidence is supplied or relevant/i);
+  assert.match(prompt, /generator identity, repair history, and earlier labels are deliberately excluded/i);
+  assert.doesNotMatch(prompt, /authoritativeVocabularyEvidence/);
+  assert.doesNotMatch(prompt, /Curated quality-bar exemplars/);
+  assert.doesNotMatch(prompt, /What happens\?/);
 });
 
 test('balanced repair prompt contains flagged conversations only and uses a balanced objective', () => {
@@ -170,4 +194,7 @@ test('picker prompt is forced-choice and attaches authoritative re-audit evidenc
   assert.match(prompt, /may not reject all versions/i);
   assert.match(prompt, /selectedQuality/);
   assert.match(prompt, /outOfVocabularyUniqueCount/);
+  assert.match(prompt, /spoken dialogue's naturalness/i);
+  assert.doesNotMatch(prompt, /What happens\?/);
+  assert.doesNotMatch(prompt, /A book is read\./);
 });
