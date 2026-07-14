@@ -6,8 +6,8 @@
     "currentSetMissingCount": 0,
     "currentSetMissingWords": [],
     "allowedVocabTotal": 200,
-    "allowedVocabUsedCount": 182,
-    "allowedVocabUsedPercentage": 91,
+    "allowedVocabUsedCount": 183,
+    "allowedVocabUsedPercentage": 91.5,
     "outOfAllowedCount": 19,
     "outOfAllowedWords": [
       "だめ",
@@ -8041,8 +8041,627 @@
       "curatedAudioPath": "curated/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-10.wav",
       "curatedId": "set-02-20260713T013707Z-egqgu4-convo-10",
       "curatedAt": "2026-07-13T03:24:56.720Z"
+    },
+    {
+      "id": "set-02-20260713T013707Z-egqgu4-convo-11",
+      "number": 11,
+      "title": "The Fountain Pen",
+      "scene": "A woman admires a fountain pen on her friend's desk and learns its story.",
+      "sampleContext": "Keiko notices a nice fountain pen on Taro's desk and asks him about it.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "admiring",
+            "slow"
+          ],
+          "japanese": "たろうさん、机のその万年筆、いいですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "ああ、これですか。ありがとうございます。父からです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "新しいですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "fond",
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、古いですよ。おととしの誕生日に、父からでした。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "そうですか。青い万年筆ですね。私は青が好きです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "私もです。毎日、かばんに入れますよ。そして、うちでは、この小さい箱に入れます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "いい箱ですね。それも、お父さんからですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "いいえ、箱は姉からです。去年の誕生日でした。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "そうですか。いい家族ですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "ええ、そうですね。どうも。"
+        }
+      ],
+      "listeningQuestions": [
+        "Where does Keiko see the fountain pen?",
+        "Who gave Taro the pen, and on what occasion?",
+        "Is the pen new? How old is it?",
+        "What color is the fountain pen?",
+        "What does Taro do with the pen every day, and where does it go at home?",
+        "Who gave him the small box, and when?"
+      ],
+      "answerKey": [
+        "On Taro's desk.",
+        "His father gave it to him for his birthday.",
+        "No, it's old — he received it the year before last.",
+        "Blue.",
+        "He puts it in his bag every day, and at home he keeps it in a small box.",
+        "His older sister gave it to him for his birthday last year."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Taro, that fountain pen on your desk is really nice."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Oh, this? Thank you. It's from my father."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is it new?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, it's old. It was from my father for my birthday the year before last."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I see. It's a blue fountain pen. I like blue."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Me too. I put it in my bag every day. And at home, I keep it in this small box."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "It's a nice box. Is that also from your father?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, the box is from my older sister. It was for my birthday last year."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I see. What a nice family."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, indeed. Thanks."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～日",
+        "～年",
+        "ああ",
+        "ありがとうございます",
+        "いい",
+        "いいえ",
+        "うち",
+        "おととし",
+        "お父さん",
+        "かばん",
+        "この",
+        "これ",
+        "その",
+        "それ",
+        "どうも",
+        "家族",
+        "机",
+        "去年",
+        "古い",
+        "好き",
+        "姉",
+        "私",
+        "小さい",
+        "新しい",
+        "青",
+        "青い",
+        "誕生日",
+        "二",
+        "入れる",
+        "箱",
+        "父",
+        "毎日",
+        "万年筆"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-14T02:31:38.786Z",
+      "updatedAt": "2026-07-14T02:31:38.786Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [
+        "malformed_phrasing"
+      ],
+      "audioFileName": "set-02-20260713T013707Z-egqgu4-convo-11.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-11.wav",
+      "sourceRunId": "set-02-20260713T013707Z-egqgu4",
+      "sourceConversationId": "convo-11",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-11.wav",
+      "curatedId": "set-02-20260713T013707Z-egqgu4-convo-11",
+      "curatedAt": "2026-07-14T02:31:38.786Z"
+    },
+    {
+      "id": "set-02-20260713T013707Z-egqgu4-convo-12",
+      "number": 12,
+      "title": "Saturday Laundry",
+      "scene": "An older sister and her younger brother do their weekly Saturday chores.",
+      "sampleContext": "It is Saturday morning, and Hana gets her reluctant brother Ken to help with washing and cleaning.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "energetic",
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "おはようございます。今週も土曜日ですね。服を洗いましょう。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "sleepy",
+            "reluctant",
+            "slow"
+          ],
+          "japanese": "ええ、もうですか。まだ午前九時ですよ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "firm",
+            "slow"
+          ],
+          "japanese": "毎週、土曜日の午前に洗いますよ。シャツと靴下をここに入れてください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "resigned",
+            "slow"
+          ],
+          "japanese": "はい、はい。この赤いシャツもですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、それもです。そして、窓を開けてください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "開けました。火曜日と水曜日には洗いませんか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "matter-of-fact",
+            "slow"
+          ],
+          "japanese": "洗いません。土曜日だけですよ。私はお風呂とトイレを洗います。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "じゃあ、私は玄関の靴を洗います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "encouraging",
+            "slow"
+          ],
+          "japanese": "いいですね。十二時に終りましょう。昼から友達と遊びますから。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "motivated",
+            "slow"
+          ],
+          "japanese": "はい、じゃあ、しましょう。"
+        }
+      ],
+      "listeningQuestions": [
+        "What time is it when the conversation starts?",
+        "How often do they wash clothes, and on which day?",
+        "What items does Hana tell Ken to put in?",
+        "What does Hana ask Ken to open?",
+        "Who cleans what: what will Hana wash, and what will Ken wash?",
+        "By what time do they want to finish, and why?"
+      ],
+      "answerKey": [
+        "Nine o'clock in the morning.",
+        "Every week, only on Saturday mornings.",
+        "Shirts and socks, including the red shirt.",
+        "The window.",
+        "Hana will clean the bath and the toilet; Ken will wash the shoes at the entrance.",
+        "By twelve o'clock, because Hana will play with friends from midday."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Good morning! It's Saturday again this week. Let's wash the clothes."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Ehh, already? It's still nine in the morning."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "We wash every week on Saturday morning. Put the shirts and socks in here, please."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Okay, okay. This red shirt too?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, that too. And please open the window."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Opened it. Don't we wash on Tuesdays and Wednesdays?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "We don't. Only on Saturdays. I'll clean the bath and the toilet."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Then I'll wash the shoes at the entrance."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Great. Let's finish by twelve. Because I'm playing with friends from midday."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Okay, let's do it!"
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～時",
+        "～日",
+        "いい",
+        "おはようございます",
+        "お風呂",
+        "ここ",
+        "この",
+        "シャツ",
+        "する",
+        "それ",
+        "トイレ",
+        "はい",
+        "火曜日",
+        "開ける",
+        "九",
+        "靴",
+        "靴下",
+        "玄関",
+        "戸",
+        "午前",
+        "今週",
+        "四",
+        "私",
+        "終る",
+        "十",
+        "水曜日",
+        "赤い",
+        "洗う",
+        "窓",
+        "昼",
+        "土曜日",
+        "二",
+        "入れる",
+        "服",
+        "毎週",
+        "友達",
+        "遊ぶ"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-14T02:31:42.279Z",
+      "updatedAt": "2026-07-14T02:31:42.279Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "pickerSelected": "candidate2",
+      "pickerConfidence": "high",
+      "qualityFlags": [
+        "drill_like_transition",
+        "unnatural_collocation"
+      ],
+      "audioFileName": "set-02-20260713T013707Z-egqgu4-convo-12.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-12.wav",
+      "sourceRunId": "set-02-20260713T013707Z-egqgu4",
+      "sourceConversationId": "convo-12",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-12.wav",
+      "curatedId": "set-02-20260713T013707Z-egqgu4-convo-12",
+      "curatedAt": "2026-07-14T02:31:42.279Z"
+    },
+    {
+      "id": "set-02-20260713T013707Z-egqgu4-convo-13",
+      "number": 13,
+      "title": "Favorite Seasons",
+      "scene": "Two friends compare which seasons they like and dislike.",
+      "sampleContext": "Ai and Kenta chat casually about spring, summer, fall, and winter.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "けんたさん、春と夏と秋と冬、どれが好きですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "私は夏が好きです。夏休みがありますから。あいさんは？"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "content",
+            "slow"
+          ],
+          "japanese": "私は秋が好きです。秋は、朝も昼もいいですから。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "そうですね。冬は好きですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "honest",
+            "slow"
+          ],
+          "japanese": "いいえ、冬は嫌いです。毎朝、起きたくないですから。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "amused",
+            "agreeing",
+            "slow"
+          ],
+          "japanese": "ああ、私もです。冬の朝は、ベッドがいいですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "playful",
+            "slow"
+          ],
+          "japanese": "ええ。春は好きですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "春もいいですね。毎年、春に家族と遊びます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "いいですね。じゃあ、今年の夏休みは何をしますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "excited",
+            "slow"
+          ],
+          "japanese": "毎日、友達と遊びたいです。"
+        }
+      ],
+      "listeningQuestions": [
+        "Which season does Kenta like best, and why?",
+        "Which season does Ai like, and what reason does she give?",
+        "Which season does Ai dislike, and why?",
+        "What do both of them agree about winter mornings?",
+        "What does Kenta do every year in spring?",
+        "What does Kenta want to do during this year's summer vacation?"
+      ],
+      "answerKey": [
+        "Summer, because there is summer vacation.",
+        "Fall, because both the mornings and the daytime are nice.",
+        "Winter, because she doesn't want to get up every morning.",
+        "That staying in bed is best on winter mornings.",
+        "He spends time (plays/hangs out) with his family.",
+        "He wants to play with his friends every day."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Kenta, spring, summer, fall, winter — which do you like?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I like summer. Because there's summer vacation. How about you, Ai?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I like fall. Because in fall, both mornings and daytime are pleasant."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "True. Do you like winter?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No, I dislike winter. Because I don't want to get up every morning."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Ah, me too. On winter mornings, bed is the best place."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes! Do you like spring?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Spring is nice too. Every year in spring, I spend time with my family."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "That's nice. So, what will you do this summer vacation?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I want to play with my friends every day!"
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～日",
+        "～年",
+        "ああ",
+        "いい",
+        "いいえ",
+        "する",
+        "どれ",
+        "ベッド",
+        "何",
+        "何～",
+        "夏",
+        "夏休み",
+        "家族",
+        "起きる",
+        "嫌い",
+        "戸",
+        "好き",
+        "今年",
+        "在る",
+        "三",
+        "四",
+        "私",
+        "秋",
+        "春",
+        "昼",
+        "朝",
+        "冬",
+        "二",
+        "毎朝",
+        "毎日",
+        "毎年",
+        "友達",
+        "有る",
+        "遊ぶ"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-07-14T02:31:46.471Z",
+      "updatedAt": "2026-07-14T02:31:46.471Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "audioFileName": "set-02-20260713T013707Z-egqgu4-convo-13.wav",
+      "audioUrl": "/curated/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-13.wav",
+      "sourceRunId": "set-02-20260713T013707Z-egqgu4",
+      "sourceConversationId": "convo-13",
+      "setNumber": 2,
+      "curatedAudioPath": "curated/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-13.wav",
+      "curatedId": "set-02-20260713T013707Z-egqgu4-convo-13",
+      "curatedAt": "2026-07-14T02:31:46.471Z"
     }
   ],
   "createdAt": "2026-05-25T21:44:22.592Z",
-  "updatedAt": "2026-07-13T03:24:56.720Z"
+  "updatedAt": "2026-07-14T02:31:46.471Z"
 }
