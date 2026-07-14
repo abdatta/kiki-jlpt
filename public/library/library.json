@@ -1,6 +1,6 @@
 {
   "version": 3,
-  "generatedAt": "2026-07-14T02:31:46.471Z",
+  "generatedAt": "2026-07-14T07:50:41.929Z",
   "conversations": [
     {
       "id": "set-02-20260525T213201Z-fztc4b-convo-02",
@@ -14016,6 +14016,1271 @@
       "vocabularyReferences": [],
       "quality": "good",
       "createdAt": "2026-07-14T02:31:46.471Z"
+    },
+    {
+      "id": "set-02-b40932aee78acf4a",
+      "level": 2,
+      "title": "Meal Times",
+      "scene": "Two friends compare their family meal schedules, and one invites the other to dinner.",
+      "sampleContext": "Sho asks Nao about her family's dinner time, and they end up making plans for tonight.",
+      "audioUrl": "library/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-14.wav",
+      "text": [
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "なおさんのうちでは、晩御飯は何時ですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "いつも午後七時です。毎日、家族と食べます。しょうさんは？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slightly-sad",
+            "slow"
+          ],
+          "japanese": "私は、時々一人で食べます。父と母は、時々時間がありませんから。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "curious",
+            "slow"
+          ],
+          "japanese": "そうですか。朝御飯は？"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "朝御飯は毎朝六時です。母と食べますよ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "surprised",
+            "slow"
+          ],
+          "japanese": "六時ですか。私は七時に起きます。朝御飯は八時です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "そうですか。昼は、うちで食べますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、昼はいつも友達と食べます。金曜日だけ、うちで食べます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "inviting",
+            "warm",
+            "slow"
+          ],
+          "japanese": "そうですか。あの、今晩、私のうちへ来ませんか。晩御飯を食べましょう。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "delighted",
+            "slow"
+          ],
+          "japanese": "はい、行きたいです。ありがとうございます。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 2",
+          "english": "Nao, what time is dinner at your house?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Always at 7 p.m. I eat with my family every day. How about you, Sho?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I sometimes eat alone. Because my father and mother sometimes have no time."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I see. What about breakfast?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Breakfast is at six every morning. I eat with my mother."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Six o'clock? I get up at seven. My breakfast is at eight."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is that so. At midday, do you eat at home?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No, at midday I always eat with friends. Only on Fridays do I eat at home."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I see. Say, won't you come to my house tonight? Let's have dinner."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, I'd love to come. Thank you!"
+        }
+      ],
+      "listeningQuestions": [
+        "What time is dinner at Nao's house, and who does she eat with?",
+        "Why does Sho sometimes eat dinner alone?",
+        "What time is Sho's breakfast, and who does he eat it with?",
+        "What time does Nao get up, and when is her breakfast?",
+        "Where does Nao usually eat at midday, and what is the exception?",
+        "What plan do they make at the end of the conversation?"
+      ],
+      "answerKey": [
+        "At seven in the evening; she eats with her family every day.",
+        "Because his father and mother sometimes have no time.",
+        "At six every morning, with his mother.",
+        "She gets up at seven, and her breakfast is at eight.",
+        "She always eats with friends at midday; only on Fridays does she eat at home.",
+        "Nao will go to Sho's house tonight and they will eat dinner together."
+      ],
+      "vocabularyUsed": [
+        "～時",
+        "～時間",
+        "～日",
+        "あの",
+        "ありがとうございます",
+        "いいえ",
+        "いつも",
+        "うち",
+        "はい",
+        "一",
+        "一人",
+        "何",
+        "何～",
+        "家族",
+        "起きる",
+        "金曜日",
+        "戸",
+        "午後",
+        "行く",
+        "今晩",
+        "在る",
+        "三",
+        "私",
+        "時々",
+        "時間",
+        "七",
+        "食べる",
+        "人",
+        "昼",
+        "朝",
+        "朝御飯",
+        "二",
+        "八",
+        "晩",
+        "晩御飯",
+        "父",
+        "母",
+        "毎朝",
+        "毎日",
+        "友達",
+        "有る",
+        "来る",
+        "六"
+      ],
+      "vocabularyReferences": [],
+      "quality": "good",
+      "createdAt": "2026-07-14T06:49:31.100Z"
+    },
+    {
+      "id": "set-02-1a39c0907cc08d15",
+      "level": 2,
+      "title": "A Cold Winter Morning",
+      "scene": "A mother helps her son get dressed warmly before he leaves the house on a winter morning.",
+      "sampleContext": "It is early morning at home; the mother sounds caring and the son sounds a little sleepy at first.",
+      "audioUrl": "library/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-15.wav",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "warm",
+            "slow"
+          ],
+          "japanese": "たろう、おはようございます。もう冬ですよ。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "sleepy",
+            "soft",
+            "slow"
+          ],
+          "japanese": "おはようございます、お母さん。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "caring",
+            "slow"
+          ],
+          "japanese": "今朝から、新しい上着を着てくださいね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、着ます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "これもかぶってください。赤いですよ。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "これですか。はい、かぶります。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "新しい靴下もどうぞ。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。じゃあ、ドアを開けますよ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "はい、行きましょう。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Taro, good morning. It's already winter, you know."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Good morning, Mom."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Starting this morning, please wear your new jacket, okay?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Okay, I'll wear it."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Please put this on your head too. It's red."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "This? Okay, I'll put it on."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Here are new socks too."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Thank you. Well then, I'll open the door."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, let's go."
+        }
+      ],
+      "listeningQuestions": [
+        "What season does the mother say it is?",
+        "From when does the mother want Taro to wear the new jacket?",
+        "What color is the item Taro puts on his head?",
+        "What three things does the mother give Taro in total?",
+        "Who says they will open the door at the end?"
+      ],
+      "answerKey": [
+        "It is winter.",
+        "From this morning.",
+        "It is red.",
+        "A new jacket, a red item to wear on his head, and new socks.",
+        "Taro, the son, says he will open the door."
+      ],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "おはようございます",
+        "お母さん",
+        "かぶる",
+        "これ",
+        "ドア",
+        "どうぞ",
+        "はい",
+        "開ける",
+        "靴下",
+        "行く",
+        "今朝",
+        "上着",
+        "新しい",
+        "赤い",
+        "着る",
+        "冬"
+      ],
+      "vocabularyReferences": [],
+      "quality": "good",
+      "createdAt": "2026-07-14T06:49:59.078Z"
+    },
+    {
+      "id": "set-02-146319e4f8678309",
+      "level": 2,
+      "title": "Autumn Shopping",
+      "scene": "A woman looks at autumn clothes in a shop and tries some things on while talking with the clerk.",
+      "sampleContext": "The customer enters a small clothing shop; the clerk is polite and the customer is in a good mood.",
+      "audioUrl": "library/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-16.wav",
+      "text": [
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "こんにちは。どうぞ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "こんにちは。もう秋ですね。私は毎年、秋に新しい服を見ます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。毎月三日に、新しい服が来ますよ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "そうですか。あの、この赤いスカートを見たいです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "はい、どうぞ。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "コートを脱ぎますね。……これ、いいですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "ええ、いいですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "excited",
+            "slow"
+          ],
+          "japanese": "あの青いのも、かぶりたいです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "encouraging",
+            "slow"
+          ],
+          "japanese": "どうぞ、かぶってください。……ああ、いいですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。春も来たいです。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 2",
+          "english": "Hello. Please come in."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Hello. It's already autumn, isn't it? Every year, I look at new clothes in autumn."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Thank you. New clothes arrive on the 3rd of every month."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I see. Um, I'd like to look at this red skirt."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, go ahead."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I'll take off my coat. ...This is nice, isn't it?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, it looks good."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I'd also like to put that blue one on my head."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Please, go ahead and put it on. ...Ah, that looks good."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Thank you. I'd like to come again in spring, too."
+        }
+      ],
+      "listeningQuestions": [
+        "What does the customer do every year in autumn?",
+        "On what day do new clothes arrive at the shop, and how often?",
+        "What does the customer take off before trying things on?",
+        "What color is the skirt, and what color is the item she puts on her head?",
+        "When does the customer say she wants to come again?"
+      ],
+      "answerKey": [
+        "She looks at new clothes every autumn.",
+        "New clothes arrive on the 3rd, every month.",
+        "She takes off her coat.",
+        "The skirt is red, and the item she puts on her head is blue.",
+        "She wants to come again in spring."
+      ],
+      "vocabularyUsed": [
+        "～月",
+        "～日",
+        "～年",
+        "ああ",
+        "あの",
+        "ありがとうございます",
+        "いい",
+        "かぶる",
+        "コート",
+        "この",
+        "これ",
+        "こんにちは",
+        "スカート",
+        "どうぞ",
+        "はい",
+        "見る",
+        "三",
+        "三日",
+        "私",
+        "秋",
+        "春",
+        "新しい",
+        "青い",
+        "赤い",
+        "脱ぐ",
+        "二",
+        "服",
+        "毎月",
+        "毎年",
+        "来る"
+      ],
+      "vocabularyReferences": [],
+      "quality": "good",
+      "createdAt": "2026-07-14T06:50:29.681Z"
+    },
+    {
+      "id": "set-02-cf95060c1c9a99a0",
+      "level": 2,
+      "title": "A Birthday on the Fifth",
+      "scene": "Two friends talk about an upcoming birthday and make a plan for a family dinner.",
+      "sampleContext": "Two friends are chatting casually; the man asks about the woman's birthday and she happily invites him.",
+      "audioUrl": "library/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-17.wav",
+      "text": [
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "みきさん、誕生日は何月ですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "今月ですよ。五日です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "surprised",
+            "slow"
+          ],
+          "japanese": "ああ、五日ですか。日曜日ですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "はい。毎年、家族と晩御飯を食べます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "いいですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "inviting",
+            "slow"
+          ],
+          "japanese": "二日から七日まで、母も来ます。けんたさんも来てください。五日は暇ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "excited",
+            "grateful",
+            "slow"
+          ],
+          "japanese": "はい、暇ですよ。ありがとうございます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "今年もいい年ですね。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 2",
+          "english": "Miki, what month is your birthday?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "It's this month. The 5th."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Oh, the 5th? That's a Sunday, isn't it?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. Every year, I eat dinner with my family."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That's nice."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "My mother is also coming, from the 2nd to the 7th. Kenta, please come too. Are you free on the 5th?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I'm free. Thank you very much."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "This year is a good year too, isn't it?"
+        }
+      ],
+      "listeningQuestions": [
+        "When is Miki's birthday?",
+        "What day of the week is her birthday this year?",
+        "What does Miki's family do every year on her birthday?",
+        "From what date to what date will Miki's mother be visiting?",
+        "Is Kenta free on the 5th, and what did Miki ask him to do?"
+      ],
+      "answerKey": [
+        "The 5th of this month.",
+        "It is a Sunday.",
+        "They eat dinner together every year.",
+        "From the 2nd to the 7th.",
+        "Yes, he is free; she asked him to come to the birthday dinner too."
+      ],
+      "vocabularyUsed": [
+        "～月",
+        "～日",
+        "～年",
+        "ああ",
+        "ありがとうございます",
+        "いい",
+        "はい",
+        "何",
+        "何～",
+        "家族",
+        "暇",
+        "戸",
+        "五",
+        "五日",
+        "今月",
+        "今年",
+        "三",
+        "七",
+        "七日",
+        "食べる",
+        "誕生日",
+        "二",
+        "二日",
+        "日曜日",
+        "年",
+        "晩",
+        "晩御飯",
+        "母",
+        "毎年",
+        "来る"
+      ],
+      "vocabularyReferences": [],
+      "quality": "good",
+      "createdAt": "2026-07-14T06:50:57.805Z"
+    },
+    {
+      "id": "set-02-489d65cc932859e5",
+      "level": 2,
+      "title": "Summer Vacation Trip",
+      "scene": "A woman tells her friend about her summer vacation trip to her older sister's apartment.",
+      "sampleContext": "Two friends are chatting about summer vacation plans; the woman is excited about her trip.",
+      "audioUrl": "library/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-18.wav",
+      "text": [
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "なおさん、夏休みは何をしますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "excited",
+            "slow"
+          ],
+          "japanese": "姉のアパートへ行きますよ。大阪です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "いいですね。大阪は初めてですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "いいえ。去年も行きました。去年はいい年でした。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "バスで行きますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。バスで一日かかります。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "surprised",
+            "slow"
+          ],
+          "japanese": "ええ！そうですか。何日居ますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "五日居ます。夏休みは一月ありますから。二十日から行きます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "いいですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "はい。夏が好きですから。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 2",
+          "english": "Nao, what will you do during summer vacation?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I'm going to my older sister's apartment. It's in Osaka."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That's nice. Is it your first time in Osaka?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No. I went last year too. Last year was a good year."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Are you going by bus?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. It takes one day by bus."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Wow! Really? How many days will you stay?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I'll stay five days. Summer vacation is one month long, after all. I leave on the 20th."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That's nice."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. Because I love summer."
+        }
+      ],
+      "listeningQuestions": [
+        "Where is Nao going for summer vacation, and whose place is it?",
+        "Is this her first time going to Osaka? How do you know?",
+        "How long does the trip take, and by what transportation?",
+        "How many days will she stay, and from what date does she leave?",
+        "How long is her summer vacation, and why is she happy about the trip?"
+      ],
+      "answerKey": [
+        "She is going to her older sister's apartment in Osaka.",
+        "No, it is not her first time; she also went last year.",
+        "It takes one day by bus.",
+        "She will stay five days, leaving from the 20th.",
+        "Her summer vacation is one month long, and she is happy because she likes summer."
+      ],
+      "vocabularyUsed": [
+        "～月",
+        "～日",
+        "～年",
+        "アパート",
+        "いい",
+        "いいえ",
+        "かかる",
+        "する",
+        "はい",
+        "バス",
+        "一",
+        "一月",
+        "一日",
+        "何",
+        "何～",
+        "夏",
+        "夏休み",
+        "去年",
+        "居る",
+        "五",
+        "五日",
+        "好き",
+        "行く",
+        "在る",
+        "三",
+        "四",
+        "姉",
+        "十",
+        "十日",
+        "初めて",
+        "二",
+        "二十日",
+        "年",
+        "有る"
+      ],
+      "vocabularyReferences": [],
+      "quality": "good",
+      "createdAt": "2026-07-14T06:51:32.398Z"
+    },
+    {
+      "id": "set-02-ef5545c6e581c296",
+      "level": 2,
+      "title": "The New Room",
+      "scene": "A man visits his friend's new room and she shows him around.",
+      "sampleContext": "The man arrives at his friend's new place for the first time; she proudly shows him each part of the room.",
+      "audioUrl": "library/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-19.wav",
+      "text": [
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "impressed",
+            "slow"
+          ],
+          "japanese": "こんにちは、えみさん。新しい部屋ですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "welcoming",
+            "slow"
+          ],
+          "japanese": "はい、どうぞ。今月の二日に来ました。月曜日でしたよ。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "impressed",
+            "slow"
+          ],
+          "japanese": "大きいテーブルですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "ええ。ここで毎晩、晩御飯を食べます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "すみません、お手洗いはどこですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "階段の隣ですよ。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。……ああ、この時計、いいですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "父のです。あそこに掛けますよ。そして、あそこで服を洗います。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "impressed",
+            "slow"
+          ],
+          "japanese": "いい部屋ですね。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "毎月、母も来ます。土曜日の午前に来ますよ。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 2",
+          "english": "Hello, Emi. This is a new room, isn't it?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, come in. I moved in on the 2nd of this month. It was a Monday."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That's a big table."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. I eat dinner here every night."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Excuse me, where is the bathroom?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "It's next to the stairs."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Thank you. ...Oh, this clock is nice."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "It's my father's. I'll hang it over there. And I wash clothes over there."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It's a nice room."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "My mother also comes every month. She comes on Saturday mornings."
+        }
+      ],
+      "listeningQuestions": [
+        "When did Emi move into the new room, and what day of the week was it?",
+        "What does Emi do at the big table every night?",
+        "Where is the bathroom in the new room?",
+        "Whose clock is it, and what will Emi do with it?",
+        "How often does Emi's mother visit, and when exactly does she come?"
+      ],
+      "answerKey": [
+        "She moved in on the 2nd of this month, which was a Monday.",
+        "She eats dinner there every night.",
+        "It is next to the stairs.",
+        "It is her father's clock, and she will hang it over there.",
+        "Her mother visits every month, on Saturday mornings."
+      ],
+      "vocabularyUsed": [
+        "～月",
+        "～日",
+        "ああ",
+        "あそこ",
+        "ありがとうございます",
+        "いい",
+        "お手洗い",
+        "ここ",
+        "この",
+        "こんにちは",
+        "すみません",
+        "テーブル",
+        "どうぞ",
+        "どこ",
+        "はい",
+        "階段",
+        "掛ける",
+        "月曜日",
+        "午前",
+        "今月",
+        "三",
+        "時計",
+        "食べる",
+        "新しい",
+        "洗う",
+        "大きい",
+        "土曜日",
+        "二",
+        "二日",
+        "晩",
+        "晩御飯",
+        "父",
+        "部屋",
+        "服",
+        "母",
+        "毎月",
+        "毎晩",
+        "来る",
+        "隣"
+      ],
+      "vocabularyReferences": [],
+      "quality": "good",
+      "createdAt": "2026-07-14T07:50:23.515Z"
+    },
+    {
+      "id": "set-02-bb2b198b9bcb3000",
+      "level": 2,
+      "title": "An Umbrella for a Stranger",
+      "scene": "On a rainy street, a kind woman gives directions to the police box and lends her spare umbrella to a man.",
+      "sampleContext": "Rain has just started; the man has no umbrella and stops a passerby to ask for directions.",
+      "audioUrl": "library/audio/set-02/set-02-20260713T013707Z-egqgu4-convo-20.wav",
+      "text": [
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "hesitant",
+            "slow"
+          ],
+          "japanese": "あの、すみません。交番はどこですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "helpful",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "交番ですか。あの角ですよ。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "grateful",
+            "slow"
+          ],
+          "japanese": "どうもありがとうございます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "kind",
+            "gentle",
+            "slow"
+          ],
+          "japanese": "あ、傘がありませんね。私はいつも、かばんに傘がありますから、これをどうぞ。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "surprised",
+            "apologetic",
+            "slow"
+          ],
+          "japanese": "いいですか。すみません。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "はい。傘を差してくださいね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "grateful",
+            "slow"
+          ],
+          "japanese": "この傘、ありがとうございます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "私は九日の水曜日に、ここに来ます。その時にお願いします。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "はい。じゃあ、水曜日に。ありがとうございます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "warm",
+            "slow"
+          ],
+          "japanese": "では、さようなら。"
+        }
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 2",
+          "english": "Um, excuse me. Where is the police box?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "The police box? It's at that corner over there."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Thank you very much."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, you don't have an umbrella. I always have an umbrella in my bag, so please take this one."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Are you sure? I'm sorry to trouble you."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. Please put the umbrella up, okay?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Thank you for this umbrella."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I will come here on Wednesday the 9th. Please return it then."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. Well then, see you Wednesday. Thank you very much."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Well then, goodbye."
+        }
+      ],
+      "listeningQuestions": [
+        "What place is the man looking for, and where is it?",
+        "Why is the woman able to give the man her umbrella?",
+        "What does the woman tell the man to do with the umbrella?",
+        "On what date and day of the week should the man return the umbrella?",
+        "Where will the man return the umbrella?"
+      ],
+      "answerKey": [
+        "He is looking for the police box; it is at that corner over there.",
+        "Because she always has an umbrella in her bag.",
+        "She tells him to put up the umbrella and use it.",
+        "On the 9th, which is a Wednesday.",
+        "At the same spot where they met, when the woman comes back."
+      ],
+      "vocabularyUsed": [
+        "～時",
+        "～日",
+        "あの",
+        "ありがとうございます",
+        "いい",
+        "いつも",
+        "お願いします",
+        "かばん",
+        "ここ",
+        "この",
+        "これ",
+        "さようなら",
+        "すみません",
+        "する",
+        "その",
+        "どうぞ",
+        "どうも",
+        "どこ",
+        "はい",
+        "角",
+        "九",
+        "九日",
+        "交番",
+        "差す",
+        "在る",
+        "傘",
+        "四",
+        "私",
+        "水曜日",
+        "二",
+        "有る",
+        "来る"
+      ],
+      "vocabularyReferences": [],
+      "quality": "good",
+      "createdAt": "2026-07-14T07:50:41.929Z"
     }
   ]
 }
