@@ -33,7 +33,6 @@ import {
   type QualityNodeEvent
 } from './qualityControl.ts';
 import { invokeStructuredJson, type StructuredJsonInvoker } from './structuredText.ts';
-import { labelHistoricalScope, type HistoricalQualityScope } from './historicalQuality.ts';
 import { readHistoricalQualityReviewIndex } from './qualityReviewIndex.ts';
 
 const app = express();
@@ -305,17 +304,18 @@ function makeLlmExchange(
 
 type ConversationJsonGenerator = (
   prompt: string,
-  textModel: TextModelInfo
+  textModel: TextModelInfo,
+  options?: { timeoutMs?: number }
 ) => Promise<{ parsed: unknown; output: string; stats?: unknown }>;
 
-const defaultConversationJsonGenerator: ConversationJsonGenerator = async (prompt, textModel) => {
+const defaultConversationJsonGenerator: ConversationJsonGenerator = async (prompt, textModel, options) => {
   switch (textModel.provider) {
     case 'codex':
-      return generateCodexConversationJson(prompt, textModel.model);
+      return generateCodexConversationJson(prompt, textModel.model, options?.timeoutMs);
     case 'claude':
-      return generateClaudeConversationJson(prompt, textModel.model);
+      return generateClaudeConversationJson(prompt, textModel.model, options?.timeoutMs);
     default:
-      return generateConversationJson(prompt);
+      return generateConversationJson(prompt, options?.timeoutMs);
   }
 };
 
@@ -678,8 +678,7 @@ function makeWorkflowNodes(audioCount: number): WorkflowAuditNode[] {
       { id: `${stage}:pass2:repair-1`, kind: 'repair-candidate', pass: 2, title: 'Re-roll repair candidate 1', candidateIndex: 1 },
       { id: `${stage}:pass2:repair-2`, kind: 'repair-candidate', pass: 2, title: 'Re-roll repair candidate 2', candidateIndex: 2 },
       { id: `${stage}:pass2:dominance-gates`, kind: 'dominance-gates', pass: 2, title: 'Re-roll dominance gates' },
-      { id: `${stage}:pass2:pick`, kind: 'pick', pass: 2, title: 'Re-roll pick' },
-      { id: `${stage}:final-label`, kind: 'final-label', pass: 1, title: 'Final dialogue labels' }
+      { id: `${stage}:pass2:pick`, kind: 'pick', pass: 2, title: 'Re-roll pick' }
     ];
     return definitions.map((definition, index) => ({
       id: definition.id,
@@ -1252,7 +1251,7 @@ async function generateWorkflowAudio(run: PracticeRun, audioCount: number, optio
   return { run: updatedRun, audioGeneratedCount, audioErrors };
 }
 
-const GENERATION_JOB_KINDS = ['run-generation', 'workflow-generation', 'library-complement', 'historical-quality-labeling'];
+const GENERATION_JOB_KINDS = ['run-generation', 'workflow-generation', 'library-complement'];
 
 /** Thrown by generationCheckpoint to unwind a runner whose job was paused or discarded. */
 class GenerationHalted extends Error {
@@ -1291,18 +1290,6 @@ async function runQueuedGenerationJob(jobId: string, runner: () => Promise<void>
     const message = error instanceof Error ? error.message : String(error);
     await updateStudioJob(jobId, (current) => ({ ...current, status: 'failed', stageLabel: 'Generation failed', error: message, completedAt: nowIso() })).catch(() => undefined);
   }
-}
-
-async function runHistoricalQualityLabelJob(jobId: string): Promise<void> {
-  const job = await readStudioJob(jobId);
-  const request = job.request as { scope: HistoricalQualityScope; judgeModelId: string; rejudge: boolean };
-  const judgeModel = await resolveTextModel(request.judgeModelId);
-  await updateStudioJob(jobId, (current) => ({ ...current, stageLabel: 'Judging historical conversations', stages: current.stages.map((stage) => ({ ...stage, status: 'running', startedAt: nowIso() })) }));
-  const result = await labelHistoricalScope({ scope: request.scope, judgeModel, rejudge: request.rejudge, onProgress: async (progress) => {
-    await updateStudioJob(jobId, (current) => ({ ...current, progress: { completed: progress.processed, total: progress.total, queued: progress.total - progress.processed - progress.skipped }, checkpoint: progress, stageLabel: `${progress.processed}/${progress.total} labeled` }));
-    await generationCheckpoint(jobId);
-  }});
-  await updateStudioJob(jobId, (current) => ({ ...current, status: 'succeeded', progress: { completed: result.processed, total: result.total }, checkpoint: result, stageLabel: `${result.processed} labeled · ${result.skipped} skipped`, completedAt: nowIso(), stages: current.stages.map((stage) => ({ ...stage, status: 'succeeded', completedAt: nowIso() })) }));
 }
 
 async function runWorkflowJob(jobId: string, request: WorkflowGenerateRequest, resume = false): Promise<void> {
@@ -1847,12 +1834,6 @@ app.post('/api/studio/jobs/:jobId/resume', asyncHandler(async (req, res) => {
     res.status(202).json({ job: resumed });
     return;
   }
-  if (job.kind === 'historical-quality-labeling') {
-    const resumed = await updateStudioJob(job.id, (current) => ({ ...current, status: 'queued', stageLabel: isGenerationSlotBusy() ? 'Waiting for earlier generation' : 'Resuming historical labels', error: undefined }));
-    void runQueuedGenerationJob(job.id, () => runHistoricalQualityLabelJob(job.id));
-    res.status(202).json({ job: resumed });
-    return;
-  }
   res.status(409).json({ error: 'This job cannot be resumed yet.' });
 }));
 
@@ -1899,41 +1880,35 @@ app.get('/api/text-models', asyncHandler(async (_req, res) => {
 }));
 
 app.post('/api/generation/preflight', asyncHandler(async (req, res) => {
-  const generator = await resolveTextModel(req.body?.textModelId);
-  const judge = await resolveTextModel(req.body?.judgeModelId ?? 'codex:gpt-5.6-sol');
-  const result: Record<string, { ok: boolean; error?: string }> = {};
-  try {
-    const generated = await conversationJsonGenerator('Return exactly one minimal valid JLPT conversation as the requested JSON object.', generator);
-    if (!normalizeGeneratedConversations(generated.parsed, 1).length) throw new Error('Generator returned no usable conversation.');
-    result.generator = { ok: true };
-  } catch (error) {
-    result.generator = { ok: false, error: error instanceof Error ? error.message : String(error) };
-  }
-  try {
-    const judged = await (qualityStructuredInvokerForTests ?? invokeStructuredJson)('Return only JSON: {"ready":true}.', judge, 'Return only valid JSON.');
-    if (!judged.parsed || typeof judged.parsed !== 'object') throw new Error('Judge returned invalid structured JSON.');
-    result.judge = { ok: true };
-  } catch (error) {
-    result.judge = { ok: false, error: error instanceof Error ? error.message : String(error) };
-  }
+  const [generator, judge] = await Promise.all([
+    resolveTextModel(req.body?.textModelId),
+    resolveTextModel(req.body?.judgeModelId ?? 'codex:gpt-5.6-sol')
+  ]);
+  const configuredTimeout = Number(process.env.GENERATION_PREFLIGHT_TIMEOUT_MS ?? 60_000);
+  const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 60_000;
+  const [generatorResult, judgeResult] = await Promise.all([
+    (async () => {
+      try {
+        const generated = await conversationJsonGenerator('Return exactly one minimal valid JLPT conversation as JSON: {"conversations":[{"title":"Test","text":[{"speaker":"Speaker 1","tags":["slow"],"japanese":"はい。"}]}]}', generator, { timeoutMs });
+        if (!normalizeGeneratedConversations(generated.parsed, 1).length) throw new Error('Generator returned no usable conversation.');
+        return { ok: true } as const;
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) } as const;
+      }
+    })(),
+    (async () => {
+      try {
+        const judged = await (qualityStructuredInvokerForTests ?? invokeStructuredJson)('Return only JSON: {"ready":true}.', judge, 'Return only valid JSON.', { timeoutMs });
+        if (!judged.parsed || typeof judged.parsed !== 'object') throw new Error('Judge returned invalid structured JSON.');
+        return { ok: true } as const;
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) } as const;
+      }
+    })()
+  ]);
+  const result = { generator: generatorResult, judge: judgeResult };
   const ok = result.generator.ok && result.judge.ok;
-  res.status(ok ? 200 : 422).json({ generator, judge, ...result, ...(ok ? {} : { error: [result.generator.ok ? undefined : `Generator: ${result.generator.error}`, result.judge.ok ? undefined : `Judge: ${result.judge.error}`].filter(Boolean).join(' · ') }) });
-}));
-
-app.post('/api/historical-quality-labels/start', asyncHandler(async (req, res) => {
-  const scope: HistoricalQualityScope = req.body?.scope === 'saved-runs' ? 'saved-runs' : 'curated-library';
-  const judgeModel = await resolveTextModel(req.body?.judgeModelId ?? 'codex:gpt-5.6-sol');
-  const idempotencyKey = req.body?.idempotencyKey ?? `historical-quality-${scope}-${Date.now()}`;
-  const timestamp = nowIso();
-  const candidate = await createStudioJob({
-    id: makeStudioJobId('historical-quality'), idempotencyKey, kind: 'historical-quality-labeling', status: 'queued',
-    title: 'Historical quality labels', detail: scope === 'curated-library' ? 'Curated library' : 'Saved runs',
-    stageLabel: isGenerationSlotBusy() ? 'Waiting for earlier generation' : 'Queued', revision: 1,
-    progress: { completed: 0, total: 0 }, stages: [{ id: 'label', label: 'Judging historical conversations', status: 'pending' }],
-    request: { scope, judgeModelId: judgeModel.id, rejudge: req.body?.rejudge === true }, createdAt: timestamp, updatedAt: timestamp
-  });
-  void runQueuedGenerationJob(candidate.id, () => runHistoricalQualityLabelJob(candidate.id));
-  res.status(202).json({ job: candidate });
+  res.status(ok ? 200 : 422).json({ ...result, ...(ok ? {} : { error: [result.generator.ok ? undefined : `Generator: ${result.generator.error}`, result.judge.ok ? undefined : `Judge: ${result.judge.error}`].filter(Boolean).join(' · ') }) });
 }));
 
 app.get('/api/runs', asyncHandler(async (_req, res) => {

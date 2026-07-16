@@ -135,10 +135,11 @@ async function readCodexResponseText(response: Response): Promise<string> {
 export async function generateCodexStructuredJson(
   prompt: string,
   model: string,
-  instructions = 'Return only valid JSON matching the requested shape, with no Markdown fences or explanatory text.'
+  instructions = 'Return only valid JSON matching the requested shape, with no Markdown fences or explanatory text.',
+  timeoutOverrideMs?: number
 ): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
   const configuredTimeout = Number(process.env.CODEX_REQUEST_TIMEOUT_MS ?? 10 * 60 * 1000);
-  const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 10 * 60 * 1000;
+  const timeoutMs = timeoutOverrideMs ?? (Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 10 * 60 * 1000);
   const response = await codexFetch(CODEX_API_URL, {
     method: 'POST',
     signal: AbortSignal.timeout(timeoutMs),
@@ -179,8 +180,8 @@ export async function generateCodexStructuredJson(
   };
 }
 
-export async function generateCodexConversationJson(prompt: string, model: string): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
-  return generateCodexStructuredJson(prompt, model, CODEX_TEXT_INSTRUCTIONS);
+export async function generateCodexConversationJson(prompt: string, model: string, timeoutMs?: number): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
+  return generateCodexStructuredJson(prompt, model, CODEX_TEXT_INSTRUCTIONS, timeoutMs);
 }
 
 function contentText(content?: CodexContent): string {

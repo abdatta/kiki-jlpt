@@ -7,8 +7,8 @@ import type {
   TextModelInfo
 } from '../shared/types.ts';
 import { atomicWriteFile } from '../server/atomic.ts';
-import { HISTORICAL_QUALITY_RUBRIC_VERSION } from '../server/historicalQuality.ts';
 import { OUTPUTS_DIR } from '../server/paths.ts';
+import { FINAL_DIALOGUE_QUALITY_RUBRIC_VERSION as HISTORICAL_QUALITY_RUBRIC_VERSION } from '../server/prompt.ts';
 import { labelHistoricalConversations } from '../server/qualityControl.ts';
 import { listRuns, mutateRun } from '../server/storage.ts';
 import { resolveTextModel } from '../server/textModels.ts';

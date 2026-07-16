@@ -9,19 +9,24 @@ export interface StructuredJsonResult {
   stats?: unknown;
 }
 
+export interface StructuredJsonOptions {
+  timeoutMs?: number;
+}
+
 export type StructuredJsonInvoker = (
   prompt: string,
   textModel: TextModelInfo,
-  instructions: string
+  instructions: string,
+  options?: StructuredJsonOptions
 ) => Promise<StructuredJsonResult>;
 
-export const invokeStructuredJson: StructuredJsonInvoker = async (prompt, textModel, instructions) => {
+export const invokeStructuredJson: StructuredJsonInvoker = async (prompt, textModel, instructions, options) => {
   switch (textModel.provider) {
     case 'codex':
-      return generateCodexStructuredJson(prompt, textModel.model, instructions);
+      return generateCodexStructuredJson(prompt, textModel.model, instructions, options?.timeoutMs);
     case 'claude':
-      return generateClaudeStructuredJson(prompt, textModel.model, instructions);
+      return generateClaudeStructuredJson(prompt, textModel.model, instructions, options?.timeoutMs);
     default:
-      return generateGeminiStructuredJson(prompt, textModel.model, 0.2);
+      return generateGeminiStructuredJson(prompt, textModel.model, 0.2, options?.timeoutMs);
   }
 };

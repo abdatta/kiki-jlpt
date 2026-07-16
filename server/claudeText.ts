@@ -207,9 +207,9 @@ function tail(text: string, maxLength = 2000): string | undefined {
 export async function generateClaudeStructuredJson(
   prompt: string,
   model: string,
-  instructions = CLAUDE_STRUCTURED_INSTRUCTIONS
+  instructions = CLAUDE_STRUCTURED_INSTRUCTIONS,
+  timeoutMs = claudeTimeoutMs()
 ): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
-  const timeoutMs = claudeTimeoutMs();
   const invocation = claudeCliInvocation(model, instructions);
 
   let run: ClaudeCliRunResult;
@@ -281,6 +281,6 @@ export async function generateClaudeStructuredJson(
   };
 }
 
-export async function generateClaudeConversationJson(prompt: string, model: string): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
-  return generateClaudeStructuredJson(prompt, model, CLAUDE_TEXT_INSTRUCTIONS);
+export async function generateClaudeConversationJson(prompt: string, model: string, timeoutMs?: number): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
+  return generateClaudeStructuredJson(prompt, model, CLAUDE_TEXT_INSTRUCTIONS, timeoutMs);
 }

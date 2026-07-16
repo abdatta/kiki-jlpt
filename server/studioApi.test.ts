@@ -240,10 +240,48 @@ test('direct generation succeeds without repair when Set 3 output has no true OO
 
     assert.equal(response.status, 200);
     assert.equal(response.body.run.analytics.outOfAllowedCount, 0);
-    assert.equal(response.body.run.llmExchanges?.length, 3);
+    assert.equal(response.body.run.llmExchanges?.length, 2);
     assert.equal(response.body.run.conversations.every((item) => item.quality === 'good'), true);
+    assert.equal(response.body.run.conversations.every((item) => item.qualityReview?.source === 'triage'), true);
+    assert.equal(response.body.run.llmExchanges?.some((item) => (item.stats as { finalDialogueLabels?: unknown } | undefined)?.finalDialogueLabels), false);
   } finally {
     configureConversationJsonGeneratorForTests();
+  }
+});
+
+test('library complement reuses operational review labels without a final-label call', async () => {
+  configureConversationJsonGeneratorForTests(async () => generatorResult(generatedPayload(['\u306f\u3044\u3002']), 'complement'));
+  try {
+    const response = await api<{ run: PracticeRun }>('/api/library/sets/1/complement', {
+      method: 'POST',
+      body: JSON.stringify({ conversationCount: 1, textModelId: 'gemini', judgeModelId: 'codex:gpt-5.6-sol' })
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.run.conversations[0]?.qualityReview?.source, 'triage');
+    assert.equal(response.body.run.llmExchanges?.some((item) => (item.stats as { finalDialogueLabels?: unknown } | undefined)?.finalDialogueLabels), false);
+  } finally {
+    configureConversationJsonGeneratorForTests();
+  }
+});
+
+test('judge failure keeps generation successful with explicit fallback labels', async () => {
+  configureConversationJsonGeneratorForTests(async () => generatorResult(generatedPayload([
+    '\u306f\u3044\u3002', '\u3044\u3044\u3048\u3002', '\u3053\u308c\u3002', '\u305d\u308c\u3002'
+  ]), 'judge-fallback'));
+  configureQualityStructuredJsonInvokerForTests(async () => { throw new Error('judge unavailable'); });
+  try {
+    const response = await api<{ run: PracticeRun }>('/api/generate', {
+      method: 'POST', body: JSON.stringify({ setNumber: 1, conversationCount: 4, textModelId: 'gemini' })
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.run.conversations.every((item) => item.qualityReview?.source === 'fallback'), true);
+    assert.equal(response.body.run.conversations.every((item) => item.qualityReview?.judgeModel === undefined), true);
+    assert.equal(response.body.run.llmExchanges?.filter((item) => item.status === 'failed').length, 1);
+  } finally {
+    configureConversationJsonGeneratorForTests();
+    configureQualityStructuredJsonInvokerForTests();
   }
 });
 
@@ -462,6 +500,7 @@ test('workflow generation quality warning preserves initial and repair LLM excha
     assert.ok((run.llmExchanges?.length ?? 0) >= 4);
     assert.equal(completed.stageLabel, 'Complete');
     assert.equal(completed.workflow?.nodes.filter((node) => node.pass === 2).every((node) => node.status === 'skipped'), true);
+    assert.equal(completed.workflow?.nodes.some((node) => node.callKind === 'final-label'), false);
   } finally {
     configureConversationJsonGeneratorForTests();
   }
@@ -510,7 +549,7 @@ test('final-audit warning pauses before audio and resume approves the checkpoint
     await waitForAudioSchedulerIdle();
     assert.equal(completed.status, 'succeeded');
     assert.equal(textCalls, beforeResumeTextCalls);
-    assert.equal(triageCalls, 6);
+    assert.equal(triageCalls, 4);
     let finalized = await readStudioJob(paused.id);
     for (let attempt = 0; attempt < 50 && finalized.workflow?.status !== 'complete'; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -709,7 +748,12 @@ test('workflow resume reuses generator and balancer checkpoints and finishes aud
     };
     const primaryExchange = exchange('primary');
     const primaryRepairExchange = exchange('primary-repair');
+    const legacyFinalLabelExchange = { ...exchange('legacy-final-label'), role: 'judge' as const, stats: { finalDialogueLabels: [{ conversationId: 'convo-01', verdict: 'pass' }] } };
     const complementExchange = exchange('complement');
+    workflow.nodes.splice(2, 0, {
+      id: 'initial:final-label', kind: 'final-label', callKind: 'final-label', stage: 'initial', pass: 1, sequence: 14,
+      title: 'Final dialogue labels', status: 'done', output: { exchange: legacyFinalLabelExchange }
+    });
     await createStudioJob({
       id: 'workflow-resume-1',
       idempotencyKey: 'workflow-resume-1',
@@ -730,7 +774,7 @@ test('workflow resume reuses generator and balancer checkpoints and finishes aud
       request: { setNumber: 1, conversationCount: 6, audioCount: 2, audioMode: 'fixed', textModelId: 'gemini' },
       workflow,
       checkpoint: {
-        primary: { exchange: primaryExchange, exchanges: [primaryExchange, primaryRepairExchange], conversations: primaryConversations },
+        primary: { exchange: primaryExchange, exchanges: [primaryExchange, primaryRepairExchange, legacyFinalLabelExchange], conversations: primaryConversations },
         complement: { exchange: complementExchange, exchanges: [complementExchange], conversations: complementConversations }
       },
       createdAt: timestamp,
@@ -758,7 +802,8 @@ test('workflow resume reuses generator and balancer checkpoints and finishes aud
     const run = await readRun('run-workflow-resume');
     assert.equal(run.conversations.length, 3);
     assert.equal(run.conversations.filter((item) => item.audioFileName).length, 2);
-    assert.equal(run.llmExchanges?.length, 3);
+    assert.equal(run.llmExchanges?.length, 4);
+    assert.equal(run.llmExchanges?.filter((item) => (item.stats as { finalDialogueLabels?: unknown } | undefined)?.finalDialogueLabels).length, 1);
   } finally {
     configureAudioSchedulerForTests();
   }
@@ -786,8 +831,21 @@ test('concurrent run reads never surface transient replacement errors', async ()
 });
 
 test('generation preflight probes the generator and judge without creating a job', async () => {
-  configureConversationJsonGeneratorForTests(async () => ({ parsed: { conversations: [conversation(1)] }, output: '{}' }));
-  configureQualityStructuredJsonInvokerForTests(async () => ({ parsed: { ready: true }, output: '{"ready":true}' }));
+  let generatorFinished = false;
+  let judgeStartedWhileGeneratorPending = false;
+  let generatorTimeoutMs: number | undefined;
+  let judgeTimeoutMs: number | undefined;
+  configureConversationJsonGeneratorForTests(async (_prompt, _model, options) => {
+    generatorTimeoutMs = options?.timeoutMs;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    generatorFinished = true;
+    return { parsed: { conversations: [conversation(1)] }, output: '{}' };
+  });
+  configureQualityStructuredJsonInvokerForTests(async (_prompt, _model, _instructions, options) => {
+    judgeTimeoutMs = options?.timeoutMs;
+    judgeStartedWhileGeneratorPending = !generatorFinished;
+    return { parsed: { ready: true }, output: '{"ready":true}' };
+  });
   try {
     const response = await api<{ generator: { ok: boolean }; judge: { ok: boolean } }>('/api/generation/preflight', {
       method: 'POST', body: JSON.stringify({ textModelId: 'gemini', judgeModelId: 'codex:gpt-5.6-sol' })
@@ -795,6 +853,9 @@ test('generation preflight probes the generator and judge without creating a job
     assert.equal(response.status, 200);
     assert.equal(response.body.generator.ok, true);
     assert.equal(response.body.judge.ok, true);
+    assert.equal(judgeStartedWhileGeneratorPending, true);
+    assert.equal(generatorTimeoutMs, 60_000);
+    assert.equal(judgeTimeoutMs, 60_000);
   } finally {
     configureConversationJsonGeneratorForTests();
     configureQualityStructuredJsonInvokerForTests();

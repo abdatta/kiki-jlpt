@@ -143,12 +143,17 @@ export interface PracticeConversation {
   simplerReplacementSuggestions: string[];
   quality?: 'good' | 'okay' | 'bad';
   qualityDecision?: 'pass' | 'repair' | 'regenerate';
-  /** Additive provenance for label-only historical quality evaluation. */
+  /** Additive provenance for the decision that supplied the persisted quality label. */
   qualityReview?: {
+    /** The decision that supplied this label. Absent on records written before source tracking. */
+    source?: 'triage' | 'pick' | 'gate' | 'fallback' | 'historical';
     verdict: ConversationQualityVerdictValue;
     rationale: string;
     flags: string[];
-    judgeModel: TextModelInfo;
+    /** Present only when a model directly assigned the label. */
+    judgeModel?: TextModelInfo;
+    selectedVersion?: QualityVersionSource;
+    confidence?: PickerConfidence;
     rubricVersion: string;
     reviewedAt: string;
   };
@@ -716,7 +721,6 @@ export type StudioJobKind =
   | 'audio-single'
   | 'audio-batch'
   | 'add-all-audio'
-  | 'historical-quality-labeling'
   | 'audio-child';
 
 export type StudioJobStatus =

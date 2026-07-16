@@ -92,6 +92,7 @@ type StudioRoute =
   | { boardMode: 'ai-curation'; setNumber: number }
   | { boardMode: 'library'; setNumber: number };
 type BusyAction =
+  | 'preflight'
   | 'generate'
   | 'generate-complement'
   | 'ai-curation'
@@ -824,9 +825,18 @@ function ConversationQualityBadge({
   ) : <span className={`conversationQualityChip ${quality}`}>{quality}</span>;
   if (!review) return label;
 
-  const verdictLabel = review.verdict === 'pass' ? 'Passed final dialogue review'
-    : review.verdict === 'repair' ? 'Needs a meaningful dialogue improvement'
-      : 'Has a structural dialogue problem';
+  const verdictLabel = review.source === 'triage' ? 'Passed generation quality triage'
+    : review.source === 'pick' ? 'Selected by the quality judge'
+      : review.source === 'gate' ? 'Selected by deterministic quality gates'
+        : review.source === 'fallback' ? 'Assigned by a provider fallback'
+          : review.verdict === 'pass' ? 'Passed final dialogue review'
+            : review.verdict === 'repair' ? 'Needs a meaningful dialogue improvement'
+              : 'Has a structural dialogue problem';
+  const provenance = [
+    review.judgeModel ? shortModelLabel(review.judgeModel) : review.source ? review.source.replace('-', ' ') : undefined,
+    review.rubricVersion,
+    formatAuditTime(review.reviewedAt)
+  ].filter(Boolean).join(' · ');
   return (
     <span className="conversationQualityBadge" tabIndex={onClick ? undefined : 0}>
       {label}
@@ -834,7 +844,7 @@ function ConversationQualityBadge({
         <strong>{quality} · {verdictLabel}</strong>
         <p>{review.rationale}</p>
         {review.flags.length ? <span className="qualityReviewFlags"><b>Review notes</b>{review.flags.map((flag) => <em key={flag}>{flag.replaceAll('_', ' ')}</em>)}</span> : null}
-        <small>{shortModelLabel(review.judgeModel)} · {review.rubricVersion} · {formatAuditTime(review.reviewedAt)}</small>
+        <small>{provenance}</small>
       </span>
     </span>
   );
@@ -2008,7 +2018,7 @@ function WorkflowStageLane({
     return <WorkflowNodeButton key={node.id} node={node} selected={selectedNodeId === node.id} onSelect={() => onSelectNode(node.id)} traceFact={traceFact} dimmed={Boolean(selectedConversationId && !traceFact)} />;
   };
   const renderPass = (pass: 1 | 2) => {
-    const passNodes = nodes.filter((node) => (node.pass ?? 1) === pass).sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
+    const passNodes = nodes.filter((node) => node.callKind !== 'final-label' && (node.pass ?? 1) === pass).sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0));
     if (!passNodes.length) return null;
     // A pass that never ran collapses to a summary row. During a live run only
     // an explicitly all-skipped pass collapses, so upcoming ghost steps stay
@@ -2057,6 +2067,15 @@ function WorkflowStageLane({
       </header>
       {renderPass(1)}
       {renderPass(2)}
+      {nodes.some((node) => node.callKind === 'final-label') ? (
+        <div className="workflowPassRow workflowCompatibilityFinalLabel">
+          <span className="workflowPassLabel">Legacy terminal label pass</span>
+          <WorkflowSnakeFlow cells={nodes
+            .filter((node) => node.callKind === 'final-label')
+            .sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
+            .map((node) => ({ key: node.id, content: renderNode(node) }))} />
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -2783,11 +2802,12 @@ function LoadingPanel({ session }: { session: GenerationSession }) {
   );
 }
 
-function GenerateModal({
+export function GenerateModal({
   state,
   sets,
   textModels,
   busy,
+  preflightError,
   onChange,
   onClose,
   onSubmit
@@ -2796,6 +2816,7 @@ function GenerateModal({
   sets: SetSummary[];
   textModels: TextModelInfo[];
   busy: BusyAction;
+  preflightError?: string | null;
   onChange: (state: GenerateModalState) => void;
   onClose: () => void;
   onSubmit: () => void;
@@ -2805,6 +2826,9 @@ function GenerateModal({
     ? textModels
     : [...textModels, { id: 'codex:gpt-5.6-sol', provider: 'codex' as const, model: 'gpt-5.6-sol', label: 'GPT-5.6-Sol (recommended)', source: 'fallback' as const }];
   const conversationCount = Number(state.conversationCount);
+  const isPreflighting = busy === 'preflight';
+  const generatorLabel = textModels.find((model) => model.id === state.textModelId)?.label ?? state.textModelId;
+  const judgeLabel = judgeModels.find((model) => model.id === state.judgeModelId)?.label ?? state.judgeModelId;
   const isWorkflowMode = state.runMode !== 'text-only';
   const minConversationCount = isWorkflowMode ? 6 : 4;
   const placeholder = isWorkflowMode ? 'Select 6-30' : 'Select 4-30';
@@ -2835,7 +2859,7 @@ function GenerateModal({
         <div className="modalFormGrid">
           <label>
             <span>Set</span>
-            <select value={state.setNumber} onChange={(event) => onChange({ ...state, setNumber: Number(event.target.value) })}>
+            <select value={state.setNumber} disabled={busy !== null} onChange={(event) => onChange({ ...state, setNumber: Number(event.target.value) })}>
               {sets.map((set) => (
                 <option key={set.set} value={set.set}>
                   Set {set.set}
@@ -2851,6 +2875,7 @@ function GenerateModal({
               max={30}
               placeholder={placeholder}
               type="number"
+              disabled={busy !== null}
               value={state.conversationCount}
               onChange={(event) => onChange({ ...state, conversationCount: event.target.value })}
             />
@@ -2858,14 +2883,14 @@ function GenerateModal({
 
           <label className="modalWideField">
             <span>Generator model</span>
-            <select value={state.textModelId} onChange={(event) => onChange({ ...state, textModelId: event.target.value })}>
+            <select value={state.textModelId} disabled={busy !== null} onChange={(event) => onChange({ ...state, textModelId: event.target.value })}>
               <option value="" disabled>Select a model</option>
               <TextModelOptionGroups models={textModels} />
             </select>
           </label>
           <label className="modalWideField">
             <span>Judge model</span>
-            <select value={state.judgeModelId} onChange={(event) => onChange({ ...state, judgeModelId: event.target.value })}>
+            <select value={state.judgeModelId} disabled={busy !== null} onChange={(event) => onChange({ ...state, judgeModelId: event.target.value })}>
               <TextModelOptionGroups models={judgeModels} />
             </select>
           </label>
@@ -2882,6 +2907,7 @@ function GenerateModal({
             <label className={state.runMode === mode.id ? 'generateModeOption active' : 'generateModeOption'} key={mode.id}>
               <input
                 checked={state.runMode === mode.id}
+                disabled={busy !== null}
                 name="generate-run-mode"
                 onChange={() => onChange({ ...state, runMode: mode.id })}
                 type="radio"
@@ -2895,13 +2921,28 @@ function GenerateModal({
           ))}
         </fieldset>
 
+        {isPreflighting ? (
+          <div className="preflightStatus" role="status" aria-live="polite">
+            <LoaderCircle className="spin" size={20} />
+            <span>
+              <strong>Checking generator and judge</strong>
+              <small>{generatorLabel} · {judgeLabel}. This can take up to one minute.</small>
+            </span>
+          </div>
+        ) : preflightError ? (
+          <div className="errorBanner" role="alert">
+            <CircleAlert size={18} />
+            <span>{preflightError}</span>
+          </div>
+        ) : null}
+
         <div className="modalActions">
           <button className="secondaryButton" onClick={onClose} disabled={busy !== null} type="button">
             Cancel
           </button>
           <button className="primaryButton" onClick={onSubmit} disabled={!canSubmit} type="button">
-            {busy === 'generate' || busy === 'workflow' ? <RefreshCw className="spin" size={18} /> : <Sparkles size={18} />}
-            Generate
+            {isPreflighting || busy === 'generate' || busy === 'workflow' ? <RefreshCw className="spin" size={18} /> : <Sparkles size={18} />}
+            {isPreflighting ? 'Checking models…' : 'Generate'}
           </button>
         </div>
       </section>
@@ -3144,6 +3185,7 @@ function StudioApp() {
   const [edit, setEdit] = useState<EditState | null>(null);
   const [generationSession, setGenerationSession] = useState<GenerationSession | null>(null);
   const [generateModal, setGenerateModal] = useState<GenerateModalState | null>(null);
+  const [generatePreflightError, setGeneratePreflightError] = useState<string | null>(null);
   const [addAllProgress, setAddAllProgress] = useState<AddAllProgress | null>(null);
   const [workflowJob, setWorkflowJob] = useState<WorkflowJob | null>(null);
   const [focusedShellJobId, setFocusedShellJobId] = useState<string | null>(null);
@@ -4157,6 +4199,7 @@ function StudioApp() {
 
   function openGenerateModal() {
     setError(null);
+    setGeneratePreflightError(null);
     setGenerateModal(initialGenerateModalState(setNumber));
   }
 
@@ -4184,15 +4227,23 @@ function StudioApp() {
       textModelId: generateModal.textModelId,
       judgeModelId: generateModal.judgeModelId
     };
+    setBusy('preflight');
+    setError(null);
+    setGeneratePreflightError(null);
     try {
       await api('/api/generation/preflight', { method: 'POST', body: JSON.stringify(config) });
     } catch (caught) {
-      setError(`Model preflight failed: ${caught instanceof Error ? caught.message : String(caught)}`);
+      const message = `Model preflight failed: ${caught instanceof Error ? caught.message : String(caught)}`;
+      setBusy(null);
+      setError(message);
+      setGeneratePreflightError(message);
       return;
     }
     setSetNumber(config.setNumber);
     setConversationCount(config.conversationCount);
     setTextModelId(config.textModelId);
+    setBusy(null);
+    setGeneratePreflightError(null);
     setGenerateModal(null);
 
     if (generateModal.runMode === 'text-only') {
@@ -4297,22 +4348,6 @@ function StudioApp() {
           ? { ...node, status: 'error', completedAt: new Date().toISOString(), error: message }
           : node)
       } : previous);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function startHistoricalQualityLabels(scope: 'curated-library' | 'saved-runs', rejudge = false) {
-    setBusy('workflow');
-    setError(null);
-    try {
-      await api('/api/historical-quality-labels/start', {
-        method: 'POST',
-        body: JSON.stringify({ scope, rejudge, judgeModelId: 'codex:gpt-5.6-sol', idempotencyKey: makeSessionId() })
-      });
-      await refreshStudioSnapshot();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : String(caught));
     } finally {
       setBusy(null);
     }
@@ -5037,8 +5072,15 @@ function StudioApp() {
           sets={sets}
           textModels={textModels}
           busy={busy}
-          onChange={setGenerateModal}
-          onClose={() => setGenerateModal(null)}
+          preflightError={generatePreflightError}
+          onChange={(state) => {
+            setGeneratePreflightError(null);
+            setGenerateModal(state);
+          }}
+          onClose={() => {
+            setGeneratePreflightError(null);
+            setGenerateModal(null);
+          }}
           onSubmit={submitGenerateModal}
         />
       ) : null}
@@ -5096,22 +5138,9 @@ function StudioApp() {
 
           <div className="sidebarActions">
             <button className="primaryButton" onClick={openGenerateModal} disabled={busy !== null}>
-              {busy === 'generate' || busy === 'workflow' ? <RefreshCw className="spin" size={18} /> : <Sparkles size={18} />}
+              {busy === 'preflight' || busy === 'generate' || busy === 'workflow' ? <RefreshCw className="spin" size={18} /> : <Sparkles size={18} />}
               Generate
             </button>
-            <div className="historicalActions" aria-label="Historical quality labeling">
-              <button className="secondaryButton" onClick={() => void startHistoricalQualityLabels('curated-library')} disabled={busy !== null}>
-                Label Library
-              </button>
-              <button className="secondaryButton" onClick={() => void startHistoricalQualityLabels('saved-runs')} disabled={busy !== null}>
-                Label Saved Runs
-              </button>
-              <button className="secondaryButton rejudge" onClick={() => {
-                if (window.confirm('Rejudge every existing library label? This keeps the conversations unchanged but replaces their label provenance.')) void startHistoricalQualityLabels('curated-library', true);
-              }} disabled={busy !== null}>
-                Rejudge Library
-              </button>
-            </div>
           </div>
         </section>
 

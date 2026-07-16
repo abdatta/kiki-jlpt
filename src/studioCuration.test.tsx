@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { AiCurationRecommendation, AiCurationReviewReconciliation, ConversationCurationEvidence, CuratedConversation, CuratedSet, FinalTextAuditReport, PracticeConversation, StudioJob, WorkflowJob } from '../shared/types.ts';
-import { cleanShellModelLabel, conversationQualityCounts, formatClaudeModelVersion, formatCodexModelName, formatGeminiModelName, formatResolvedModel, libraryCountsBySourceRun, parseStudioRoute, RunLibraryBadge, snakeCellPlacement, snakeColumnCount, TextModelOptionGroups, WorkflowAuditFlow } from './App.tsx';
+import { cleanShellModelLabel, conversationQualityCounts, formatClaudeModelVersion, formatCodexModelName, formatGeminiModelName, formatResolvedModel, GenerateModal, libraryCountsBySourceRun, parseStudioRoute, RunLibraryBadge, snakeCellPlacement, snakeColumnCount, TextModelOptionGroups, WorkflowAuditFlow } from './App.tsx';
 import { AddAllProgressModal } from './components/AddAllProgressModal.tsx';
 import { AiCurationReconciliationPanel } from './components/AiCurationReconciliationPanel.tsx';
 import { AudioProgressStage } from './components/AudioProgressStage.tsx';
@@ -750,6 +750,7 @@ test('per-call audit renders lanes, parallel repairs, stat lines, and conversati
   };
   const traceHtml = renderToStaticMarkup(<WorkflowAuditFlow job={traceJob} selectedNodeId="initial:pick" selectedConversationId="convo-01" onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
   assert.match(html, /Stage 1 · initial/i);
+  assert.doesNotMatch(html, /Final dialogue labels/i);
   assert.match(html, /parallel/i);
   // Version-comparing nodes derive per-version stat stacks from their details
   // (never from stored display text). The bold title names every node; the
@@ -816,6 +817,24 @@ test('selecting a node presents its deep dive as a modal dialog', () => {
   assert.match(html, /workflowInspectorModal/);
   assert.match(html, /role="dialog"/);
   assert.match(html, /title="Close"/);
+});
+
+test('stored final-label calls render after pass 2 while final text audit remains before audio', () => {
+  const job = perCallJob();
+  job.nodes.push(
+    { id: 'initial:pass2:reroll', kind: 'reroll', callKind: 'reroll', stage: 'initial', pass: 2, sequence: 7, title: 'Re-roll', status: 'done', output: { summary: { statLine: '1 replacement' } } },
+    { id: 'initial:final-label', kind: 'final-label', callKind: 'final-label', stage: 'initial', pass: 1, sequence: 14, title: 'Final dialogue labels', status: 'done', output: { summary: { statLine: '1 good' } } }
+  );
+
+  const html = renderToStaticMarkup(<WorkflowAuditFlow job={job} onSelectNode={() => undefined} onSelectConversation={() => undefined} />);
+  const pass2Index = html.indexOf('Pass 2');
+  const compatibilityIndex = html.indexOf('Legacy terminal label pass');
+  const finalLabelIndex = html.indexOf('Final dialogue labels');
+  const finalAuditIndex = html.indexOf('Final text audit');
+  const audioIndex = html.indexOf('Conversation 1');
+
+  assert.ok(pass2Index >= 0 && compatibilityIndex > pass2Index && finalLabelIndex > compatibilityIndex);
+  assert.ok(finalAuditIndex > finalLabelIndex && audioIndex > finalAuditIndex);
 });
 
 test('a pass that never ran collapses into an expandable summary row once the job settles', () => {
@@ -897,6 +916,26 @@ const pickerModels = [
   { id: 'claude:sonnet', provider: 'claude' as const, model: 'sonnet', label: 'Claude Sonnet' },
   { id: 'claude:haiku', provider: 'claude' as const, model: 'haiku', label: 'Claude Haiku' }
 ];
+
+test('generation modal makes model preflight progress and errors visible', () => {
+  const commonProps = {
+    state: { setNumber: 2, conversationCount: '25', textModelId: 'claude:sonnet', judgeModelId: 'codex:gpt-5.5', runMode: 'workflow-audio' as const },
+    sets: [{ set: 2, theme: 'Daily Routine + Time', count: 100, cumulativeCount: 200 }],
+    textModels: pickerModels,
+    onChange: () => undefined,
+    onClose: () => undefined,
+    onSubmit: () => undefined
+  };
+  const checkingHtml = renderToStaticMarkup(<GenerateModal {...commonProps} busy="preflight" />);
+  const failedHtml = renderToStaticMarkup(<GenerateModal {...commonProps} busy={null} preflightError="Model preflight failed: Generator timed out." />);
+
+  assert.match(checkingHtml, /Checking generator and judge/);
+  assert.match(checkingHtml, /Checking models/);
+  assert.match(checkingHtml, /Claude Sonnet.*GPT-5\.5/);
+  assert.match(checkingHtml, /disabled/);
+  assert.match(failedHtml, /role="alert"/);
+  assert.match(failedHtml, /Generator timed out/);
+});
 
 test('text model picker groups options under Gemini, GPT, and Claude in order', () => {
   const html = renderToStaticMarkup(<select value="" onChange={() => undefined}><TextModelOptionGroups models={pickerModels} /></select>);

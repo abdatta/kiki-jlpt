@@ -73,6 +73,8 @@ test('triage rejects unknown IDs and applies deterministic-only fallback', async
     conversationGenerator: generator([])
   });
   assert.equal(result.conversations[0].quality, 'good');
+  assert.equal(result.conversations[0].qualityReview?.source, 'fallback');
+  assert.equal(result.conversations[0].qualityReview?.judgeModel, undefined);
   assert.equal(result.stageAudit.failures[0].callKind, 'triage');
   assert.equal(result.stageAudit.verdicts[0].flags.includes('triage_fallback'), true);
 });
@@ -91,6 +93,9 @@ test('pass conversations keep their learning content and never enter repair', as
   assert.equal(repairCalls.length, 0);
   assert.deepEqual(result.conversations[0].text, input.text);
   assert.equal(result.conversations[0].qualityDecision, 'pass');
+  assert.equal(result.conversations[0].qualityReview?.source, 'triage');
+  assert.equal(result.conversations[0].qualityReview?.rationale, 'Reviewed.');
+  assert.equal(events.some((event) => event.callKind === 'final-label'), false);
   assert.equal(events.filter((event) => event.pass === 2).length, 7);
   assert.equal(events.filter((event) => event.pass === 2).every((event) => event.status === 'skipped'), true);
 });
@@ -99,16 +104,19 @@ test('quality triage uses the distinct judge model while repairs remain generato
   const input = conversation('convo-judge', 1);
   const judge: TextModelInfo = { id: 'judge', provider: 'codex', model: 'gpt-5.6-sol', label: 'Judge' };
   const seen: TextModelInfo[] = [];
-  await runQualityControl({
+  const result = await runQualityControl({
     stage: 'initial', textModel: model, judgeModel: judge, originalPrompt: 'Generate.', setNumber: 2, expectedCount: 1,
     allowedVocabulary: vocabulary, knownVocabulary: vocabulary, conversations: [input],
     invoker: async (_prompt, selected) => {
       seen.push(selected);
-      return { parsed: { verdicts: [{ conversationId: input.id, verdict: 'pass', rationale: 'Good.', flags: [] }] }, output: '{}' };
+      return { parsed: { verdicts: [{ conversationId: input.id, verdict: 'pass', rationale: 'Good.', flags: [] }] }, output: '{}', stats: { resolvedModel: 'gpt-5.6-sol-20260701' } };
     },
     conversationGenerator: generator([])
   });
   assert.equal(seen[0].id, judge.id);
+  assert.equal(seen.length, 1);
+  assert.equal(result.conversations[0].qualityReview?.judgeModel?.id, judge.id);
+  assert.equal(result.conversations[0].qualityReview?.judgeModel?.resolvedModel, 'gpt-5.6-sol-20260701');
 });
 
 test('dominance gates eliminate OOV-worsening versions and select the clean candidate', async () => {
@@ -125,9 +133,11 @@ test('dominance gates eliminate OOV-worsening versions and select the clean cand
   assert.equal(result.stageAudit.picks[0].selected, 'candidate1');
   assert.equal(result.stageAudit.picks[0].decidedBy, 'gate');
   assert.equal(result.conversations[0].outOfVocabularyAudit.length, 0);
+  assert.equal(result.conversations[0].qualityReview?.source, 'gate');
+  assert.equal(result.conversations[0].qualityReview?.judgeModel, undefined);
 });
 
-test('picker is forced among admissible versions and the shared final label replaces picker quality', async () => {
+test('picker is forced among admissible versions and its quality becomes the durable label', async () => {
   const input = conversation('convo-01', 1);
   const events: QualityNodeEvent[] = [];
   let invocation = 0;
@@ -139,9 +149,6 @@ test('picker is forced among admissible versions and the shared final label repl
         output: '{}'
       };
     }
-    if (prompt.includes('shared final quality label')) {
-      return { parsed: { verdicts: [{ conversationId: input.id, verdict: 'pass', rationale: 'Clear exchange.', flags: [] }] }, output: '{}' };
-    }
     return { parsed: { verdicts: [{ conversationId: input.id, verdict: 'repair', rationale: 'Awkward.', flags: ['awkward'] }] }, output: '{}' };
   };
   const result = await runQualityControl({
@@ -150,12 +157,15 @@ test('picker is forced among admissible versions and the shared final label repl
     conversationGenerator: generator([{ conversations: [rawConversation()] }, { conversations: [rawConversation()] }]),
     onNode: (event) => { events.push(event); }
   });
-  assert.equal(invocation, 3);
+  assert.equal(invocation, 2);
   assert.equal(result.stageAudit.picks[0].selected, 'candidate2');
   assert.equal(result.stageAudit.picks[0].selectedQuality, 'okay');
-  assert.equal(result.conversations[0].quality, 'good');
-  assert.equal(result.conversations[0].qualityReview?.rubricVersion, 'dialogue-quality-v6');
+  assert.equal(result.conversations[0].quality, 'okay');
+  assert.equal(result.conversations[0].qualityReview?.source, 'pick');
+  assert.equal(result.conversations[0].qualityReview?.rationale, 'Most natural.');
+  assert.equal(result.conversations[0].qualityReview?.rubricVersion, 'generation-pick-v1');
   assert.equal(result.conversations[0].pickerConfidence, 'medium');
+  assert.equal(events.some((event) => event.callKind === 'final-label'), false);
   const selectedCandidate = events.find((event) => event.id === 'initial:repair-2' && event.status === 'done' && event.output?.factsByConversationId);
   assert.equal((selectedCandidate?.output?.factsByConversationId?.[input.id] as { selected?: boolean })?.selected, true);
   assert.equal(Array.isArray((selectedCandidate?.output?.details as { comparisons?: unknown[] })?.comparisons), true);
@@ -174,11 +184,13 @@ test('repair and picker failures retain a deterministic admissible version', asy
     allowedVocabulary: vocabulary, knownVocabulary: vocabulary, conversations: [input], invoker,
     conversationGenerator: generator([new Error('candidate one failed'), { conversations: [rawConversation()] }])
   });
-  assert.equal(invocation, 3);
+  assert.equal(invocation, 2);
   assert.equal(result.conversations.length, 1);
   assert.equal(result.stageAudit.failures.some((failure) => failure.callKind === 'repair-candidate'), true);
   assert.equal(result.stageAudit.failures.some((failure) => failure.callKind === 'pick'), true);
   assert.equal(result.stageAudit.picks[0].decidedBy, 'fallback');
+  assert.equal(result.conversations[0].qualityReview?.source, 'fallback');
+  assert.equal(result.conversations[0].qualityReview?.judgeModel, undefined);
 });
 
 test('regeneration is bounded to one re-roll and a second regenerate becomes shortfall', async () => {

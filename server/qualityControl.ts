@@ -21,7 +21,6 @@ import {
   buildBalancedRepairPrompt,
   buildPickerPrompt,
   buildQualityTriagePrompt,
-  FINAL_DIALOGUE_QUALITY_RUBRIC_VERSION,
   type BalancedRepairFinding,
   type PickerPromptSet
 } from './prompt.ts';
@@ -35,6 +34,10 @@ export const BALANCE_POST_REROLL_DROP_PAUSE_MIN_COUNT = 1;
 
 const QUALITY_REVIEW_INSTRUCTIONS = 'Review JLPT listening conversations. Return only valid JSON matching the requested shape. Treat deterministic vocabulary evidence as authoritative.';
 const QUALITY_REPAIR_INSTRUCTIONS = 'Repair the supplied JLPT listening conversations. Return only valid JSON with the requested conversations array.';
+export const GENERATION_TRIAGE_RUBRIC_VERSION = 'generation-triage-v1';
+export const GENERATION_PICK_RUBRIC_VERSION = 'generation-pick-v1';
+export const GENERATION_GATE_RUBRIC_VERSION = 'generation-gate-v1';
+export const GENERATION_FALLBACK_RUBRIC_VERSION = 'generation-fallback-v1';
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -158,6 +161,54 @@ function failedExchange(exchange: LlmExchange, error: unknown, stats: UnknownRec
     receivedAt: nowIso(),
     status: 'failed',
     error: message
+  };
+}
+
+function judgeModelFromExchange(judgeModel: TextModelInfo, exchange?: LlmExchange): TextModelInfo {
+  return exchange?.resolvedModel ? { ...judgeModel, resolvedModel: exchange.resolvedModel } : judgeModel;
+}
+
+function verdictForQuality(quality: 'good' | 'okay'): ConversationQualityVerdict['verdict'] {
+  return quality === 'good' ? 'pass' : 'repair';
+}
+
+function triageQualityReview(
+  verdict: ConversationQualityVerdict,
+  judgeModel: TextModelInfo,
+  exchange: LlmExchange | undefined,
+  fallback: boolean
+): NonNullable<PracticeConversation['qualityReview']> {
+  return {
+    source: fallback ? 'fallback' : 'triage',
+    verdict: verdict.verdict,
+    rationale: verdict.rationale,
+    flags: verdict.flags,
+    ...(fallback ? {} : { judgeModel: judgeModelFromExchange(judgeModel, exchange) }),
+    rubricVersion: fallback ? GENERATION_FALLBACK_RUBRIC_VERSION : GENERATION_TRIAGE_RUBRIC_VERSION,
+    reviewedAt: exchange?.receivedAt ?? nowIso()
+  };
+}
+
+function pickQualityReview(
+  pick: ConversationPickOutcome,
+  judgeModel: TextModelInfo,
+  exchange?: LlmExchange
+): NonNullable<PracticeConversation['qualityReview']> {
+  const source = pick.decidedBy === 'tie-break' ? 'pick' : pick.decidedBy;
+  return {
+    source,
+    verdict: verdictForQuality(pick.selectedQuality),
+    rationale: pick.rationale,
+    flags: pick.flags,
+    ...(source === 'pick' ? { judgeModel: judgeModelFromExchange(judgeModel, exchange) } : {}),
+    selectedVersion: pick.selected,
+    confidence: pick.confidence,
+    rubricVersion: source === 'pick'
+      ? GENERATION_PICK_RUBRIC_VERSION
+      : source === 'gate'
+        ? GENERATION_GATE_RUBRIC_VERSION
+        : GENERATION_FALLBACK_RUBRIC_VERSION,
+    reviewedAt: exchange?.receivedAt ?? nowIso()
   };
 }
 
@@ -394,12 +445,17 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
     return { conversationId: conversation.id, number: conversation.number, title: conversation.title, stage: options.stage, pass, rationale: verdict.rationale, flags: verdict.flags };
   });
   const repairOriginals = auditedConversations.filter((conversation) => verdictById.get(conversation.id)?.verdict === 'repair');
-  const passing = auditedConversations.filter((conversation) => verdictById.get(conversation.id)?.verdict === 'pass').map((conversation) => ({
-    ...conversation,
-    quality: 'good' as const,
-    qualityDecision: 'pass' as const,
-    qualityFlags: verdictById.get(conversation.id)?.flags ?? []
-  }));
+  const triageResultExchange = exchanges.at(-1);
+  const passing = auditedConversations.filter((conversation) => verdictById.get(conversation.id)?.verdict === 'pass').map((conversation) => {
+    const verdict = verdictById.get(conversation.id)!;
+    return {
+      ...conversation,
+      quality: 'good' as const,
+      qualityDecision: 'pass' as const,
+      qualityFlags: verdict.flags,
+      qualityReview: triageQualityReview(verdict, judgeModel, triageResultExchange, triageStatus === 'repairWarning')
+    };
+  });
 
   if (!repairOriginals.length) {
     for (const candidateIndex of [1, 2] as const) {
@@ -478,6 +534,7 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
   const picks: ConversationPickOutcome[] = [];
   const selectedById = new Map<string, AuditedVersion>();
   const ties: PickerPromptSet[] = [];
+  let pickerDecisionExchange: LlmExchange | undefined;
   for (const original of repairOriginals) {
     const admissible = admissibleById.get(original.id) ?? [];
     const verdict = verdictById.get(original.id)!;
@@ -512,6 +569,7 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
       const result = await invoker(pickerPrompt, judgeModel, QUALITY_REVIEW_INSTRUCTIONS);
       const decisions = validatePicks(result.parsed, ties);
       const exchange = completedExchange(pickerExchange, result, { pickOutcomes: decisions, qualityPass: pass });
+      pickerDecisionExchange = exchange;
       exchanges.push(exchange);
       for (const decision of decisions) {
         const selected = (admissibleById.get(decision.conversationId) ?? []).find((version) => version.source === decision.selected)!;
@@ -526,6 +584,7 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
       const message = error instanceof Error ? error.message : String(error);
       failures.push({ stage: options.stage, pass, callKind: 'pick', error: message, fallback: 'best deterministic audit; original on ties' });
       const exchange = failedExchange(pickerExchange, error, { qualityPass: pass, fallback: 'best deterministic audit; original on ties' });
+      pickerDecisionExchange = exchange;
       exchanges.push(exchange);
       for (const tie of ties) {
         const admissible = admissibleById.get(tie.conversationId) ?? [];
@@ -561,7 +620,8 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
       qualityDecision: 'repair' as const,
       pickerSelected: pick.selected,
       pickerConfidence: pick.confidence,
-      qualityFlags: pick.flags
+      qualityFlags: pick.flags,
+      qualityReview: pickQualityReview(pick, judgeModel, pickerDecisionExchange)
     };
   });
   for (let index = 0; index < exchanges.length; index += 1) {
@@ -694,93 +754,6 @@ export async function runQualityControl(options: RunQualityControlOptions): Prom
     await skipRerollQualitySteps('Skipped - no regenerate verdicts');
   }
 
-  if (accepted.length) {
-    const finalLabelPrompt = buildQualityTriagePrompt({
-      setNumber: options.setNumber,
-      conversations: accepted,
-      evidenceByConversationId: evidence,
-      reviewPurpose: 'historical-label'
-    });
-    const judgeModel = options.judgeModel ?? options.textModel;
-    const finalLabelExchange = pendingExchange(judgeModel, finalLabelPrompt, 'final-label', QUALITY_REVIEW_INSTRUCTIONS);
-    await publish(options, {
-      id: nodeId(options.stage, 1, 'final-label'),
-      callKind: 'final-label',
-      pass: 1,
-      status: 'processing',
-      title: 'Final dialogue labels',
-      input: { prompt: finalLabelPrompt, model: judgeModel }
-    });
-    try {
-      const result = await (options.invoker ?? invokeStructuredJson)(finalLabelPrompt, judgeModel, QUALITY_REVIEW_INSTRUCTIONS);
-      const finalVerdicts = validateVerdicts(result.parsed, accepted);
-      const finalVerdictById = new Map(finalVerdicts.map((verdict) => [verdict.conversationId, verdict]));
-      const reviewedAt = nowIso();
-      const resolved = asRecord(result.stats).resolvedModel ?? asRecord(result.stats).modelVersion;
-      const resolvedJudge = typeof resolved === 'string' && resolved ? { ...judgeModel, resolvedModel: resolved } : judgeModel;
-      accepted = accepted.map((conversation) => {
-        const verdict = finalVerdictById.get(conversation.id)!;
-        return {
-          ...conversation,
-          quality: verdict.verdict === 'pass' ? 'good' as const : verdict.verdict === 'repair' ? 'okay' as const : 'bad' as const,
-          qualityDecision: verdict.verdict,
-          qualityFlags: verdict.flags,
-          qualityReview: {
-            ...verdict,
-            judgeModel: resolvedJudge,
-            rubricVersion: FINAL_DIALOGUE_QUALITY_RUBRIC_VERSION,
-            reviewedAt
-          }
-        };
-      });
-      const finalLabelCounts = (value: ConversationQualityVerdict['verdict']) => finalVerdicts.filter((verdict) => verdict.verdict === value).length;
-      const exchange = completedExchange(finalLabelExchange, result, {
-        finalDialogueLabels: finalVerdicts,
-        rubricVersion: FINAL_DIALOGUE_QUALITY_RUBRIC_VERSION
-      });
-      exchanges.push(exchange);
-      await publish(options, {
-        id: nodeId(options.stage, 1, 'final-label'),
-        callKind: 'final-label',
-        pass: 1,
-        status: 'done',
-        title: 'Final dialogue labels',
-        output: {
-          summary: {
-            statLine: `${finalLabelCounts('pass')} good Â· ${finalLabelCounts('repair')} okay Â· ${finalLabelCounts('regenerate')} bad`,
-            conversationCount: accepted.length,
-            goodCount: finalLabelCounts('pass'),
-            okayCount: finalLabelCounts('repair')
-          },
-          exchange,
-          factsByConversationId: Object.fromEntries(finalVerdicts.map((verdict) => [verdict.conversationId, verdict])),
-          details: { verdicts: finalVerdicts, rubricVersion: FINAL_DIALOGUE_QUALITY_RUBRIC_VERSION }
-        }
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await publish(options, {
-        id: nodeId(options.stage, 1, 'final-label'),
-        callKind: 'final-label',
-        pass: 1,
-        status: 'error',
-        title: 'Final dialogue labels',
-        error: message,
-        output: { summary: { statLine: 'Final labeling failed Â· run not saved', conversationCount: accepted.length } }
-      });
-      throw new Error(`Final dialogue labeling failed: ${message}`, { cause: error });
-    }
-  } else {
-    await publish(options, {
-      id: nodeId(options.stage, 1, 'final-label'),
-      callKind: 'final-label',
-      pass: 1,
-      status: 'skipped',
-      title: 'Final dialogue labels',
-      output: { summary: { statLine: 'Skipped - no accepted conversations', conversationCount: 0 } }
-    });
-  }
-
   return {
     conversations: accepted,
     exchanges,
@@ -849,7 +822,7 @@ export async function labelHistoricalConversations(options: HistoricalQualityLab
         quality: verdict.verdict === 'pass' ? 'good' : verdict.verdict === 'repair' ? 'okay' : 'bad',
         qualityDecision: verdict.verdict,
         qualityFlags: verdict.flags,
-        qualityReview: { ...verdict, judgeModel, rubricVersion: options.rubricVersion, reviewedAt }
+        qualityReview: { ...verdict, source: 'historical', judgeModel, rubricVersion: options.rubricVersion, reviewedAt }
       };
     }),
     verdicts,

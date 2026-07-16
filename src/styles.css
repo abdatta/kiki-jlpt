@@ -416,32 +416,6 @@ textarea:focus {
   border-radius: 10px;
 }
 
-.historicalActions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  overflow: hidden;
-  border: 1px solid var(--studio-border-soft);
-  border-radius: 10px;
-  background: var(--studio-surface);
-}
-
-.historicalActions .secondaryButton {
-  min-height: 34px;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0 8px;
-  font-size: 11px;
-}
-
-.historicalActions .secondaryButton:first-child { border-right: 1px solid var(--studio-border-soft); }
-
-.historicalActions .secondaryButton.rejudge {
-  grid-column: 1 / -1;
-  border-top: 1px solid var(--studio-border-soft);
-  color: var(--studio-danger-strong);
-}
-
 .runCardHeader {
   width: 100%;
   display: flex;
@@ -4038,6 +4012,33 @@ audio {
 
 .modalWideField {
   grid-column: 1 / -1;
+}
+
+.preflightStatus {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 1px solid var(--studio-accent-border);
+  border-radius: 8px;
+  background: var(--studio-accent-soft);
+  color: var(--studio-accent-strong);
+  padding: 11px 13px;
+}
+
+.preflightStatus > svg {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.preflightStatus span,
+.preflightStatus small {
+  display: block;
+}
+
+.preflightStatus small {
+  margin-top: 2px;
+  color: var(--studio-text-muted);
+  line-height: 1.4;
 }
 
 .modalFieldHint {

@@ -150,7 +150,8 @@ function extractGeminiStats(response: unknown, model: string): unknown {
 export async function generateGeminiStructuredJson(
   prompt: string,
   model = process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash',
-  temperature = 0.2
+  temperature = 0.2,
+  timeoutMs?: number
 ): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
   const ai = getAi();
 
@@ -159,7 +160,8 @@ export async function generateGeminiStructuredJson(
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     config: {
       temperature,
-      responseMimeType: 'application/json'
+      responseMimeType: 'application/json',
+      ...(timeoutMs ? { httpOptions: { timeout: timeoutMs, retryOptions: { attempts: 1 } } } : {})
     }
   } as never);
 
@@ -175,8 +177,8 @@ export async function generateGeminiStructuredJson(
   };
 }
 
-export async function generateConversationJson(prompt: string): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
-  return generateGeminiStructuredJson(prompt, process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash', 0.75);
+export async function generateConversationJson(prompt: string, timeoutMs?: number): Promise<{ parsed: unknown; output: string; stats?: unknown }> {
+  return generateGeminiStructuredJson(prompt, process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash', 0.75, timeoutMs);
 }
 
 function parseMimeType(mimeType: string): WavConversionOptions {

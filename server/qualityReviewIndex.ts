@@ -4,6 +4,7 @@ import type { ConversationQualityVerdictValue, TextModelInfo } from '../shared/t
 import { OUTPUTS_DIR } from './paths.ts';
 
 export interface QualityReviewSummary {
+  source?: 'triage' | 'pick' | 'gate' | 'fallback' | 'historical';
   verdict: ConversationQualityVerdictValue;
   rationale: string;
   flags: string[];
@@ -52,6 +53,7 @@ export async function readHistoricalQualityReviewIndex(): Promise<Record<string,
   return Object.fromEntries(Object.entries(report.results).flatMap(([key, result]) => {
     if (!result?.verdict || !result.rationale || !result.judgedAt) return [];
     return [[key, {
+      source: 'historical',
       verdict: result.verdict,
       rationale: result.rationale,
       flags: result.flags ?? [],
