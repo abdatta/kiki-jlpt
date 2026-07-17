@@ -475,37 +475,73 @@ async function qualityPass(options: RunQualityControlOptions, conversations: Pra
   }
 
   const repairPrompt = buildBalancedRepairPrompt(options.originalPrompt, options.allowedVocabulary, repairOriginals, findings, verdicts);
+  const candidateIndices = [1, 2] as const;
   const candidateSets: Array<{ source: 'candidate1' | 'candidate2'; conversations: PracticeConversation[] }> = [];
-  for (const candidateIndex of [1, 2] as const) {
-    const repairExchange = pendingExchange(options.textModel, repairPrompt, 'repair', QUALITY_REPAIR_INSTRUCTIONS, `-${pass}-${candidateIndex}`);
+
+  // The two candidates are independent samples of the same repair prompt and run
+  // concurrently. Announce order and outcome assembly stay in fixed
+  // candidate-index order so the recorded candidate pool is deterministic, but
+  // each candidate publishes its own terminal node the instant its own call
+  // settles: whichever call finishes first stops animating and records its own
+  // duration while the slower one keeps running.
+
+  // Announce (ordered): publish both processing nodes before any call settles so
+  // candidate 1 is always announced before candidate 2 and both nodes spin
+  // together.
+  const repairExchanges = candidateIndices.map((candidateIndex) =>
+    pendingExchange(options.textModel, repairPrompt, 'repair', QUALITY_REPAIR_INSTRUCTIONS, `-${pass}-${candidateIndex}`)
+  );
+  for (const candidateIndex of candidateIndices) {
     await publish(options, {
       id: nodeId(options.stage, pass, 'repair-candidate', candidateIndex), callKind: 'repair-candidate', pass, candidateIndex,
       status: 'processing', title: `Repair candidate ${candidateIndex}`, input: { prompt: repairPrompt, model: options.textModel }
     });
+  }
+
+  // Generate + report (concurrent): each candidate awaits its own call and
+  // publishes its own done/repairWarning node as soon as that call settles, so
+  // the node timing reflects the real per-call duration. Every task is total (its
+  // own try/catch, never throws), so Promise.all keeps index order without
+  // discarding a surviving candidate when the other fails.
+  type CandidateOutcome =
+    | { ok: true; candidateIndex: 1 | 2; exchange: LlmExchange; conversations: PracticeConversation[] }
+    | { ok: false; candidateIndex: 1 | 2; exchange: LlmExchange; error: string };
+  const outcomes = await Promise.all(candidateIndices.map(async (candidateIndex, index): Promise<CandidateOutcome> => {
+    const repairExchange = repairExchanges[index];
     try {
       const result = await options.conversationGenerator(repairPrompt, options.textModel);
       const normalized = preserveIdentity(normalizeGeneratedConversations(result.parsed, repairOriginals.length), repairOriginals);
       if (normalized.length !== repairOriginals.length || normalized.some((conversation) => !conversation.text.length)) {
         throw new Error(`Repair candidate ${candidateIndex} did not return every flagged conversation.`);
       }
-      candidateSets.push({ source: `candidate${candidateIndex}` as const, conversations: normalized });
       const exchange = completedExchange(repairExchange, result, { repairAttempt: 1, repairCandidate: candidateIndex, qualityPass: pass });
-      exchanges.push(exchange);
       await publish(options, {
         id: nodeId(options.stage, pass, 'repair-candidate', candidateIndex), callKind: 'repair-candidate', pass, candidateIndex,
         status: 'done', title: `Repair candidate ${candidateIndex}`,
         output: { summary: { statLine: `${normalized.length} conversations repaired`, conversationCount: normalized.length }, exchange, conversations: normalized }
       });
+      return { ok: true, candidateIndex, exchange, conversations: normalized };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      failures.push({ stage: options.stage, pass, callKind: 'repair-candidate', candidateIndex, error: message, fallback: 'continue with surviving candidates or originals' });
       const exchange = failedExchange(repairExchange, error, { repairAttempt: 1, repairCandidate: candidateIndex, qualityPass: pass, fallback: 'original retained' });
-      exchanges.push(exchange);
       await publish(options, {
         id: nodeId(options.stage, pass, 'repair-candidate', candidateIndex), callKind: 'repair-candidate', pass, candidateIndex,
         status: 'repairWarning', title: `Repair candidate ${candidateIndex}`, error: message,
         output: { summary: { statLine: 'Call failed · fallback available' }, exchange }
       });
+      return { ok: false, candidateIndex, exchange, error: message };
+    }
+  }));
+
+  // Assemble (ordered): fold the settled outcomes back in fixed candidate-index
+  // order so the candidate pool, exchange order, and failure list never depend on
+  // which call happened to finish first.
+  for (const outcome of outcomes) {
+    exchanges.push(outcome.exchange);
+    if (outcome.ok) {
+      candidateSets.push({ source: `candidate${outcome.candidateIndex}` as const, conversations: outcome.conversations });
+    } else {
+      failures.push({ stage: options.stage, pass, callKind: 'repair-candidate', candidateIndex: outcome.candidateIndex, error: outcome.error, fallback: 'continue with surviving candidates or originals' });
     }
   }
 

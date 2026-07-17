@@ -827,6 +827,22 @@ async function assertRunHasNoActiveJobs(runId: string): Promise<void> {
   }
 }
 
+/**
+ * A node's completion time is stamped when it first finishes and then preserved
+ * across later output-enrichment re-publishes (e.g. attaching the pick outcome to
+ * a repair candidate), so concurrent siblings keep their own real durations
+ * instead of being flattened to a shared late time. Re-entering 'processing' (a
+ * re-run) clears it so the next completion starts a fresh window.
+ */
+export function resolveStickyCompletedAt(
+  node: Pick<WorkflowAuditNode, 'status' | 'completedAt'>,
+  patch: Pick<Partial<WorkflowAuditNode>, 'status' | 'completedAt'>
+): string | undefined {
+  if (patch.status === 'processing') return undefined;
+  if (node.status !== 'processing' && node.completedAt !== undefined) return node.completedAt;
+  return patch.completedAt ?? node.completedAt;
+}
+
 function updateWorkflowNode(
   jobId: string,
   nodeId: string,
@@ -841,6 +857,7 @@ function updateWorkflowNode(
       ? job.nodes.map((node) => node.id === nodeId ? {
           ...node,
           ...definedPatch,
+          completedAt: resolveStickyCompletedAt(node, definedPatch),
           output: definedPatch.output && recordValue(node.output) && recordValue(definedPatch.output)
             ? { ...recordValue(node.output), ...recordValue(definedPatch.output) }
             : definedPatch.output ?? node.output

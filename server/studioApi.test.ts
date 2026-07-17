@@ -20,7 +20,7 @@ process.env.GEMINI_API_KEY = 'invalid-test-key';
 const storageRoot = await mkdtemp(path.join(os.tmpdir(), 'jlpt-studio-api-'));
 configureStudioJobStorageForTests(path.join(storageRoot, 'jobs'));
 configureRunStorageForTests(path.join(storageRoot, 'runs'));
-const { app, configureConversationJsonGeneratorForTests, configureQualityStructuredJsonInvokerForTests } = await import('./index.ts');
+const { app, configureConversationJsonGeneratorForTests, configureQualityStructuredJsonInvokerForTests, resolveStickyCompletedAt } = await import('./index.ts');
 
 let server: Server;
 let baseUrl = '';
@@ -461,6 +461,21 @@ test('workflow start persists an immediately visible shell and lost-response ret
     releaseSlot();
     await slotDone;
   }
+});
+
+test('node completion time is stamped once and preserved across enrichment re-publishes', () => {
+  const first = '2026-01-01T00:00:10.000Z';
+  const later = '2026-01-01T00:00:20.000Z';
+  // First completion: a processing node adopts the terminal patch's time.
+  assert.equal(resolveStickyCompletedAt({ status: 'processing', completedAt: undefined }, { status: 'done', completedAt: first }), first);
+  // Enrichment re-publish: an already-completed node keeps its own time even
+  // though the later terminal patch carries a fresh (shared) timestamp — this is
+  // what stops concurrent repair candidates from being flattened to one time.
+  assert.equal(resolveStickyCompletedAt({ status: 'done', completedAt: first }, { status: 'done', completedAt: later }), first);
+  assert.equal(resolveStickyCompletedAt({ status: 'repairWarning', completedAt: first }, { status: 'repairWarning', completedAt: later }), first);
+  // Re-run: re-entering processing clears the window so the next completion re-stamps.
+  assert.equal(resolveStickyCompletedAt({ status: 'done', completedAt: first }, { status: 'processing', completedAt: undefined }), undefined);
+  assert.equal(resolveStickyCompletedAt({ status: 'processing', completedAt: undefined }, { status: 'done', completedAt: later }), later);
 });
 
 test('workflow generation quality warning preserves initial and repair LLM exchanges', async () => {

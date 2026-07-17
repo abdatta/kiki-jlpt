@@ -193,6 +193,127 @@ test('repair and picker failures retain a deterministic admissible version', asy
   assert.equal(result.conversations[0].qualityReview?.judgeModel, undefined);
 });
 
+test('repair candidates announce candidate 1 before candidate 2 and each records its own terminal event', async () => {
+  // Original carries OOV, candidate 1 is clean, candidate 2 keeps the OOV, so the
+  // dominance gate decides alone (no picker) and both candidates still emit a
+  // successful terminal event.
+  const input = conversation('convo-01', 1, '映画を見ます。');
+  const events: QualityNodeEvent[] = [];
+  await runQualityControl({
+    stage: 'initial', textModel: model, originalPrompt: 'Generate.', setNumber: 2, expectedCount: 1,
+    allowedVocabulary: vocabulary, knownVocabulary: vocabulary, conversations: [input],
+    invoker: triage([{ conversationId: input.id, verdict: 'repair', flags: ['awkward'] }]),
+    conversationGenerator: generator([
+      { conversations: [rawConversation()] },
+      { conversations: [rawConversation('映画を見ます。')] }
+    ]),
+    onNode: (event) => { events.push(event); }
+  });
+  const repairEvents = events.filter((event) => event.callKind === 'repair-candidate');
+  const processing1 = repairEvents.findIndex((event) => event.id === 'initial:repair-1' && event.status === 'processing');
+  const processing2 = repairEvents.findIndex((event) => event.id === 'initial:repair-2' && event.status === 'processing');
+  const firstDone = repairEvents.findIndex((event) => event.status === 'done');
+  assert.ok(processing1 >= 0 && processing2 >= 0);
+  assert.ok(processing1 < processing2, 'candidate 1 is announced processing before candidate 2');
+  assert.ok(processing1 < firstDone && processing2 < firstDone, 'both candidates are announced processing before either completes');
+  assert.ok(repairEvents.some((event) => event.id === 'initial:repair-1' && event.status === 'done'));
+  assert.ok(repairEvents.some((event) => event.id === 'initial:repair-2' && event.status === 'done'));
+});
+
+test('repair candidates dispatch concurrently and the outcome is independent of completion order', async () => {
+  const input = conversation('convo-01', 1, '映画を見ます。');
+  // Candidate 1 (created first) is clean; candidate 2 keeps the OOV. The gate must
+  // therefore pick candidate 1 no matter which provider call finishes first.
+  const candidateOutputs = [
+    { conversations: [rawConversation()] },
+    { conversations: [rawConversation('映画を見ます。')] }
+  ];
+
+  async function runWithResolutionOrder(order: number[]) {
+    const starts: string[] = [];
+    const resolvers: Array<() => void> = [];
+    let signalBothStarted!: () => void;
+    const bothStarted = new Promise<void>((resolve) => { signalBothStarted = resolve; });
+    const gatedGenerator: QualityConversationGenerator = (prompt) => {
+      const created = starts.length;
+      starts.push(prompt);
+      if (starts.length === 2) signalBothStarted();
+      return new Promise((resolve) => {
+        resolvers.push(() => resolve({ parsed: candidateOutputs[created], output: '{}' }));
+      });
+    };
+    const runPromise = runQualityControl({
+      stage: 'initial', textModel: model, originalPrompt: 'Generate.', setNumber: 2, expectedCount: 1,
+      allowedVocabulary: vocabulary, knownVocabulary: vocabulary, conversations: [input],
+      invoker: triage([{ conversationId: input.id, verdict: 'repair', flags: ['awkward'] }]),
+      conversationGenerator: gatedGenerator
+    });
+    // Both provider calls are dispatched and pending before either is resolved.
+    // Under a serial for-await loop this promise would never settle, since
+    // candidate 2's call is not created until candidate 1 resolves.
+    await bothStarted;
+    assert.equal(starts.length, 2);
+    assert.equal(resolvers.length, 2);
+    for (const index of order) resolvers[index]();
+    return runPromise;
+  }
+
+  const forward = await runWithResolutionOrder([0, 1]);
+  const reverse = await runWithResolutionOrder([1, 0]);
+
+  for (const result of [forward, reverse]) {
+    assert.equal(result.stageAudit.picks[0].selected, 'candidate1');
+    assert.equal(result.stageAudit.picks[0].decidedBy, 'gate');
+    const repairStats = result.exchanges
+      .map((exchange) => (exchange.stats as { repairCandidate?: unknown } | undefined)?.repairCandidate)
+      .filter((candidate): candidate is 1 | 2 => candidate === 1 || candidate === 2)
+      .sort();
+    assert.deepEqual(repairStats, [1, 2]);
+  }
+  assert.deepEqual(reverse.conversations[0].text, forward.conversations[0].text);
+});
+
+test('the repair candidate that settles first reports done first, independent of the other', async () => {
+  const input = conversation('convo-01', 1, '映画を見ます。');
+  const starts: string[] = [];
+  const resolvers: Array<() => void> = [];
+  let signalBothStarted!: () => void;
+  const bothStarted = new Promise<void>((resolve) => { signalBothStarted = resolve; });
+  const events: QualityNodeEvent[] = [];
+  const gatedGenerator: QualityConversationGenerator = () => {
+    const created = starts.length;
+    starts.push('call');
+    if (starts.length === 2) signalBothStarted();
+    return new Promise((resolve) => {
+      // Candidate 1 is clean and candidate 2 keeps the OOV, so the gate decides
+      // alone and no picker runs — the test isolates completion-event ordering.
+      resolvers.push(() => resolve({ parsed: { conversations: [created === 0 ? rawConversation() : rawConversation('映画を見ます。')] }, output: '{}' }));
+    });
+  };
+  const flushUntil = async (predicate: () => boolean) => {
+    for (let index = 0; index < 100 && !predicate(); index += 1) await Promise.resolve();
+  };
+  const runPromise = runQualityControl({
+    stage: 'initial', textModel: model, originalPrompt: 'Generate.', setNumber: 2, expectedCount: 1,
+    allowedVocabulary: vocabulary, knownVocabulary: vocabulary, conversations: [input],
+    invoker: triage([{ conversationId: input.id, verdict: 'repair', flags: ['awkward'] }]),
+    conversationGenerator: gatedGenerator,
+    onNode: (event) => { events.push(event); }
+  });
+  await bothStarted;
+  // Settle candidate 2 first and let its terminal node be published before
+  // candidate 1's call settles at all.
+  resolvers[1]();
+  await flushUntil(() => events.some((event) => event.id === 'initial:repair-2' && event.status === 'done'));
+  assert.equal(events.some((event) => event.id === 'initial:repair-1' && event.status === 'done'), false, 'candidate 1 has not completed while its call is still in flight');
+  resolvers[0]();
+  await runPromise;
+  const terminalOrder = events
+    .filter((event) => event.callKind === 'repair-candidate' && event.status === 'done')
+    .map((event) => event.id);
+  assert.ok(terminalOrder.indexOf('initial:repair-2') < terminalOrder.indexOf('initial:repair-1'), 'the first-settled candidate reports done first');
+});
+
 test('regeneration is bounded to one re-roll and a second regenerate becomes shortfall', async () => {
   const input = conversation('convo-01', 1);
   let triageCalls = 0;
