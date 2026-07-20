@@ -5,6 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { mkdir, readFile, unlink } from 'node:fs/promises';
 import type { AiCurationRequest, GenerateRequest, LibraryComplementGenerateRequest, LlmExchange, PracticeConversation, PracticeRun, RunAudioGenerateRequest, StudioJob, StudioRunSummary, StudioSnapshot, TextModelInfo, VocabItem, WorkflowAuditNode, WorkflowAudioMode, WorkflowGenerateRequest, WorkflowJob, WorkflowNodeStatus, WorkflowRepairResponse, WorkflowRunAudit } from '../shared/types.ts';
+import { BALANCE_CONVERSATION_COUNT_RANGE, RUN_CONVERSATION_COUNT_RANGE, describeCountRange } from '../shared/generationLimits.ts';
 import { CURATED_AUDIO_DIR, CURATED_DIR, CURATED_SETS_DIR, OUTPUTS_DIR, RUNS_DIR, STUDIO_JOBS_DIR } from './paths.ts';
 import { buildAiLibraryBalancePrompt, buildBalancedRepairPrompt, buildGenerationPrompt, buildLibraryComplementPrompt } from './prompt.ts';
 import { buildTtsPrompt, generateConversationAudio, generateConversationJson } from './gemini.ts';
@@ -88,8 +89,8 @@ function validateGenerateRequest(body: GenerateRequest): { setNumber: number; co
   if (!Number.isInteger(setNumber) || setNumber < 1) {
     return { status: 400, error: 'Set number must be a positive integer.' };
   }
-  if (!Number.isInteger(conversationCount) || conversationCount < 4 || conversationCount > 30) {
-    return { status: 400, error: 'Conversation count must be between 4 and 30.' };
+  if (!Number.isInteger(conversationCount) || conversationCount < RUN_CONVERSATION_COUNT_RANGE.min || conversationCount > RUN_CONVERSATION_COUNT_RANGE.max) {
+    return { status: 400, error: `Conversation count must be ${describeCountRange(RUN_CONVERSATION_COUNT_RANGE)}.` };
   }
 
   return { setNumber, conversationCount };
@@ -127,8 +128,8 @@ function validateWorkflowGenerateRequest(body: WorkflowGenerateRequest): { setNu
   if (!Number.isInteger(setNumber) || setNumber < 1) {
     return { status: 400, error: 'Set number must be a positive integer.' };
   }
-  if (!Number.isInteger(requestedTotalConversationCount) || requestedTotalConversationCount < 6 || requestedTotalConversationCount > 30) {
-    return { status: 400, error: 'Workflow conversation count must be between 6 and 30.' };
+  if (!Number.isInteger(requestedTotalConversationCount) || requestedTotalConversationCount < RUN_CONVERSATION_COUNT_RANGE.min || requestedTotalConversationCount > RUN_CONVERSATION_COUNT_RANGE.max) {
+    return { status: 400, error: `Workflow conversation count must be ${describeCountRange(RUN_CONVERSATION_COUNT_RANGE)}.` };
   }
   if (audioMode !== 'fixed' && audioMode !== 'max') {
     return { status: 400, error: 'Workflow audio mode must be fixed or max.' };
@@ -240,8 +241,8 @@ async function getLibraryComplementContext(
   let conversationCount = planned.suggestedConversationCount;
   if (body?.conversationCount !== undefined) {
     const requested = Number(body.conversationCount);
-    if (!Number.isInteger(requested) || requested < 1 || requested > 30) {
-      return { status: 400, error: 'Conversation count must be an integer between 1 and 30.' };
+    if (!Number.isInteger(requested) || requested < BALANCE_CONVERSATION_COUNT_RANGE.min || requested > BALANCE_CONVERSATION_COUNT_RANGE.max) {
+      return { status: 400, error: `Conversation count must be an integer ${describeCountRange(BALANCE_CONVERSATION_COUNT_RANGE)}.` };
     }
     conversationCount = requested;
   }

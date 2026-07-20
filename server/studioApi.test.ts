@@ -235,7 +235,7 @@ test('direct generation succeeds without repair when Set 3 output has no true OO
   try {
     const response = await api<{ run: PracticeRun }>('/api/generate', {
       method: 'POST',
-      body: JSON.stringify({ setNumber: 3, conversationCount: 4, textModelId: 'gemini' })
+      body: JSON.stringify({ setNumber: 3, conversationCount: 10, textModelId: 'gemini' })
     });
 
     assert.equal(response.status, 200);
@@ -272,7 +272,7 @@ test('judge failure keeps generation successful with explicit fallback labels', 
   configureQualityStructuredJsonInvokerForTests(async () => { throw new Error('judge unavailable'); });
   try {
     const response = await api<{ run: PracticeRun }>('/api/generate', {
-      method: 'POST', body: JSON.stringify({ setNumber: 1, conversationCount: 4, textModelId: 'gemini' })
+      method: 'POST', body: JSON.stringify({ setNumber: 1, conversationCount: 10, textModelId: 'gemini' })
     });
 
     assert.equal(response.status, 200);
@@ -296,7 +296,7 @@ test('direct generation repairs true Set 3 OOV before saving', async () => {
   try {
     const response = await api<{ run: PracticeRun }>('/api/generate', {
       method: 'POST',
-      body: JSON.stringify({ setNumber: 3, conversationCount: 4, textModelId: 'gemini' })
+      body: JSON.stringify({ setNumber: 3, conversationCount: 10, textModelId: 'gemini' })
     });
 
     assert.equal(response.status, 200);
@@ -320,7 +320,7 @@ test('direct generation repairs true Set 2 OOV before saving', async () => {
   try {
     const response = await api<{ run: PracticeRun }>('/api/generate', {
       method: 'POST',
-      body: JSON.stringify({ setNumber: 2, conversationCount: 4, textModelId: 'gemini' })
+      body: JSON.stringify({ setNumber: 2, conversationCount: 10, textModelId: 'gemini' })
     });
 
     assert.equal(response.status, 200);
@@ -351,7 +351,7 @@ test('direct generation accepts declared cultural references without repair', as
   try {
     const response = await api<{ run: PracticeRun }>('/api/generate', {
       method: 'POST',
-      body: JSON.stringify({ setNumber: 3, conversationCount: 4, textModelId: 'gemini' })
+      body: JSON.stringify({ setNumber: 3, conversationCount: 10, textModelId: 'gemini' })
     });
 
     assert.equal(response.status, 200);
@@ -383,7 +383,7 @@ test('direct generation repairs rejected cultural-reference declarations', async
   try {
     const response = await api<{ run: PracticeRun }>('/api/generate', {
       method: 'POST',
-      body: JSON.stringify({ setNumber: 3, conversationCount: 4, textModelId: 'gemini' })
+      body: JSON.stringify({ setNumber: 3, conversationCount: 10, textModelId: 'gemini' })
     });
 
     assert.equal(response.status, 200);
@@ -408,7 +408,7 @@ test('direct generation proceeds with best available batch when repair does not 
   try {
     const response = await api<{ run: PracticeRun }>('/api/generate', {
       method: 'POST',
-      body: JSON.stringify({ setNumber: 3, conversationCount: 4, textModelId: 'gemini' })
+      body: JSON.stringify({ setNumber: 3, conversationCount: 10, textModelId: 'gemini' })
     });
 
     assert.equal(response.status, 200);
@@ -431,7 +431,7 @@ test('workflow start persists an immediately visible shell and lost-response ret
   try {
     const body = JSON.stringify({
       setNumber: 1,
-      conversationCount: 6,
+      conversationCount: 10,
       audioCount: 0,
       audioMode: 'fixed',
       textModelId: 'gemini',
@@ -483,14 +483,17 @@ test('workflow generation quality warning preserves initial and repair LLM excha
     '学校は難しいです。',
     '英語です。',
     '銀行です。',
-    'ペンです。'
+    'ペンです。',
+    '学校です。',
+    '英語です。',
+    '銀行です。'
   ]), 'workflow-still-oov'));
   try {
     const started = await api<{ job: StudioJob }>('/api/workflow/start', {
       method: 'POST',
       body: JSON.stringify({
         setNumber: 3,
-        conversationCount: 6,
+        conversationCount: 10,
         audioCount: 0,
         audioMode: 'fixed',
         textModelId: 'gemini',
@@ -548,11 +551,11 @@ test('final-audit warning pauses before audio and resume approves the checkpoint
   try {
     const started = await api<{ job: StudioJob }>('/api/workflow/start', {
       method: 'POST',
-      body: JSON.stringify({ setNumber: 1, conversationCount: 6, audioCount: 2, audioMode: 'fixed', textModelId: 'gemini', idempotencyKey: 'api-workflow-final-audit-pause' })
+      body: JSON.stringify({ setNumber: 1, conversationCount: 10, audioCount: 2, audioMode: 'fixed', textModelId: 'gemini', idempotencyKey: 'api-workflow-final-audit-pause' })
     });
     const paused = await waitForStudioJob(started.body.job.id);
     assert.equal(paused.status, 'paused');
-    assert.match(paused.stageLabel, /accepted 4 of 6 requested/i);
+    assert.match(paused.stageLabel, /accepted 5 of 10 requested/i);
     assert.equal(paused.workflow?.nodes.find((node) => node.id === 'final-audit')?.status, 'done');
     assert.equal(paused.workflow?.nodes.filter((node) => node.kind === 'audio').every((node) => node.status === 'pending'), true);
     assert.equal((paused.workflow?.run?.finalTextAudit?.outcome), 'pause');
@@ -572,7 +575,7 @@ test('final-audit warning pauses before audio and resume approves the checkpoint
     }
     assert.equal(finalized.workflow?.status, 'complete');
     const saved = await readRun(finalized.runId!);
-    assert.equal(saved.conversations.length, 4);
+    assert.equal(saved.conversations.length, 5);
     assert.equal(saved.conversations.filter((item) => item.audioFileName).length, 2);
   } finally {
     configureAudioSchedulerForTests();
@@ -698,7 +701,7 @@ test('workflow provider failure preserves partial LLM output and transport metad
       method: 'POST',
       body: JSON.stringify({
         setNumber: 3,
-        conversationCount: 6,
+        conversationCount: 10,
         audioCount: 0,
         audioMode: 'fixed',
         textModelId: 'gemini',
@@ -746,9 +749,9 @@ test('workflow resume reuses generator and balancer checkpoints and finishes aud
       id: 'workflow-resume-1',
       status: 'running',
       setNumber: 1,
-      primaryConversationCount: 4,
-      balanceConversationCount: 2,
-      requestedTotalConversationCount: 6,
+      primaryConversationCount: 7,
+      balanceConversationCount: 3,
+      requestedTotalConversationCount: 10,
       audioRequestedCount: 2,
       audioGeneratedCount: 0,
       audioErrors: [],
@@ -775,7 +778,7 @@ test('workflow resume reuses generator and balancer checkpoints and finishes aud
       kind: 'workflow-generation',
       status: 'interrupted',
       title: 'Set 1 generation',
-      detail: '6 conversations',
+      detail: '10 conversations',
       stageLabel: 'Interrupted',
       setNumber: 1,
       runId: 'run-workflow-resume',
@@ -786,7 +789,7 @@ test('workflow resume reuses generator and balancer checkpoints and finishes aud
         { id: 'balancer', label: 'Balancing set', status: 'succeeded' },
         { id: 'audio', label: 'Generating audio', status: 'interrupted' }
       ],
-      request: { setNumber: 1, conversationCount: 6, audioCount: 2, audioMode: 'fixed', textModelId: 'gemini' },
+      request: { setNumber: 1, conversationCount: 10, audioCount: 2, audioMode: 'fixed', textModelId: 'gemini' },
       workflow,
       checkpoint: {
         primary: { exchange: primaryExchange, exchanges: [primaryExchange, primaryRepairExchange, legacyFinalLabelExchange], conversations: primaryConversations },

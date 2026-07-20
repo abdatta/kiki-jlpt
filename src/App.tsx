@@ -57,6 +57,7 @@ import type {
   WorkflowRepairResponse,
   WorkflowStartResponse
 } from '../shared/types.ts';
+import { BALANCE_CONVERSATION_COUNT_RANGE, RUN_CONVERSATION_COUNT_RANGE, describeCountRange, formatCountRange } from '../shared/generationLimits.ts';
 import { BrandLogo } from './components/BrandLogo.tsx';
 import { AddAllProgressModal, type AddAllProgress, type AddAllProgressItem } from './components/AddAllProgressModal.tsx';
 import { AiCurationReconciliationPanel } from './components/AiCurationReconciliationPanel.tsx';
@@ -2829,13 +2830,12 @@ export function GenerateModal({
   const isPreflighting = busy === 'preflight';
   const generatorLabel = textModels.find((model) => model.id === state.textModelId)?.label ?? state.textModelId;
   const judgeLabel = judgeModels.find((model) => model.id === state.judgeModelId)?.label ?? state.judgeModelId;
-  const isWorkflowMode = state.runMode !== 'text-only';
-  const minConversationCount = isWorkflowMode ? 6 : 4;
-  const placeholder = isWorkflowMode ? 'Select 6-30' : 'Select 4-30';
+  const minConversationCount = RUN_CONVERSATION_COUNT_RANGE.min;
+  const placeholder = `Select ${formatCountRange(RUN_CONVERSATION_COUNT_RANGE)}`;
   const canSubmit = busy === null
     && Number.isInteger(conversationCount)
     && conversationCount >= minConversationCount
-    && conversationCount <= 30
+    && conversationCount <= RUN_CONVERSATION_COUNT_RANGE.max
     && state.textModelId.length > 0
     && state.judgeModelId.length > 0;
 
@@ -2872,7 +2872,7 @@ export function GenerateModal({
             <span>Conversations</span>
             <input
               min={minConversationCount}
-              max={30}
+              max={RUN_CONVERSATION_COUNT_RANGE.max}
               placeholder={placeholder}
               type="number"
               disabled={busy !== null}
@@ -2972,7 +2972,7 @@ function BalanceModal({
   const trimmedCount = state.conversationCount.trim();
   const parsedCount = trimmedCount ? Number(trimmedCount) : undefined;
   const countValid = parsedCount === undefined
-    || (Number.isInteger(parsedCount) && parsedCount >= 1 && parsedCount <= 30);
+    || (Number.isInteger(parsedCount) && parsedCount >= BALANCE_CONVERSATION_COUNT_RANGE.min && parsedCount <= BALANCE_CONVERSATION_COUNT_RANGE.max);
   const canSubmit = busy === null && state.textModelId.length > 0 && countValid;
 
   return (
@@ -3004,8 +3004,8 @@ function BalanceModal({
           <label className="modalWideField">
             <span>Conversations</span>
             <input
-              min={1}
-              max={30}
+              min={BALANCE_CONVERSATION_COUNT_RANGE.min}
+              max={BALANCE_CONVERSATION_COUNT_RANGE.max}
               placeholder={suggestedCount ? `Suggested ${suggestedCount}` : 'Auto'}
               type="number"
               value={state.conversationCount}
@@ -4215,8 +4215,7 @@ function StudioApp() {
   async function submitGenerateModal() {
     if (!generateModal) return;
     const nextConversationCount = Number(generateModal.conversationCount);
-    const minConversationCount = generateModal.runMode === 'text-only' ? 4 : 6;
-    if (!Number.isInteger(nextConversationCount) || nextConversationCount < minConversationCount || nextConversationCount > 30 || !generateModal.textModelId || !generateModal.judgeModelId) {
+    if (!Number.isInteger(nextConversationCount) || nextConversationCount < RUN_CONVERSATION_COUNT_RANGE.min || nextConversationCount > RUN_CONVERSATION_COUNT_RANGE.max || !generateModal.textModelId || !generateModal.judgeModelId) {
       setError('Choose a set, conversation count, generator, judge, and run type before generating.');
       return;
     }
@@ -4362,8 +4361,8 @@ function StudioApp() {
     }
     const trimmedCount = conversationCount.trim();
     const overrideCount = trimmedCount ? Number(trimmedCount) : undefined;
-    if (overrideCount !== undefined && (!Number.isInteger(overrideCount) || overrideCount < 1 || overrideCount > 30)) {
-      setError('Conversations to generate must be an integer between 1 and 30.');
+    if (overrideCount !== undefined && (!Number.isInteger(overrideCount) || overrideCount < BALANCE_CONVERSATION_COUNT_RANGE.min || overrideCount > BALANCE_CONVERSATION_COUNT_RANGE.max)) {
+      setError(`Conversations to generate must be an integer ${describeCountRange(BALANCE_CONVERSATION_COUNT_RANGE)}.`);
       return;
     }
     const sessionId = makeSessionId();
