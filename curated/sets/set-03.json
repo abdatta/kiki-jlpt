@@ -1,0 +1,4528 @@
+{
+  "setNumber": 3,
+  "analytics": {
+    "currentSetTotal": 100,
+    "currentSetUsedCount": 98,
+    "currentSetMissingCount": 2,
+    "currentSetMissingWords": [
+      "家庭",
+      "頼む"
+    ],
+    "allowedVocabTotal": 300,
+    "allowedVocabUsedCount": 202,
+    "allowedVocabUsedPercentage": 67.3,
+    "outOfAllowedCount": 0,
+    "outOfAllowedWords": []
+  },
+  "conversations": [
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-01",
+      "number": 1,
+      "title": "English Homework",
+      "scene": "Two students confirm the assignment for their next English class.",
+      "sampleContext": "They speak quietly together after class and want to avoid missing the deadline.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "polite",
+            "slow"
+          ],
+          "japanese": "明日の英語の授業の宿題は何ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "helpful",
+            "slow"
+          ],
+          "japanese": "作文です。英語で書きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "問題用紙もありますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいえ、問題用紙はありません。ノートに書いてください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "いつまでですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "clear",
+            "polite",
+            "slow"
+          ],
+          "japanese": "金曜日までです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "relieved",
+            "slow"
+          ],
+          "japanese": "では、今晩書きます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "私もです。一緒に勉強しましょう。"
+        }
+      ],
+      "listeningQuestions": [
+        "What subject is the homework for?",
+        "What kind of homework is it?",
+        "In which language must the homework be written?",
+        "Where should the student write it?",
+        "When is the deadline?",
+        "What do the speakers plan to do together?"
+      ],
+      "answerKey": [
+        "It is for English class.",
+        "It is an essay or composition.",
+        "It must be written in English.",
+        "It should be written in a notebook.",
+        "The deadline is Friday.",
+        "They plan to study together."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "What is the homework for tomorrow's English class?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It is an essay. We will write it in English."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is there a question sheet too?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, there is no question sheet. Please write it in your notebook."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "When is it due?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It is due by Friday."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Then I will write it tonight."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Me too. Let's study together."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～語",
+        "～日",
+        "いいえ",
+        "いつ",
+        "する",
+        "ノート",
+        "一緒",
+        "英語",
+        "何",
+        "何～",
+        "金曜日",
+        "今晩",
+        "在る",
+        "作文",
+        "四",
+        "私",
+        "授業",
+        "宿題",
+        "書く",
+        "二",
+        "勉強",
+        "勉強する",
+        "明日",
+        "問題",
+        "問題用紙",
+        "有る"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T11:18:27.734Z",
+      "updatedAt": "2026-08-06T11:18:27.734Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Natural, coherent homework confirmation dialogue; level-appropriate and zero out-of-vocabulary words per authoritative evidence.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:48:24.269Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-01.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-01.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-01",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-01.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-01",
+      "curatedAt": "2026-08-06T11:18:27.734Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-02",
+      "number": 2,
+      "title": "Test Practice",
+      "scene": "Two classmates prepare to work through a sample test question.",
+      "sampleContext": "One student explains the instructions carefully before they begin reading.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "encouraging",
+            "slow"
+          ],
+          "japanese": "テストの練習をしましょう。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "はい。問題例を読みますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "clear",
+            "polite",
+            "slow"
+          ],
+          "japanese": "ええ、読んで、問題に答えてください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "紙に書きますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいえ、問題用紙に書いてください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "careful",
+            "slow"
+          ],
+          "japanese": "鉛筆ですか、ボールペンですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "鉛筆でお願いします。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "ready",
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。では、問題例を読みます。"
+        }
+      ],
+      "listeningQuestions": [
+        "What are the speakers going to practice?",
+        "What will Speaker 2 read?",
+        "What must Speaker 2 do after reading?",
+        "Where should Speaker 2 write?",
+        "Which writing tool should Speaker 2 use?",
+        "What does Speaker 2 do in the final line?"
+      ],
+      "answerKey": [
+        "They are going to practice for a test.",
+        "Speaker 2 will read the sample question.",
+        "Speaker 2 must answer the question.",
+        "Speaker 2 should write on the question sheet.",
+        "Speaker 2 should use a pencil.",
+        "He begins reading the sample question."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Let's practice for the test."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. Shall I read the sample question?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. Please read it and answer the question."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Should I write on paper?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No. Please write on the question sheet."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Should I use a pencil or a ballpoint pen?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "A pencil, please."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Okay. Then I will read the sample question."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "いいえ",
+        "お願いします",
+        "する",
+        "テスト",
+        "はい",
+        "ボールペン",
+        "鉛筆",
+        "四",
+        "紙",
+        "書く",
+        "答える",
+        "読む",
+        "二",
+        "問題",
+        "問題用紙",
+        "問題例",
+        "例",
+        "練習"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T11:18:43.291Z",
+      "updatedAt": "2026-08-06T11:18:43.291Z",
+      "quality": "good",
+      "qualityDecision": "repair",
+      "pickerSelected": "candidate1",
+      "pickerConfidence": "high",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "pick",
+        "verdict": "pass",
+        "rationale": "Both are clean per evidence, but candidate1's '紙に書きますか' flows naturally after the answer instruction; candidate2's '問題に答えて、紙に書きますか' redundantly repeats the just-given instruction.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "selectedVersion": "candidate1",
+        "confidence": "high",
+        "rubricVersion": "generation-pick-v1",
+        "reviewedAt": "2026-07-18T18:50:40.235Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-02.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-02.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-02",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-02.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-02",
+      "curatedAt": "2026-08-06T11:18:43.291Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-03",
+      "number": 3,
+      "title": "Finding a Dictionary",
+      "scene": "A student asks a classmate for help finding the meaning of a kanji.",
+      "sampleContext": "They are studying near a bookshelf and speak in a calm, helpful way.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "soft",
+            "slow"
+          ],
+          "japanese": "この漢字の意味は何ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "ええと、辞書で見ましょう。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "辞書はどこですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "本棚にあります。青い本の隣です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "uncertain",
+            "slow"
+          ],
+          "japanese": "これですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "それは英語の字引です。辞書は赤い本です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "understanding",
+            "slow"
+          ],
+          "japanese": "ああ、これですね。見ます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "encouraging",
+            "slow"
+          ],
+          "japanese": "そして、漢字をノートに書いて覚えましょう。"
+        }
+      ],
+      "listeningQuestions": [
+        "What does Speaker 1 want to know?",
+        "How does Speaker 2 suggest finding the answer?",
+        "Where is the needed dictionary?",
+        "What color book is next to the dictionary?",
+        "What does Speaker 1 pick first by mistake?",
+        "What should they do after checking the meaning?"
+      ],
+      "answerKey": [
+        "She wants to know the meaning of a kanji.",
+        "Speaker 2 suggests looking in a dictionary.",
+        "It is on the bookshelf next to the blue book.",
+        "The blue book is next to it.",
+        "She first picks an English dictionary.",
+        "They should write the kanji in a notebook and memorize it."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "What does this kanji mean?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Let me think. Let's look in a dictionary."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Where is the dictionary?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It is on the bookshelf, next to the blue book."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is this it?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That is an English dictionary. The dictionary is the red book."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, this one, right? I will look."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Then let's write the kanji in a notebook and memorize it."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～語",
+        "～時",
+        "ああ",
+        "この",
+        "これ",
+        "それ",
+        "どこ",
+        "ノート",
+        "意味",
+        "英語",
+        "何",
+        "何～",
+        "覚える",
+        "漢字",
+        "見る",
+        "在る",
+        "字引",
+        "辞書",
+        "書く",
+        "青い",
+        "赤い",
+        "二",
+        "本",
+        "本棚",
+        "有る",
+        "隣"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:18:25.149Z",
+      "updatedAt": "2026-08-06T19:18:25.149Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Coherent, realistic dictionary-search scene with natural turn-taking; no out-of-vocabulary words per evidence.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:48:24.269Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-03.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-03.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-03",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-03.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-03",
+      "curatedAt": "2026-08-06T19:18:25.149Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-04",
+      "number": 4,
+      "title": "New International Students",
+      "scene": "Two international students introduce themselves before class.",
+      "sampleContext": "They sound polite at first and become more relaxed as they discuss studying.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "初めまして。さくらです。留学生です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "polite",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "初めまして。健です。私も留学生です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "健さんは何語を習いますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "英語を習います。漢字も勉強します。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "interested",
+            "slow"
+          ],
+          "japanese": "漢字は好きですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "honest",
+            "gentle",
+            "slow"
+          ],
+          "japanese": "はい。でも、まだ覚えていません。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "encouraging",
+            "slow"
+          ],
+          "japanese": "私もです。一緒に練習しませんか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "ええ、お願いします。よろしく。"
+        }
+      ],
+      "listeningQuestions": [
+        "What are both speakers?",
+        "Which language does Ken learn?",
+        "What else does Ken study?",
+        "Does Ken like kanji?",
+        "What does Ken say about memorizing kanji?",
+        "What does Sakura invite Ken to do?"
+      ],
+      "answerKey": [
+        "They are both international students.",
+        "He learns English.",
+        "He also studies kanji.",
+        "Yes, he does.",
+        "He says he has not memorized it yet.",
+        "She invites him to practice together."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Nice to meet you. I am Sakura. I am an international student."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Nice to meet you. I am Ken. I am also an international student."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Ken, what language do you learn?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I learn English. I also study kanji."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you like kanji?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. But I have not memorized it yet."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Me neither. Would you like to practice together?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, please. I look forward to studying with you."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～語",
+        "～時",
+        "お願いします",
+        "する",
+        "はい",
+        "よろしく",
+        "一緒",
+        "英語",
+        "何",
+        "何～",
+        "覚える",
+        "漢字",
+        "居る",
+        "五",
+        "好き",
+        "三",
+        "四",
+        "私",
+        "習う",
+        "初めまして",
+        "二",
+        "勉強",
+        "勉強する",
+        "留学生",
+        "練習",
+        "練習する"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:18:44.725Z",
+      "updatedAt": "2026-08-06T19:18:44.725Z",
+      "quality": "good",
+      "qualityDecision": "repair",
+      "pickerSelected": "candidate1",
+      "pickerConfidence": "high",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "pick",
+        "verdict": "pass",
+        "rationale": "Both versions are coherent and level-appropriate; candidate1's 'でも、まだ覚えていません' is more natural since the topic (漢字) is already established, while candidate2 restates it redundantly.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "selectedVersion": "candidate1",
+        "confidence": "high",
+        "rubricVersion": "generation-pick-v1",
+        "reviewedAt": "2026-07-18T18:50:40.235Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-04.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-04.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-04",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-04.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-04",
+      "curatedAt": "2026-08-06T19:18:44.725Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-05",
+      "number": 5,
+      "title": "Jobs in the Family",
+      "scene": "Two friends talk about their jobs and their fathers' workplaces.",
+      "sampleContext": "They chat during a quiet break and compare their family members' occupations.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "けんさんは会社員ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。銀行の隣の会社に勤めています。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "interested",
+            "slow"
+          ],
+          "japanese": "毎日、何時から働きますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "clear",
+            "slow"
+          ],
+          "japanese": "九時から五時まで働きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "私の父も会社員です。でも、いつも忙しいです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "お父さんも会社に勤めていますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、父は銀行員です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "understanding",
+            "slow"
+          ],
+          "japanese": "そうですか。私の父も銀行員です。"
+        }
+      ],
+      "listeningQuestions": [
+        "What is Ken's occupation?",
+        "Where is Ken's company located?",
+        "What hours does Ken work?",
+        "How does Speaker 1 describe her father?",
+        "Does Speaker 1's father work for a company?",
+        "What occupation do both speakers' fathers share?"
+      ],
+      "answerKey": [
+        "Ken is a company employee.",
+        "It is next to a bank.",
+        "He works from nine to five.",
+        "She says he is always busy.",
+        "No, he does not.",
+        "Both fathers are bank employees."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Ken, are you a company employee?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. I work for the company next to the bank."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "What time do you start working every day?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I work from nine until five."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "My father is also a company employee. But he is always busy."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Does your father also work for a company?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No, my father is a bank employee."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I see. My father is also a bank employee."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～語",
+        "～時",
+        "～日",
+        "いいえ",
+        "いつも",
+        "お父さん",
+        "はい",
+        "何",
+        "何～",
+        "会社",
+        "会社員",
+        "居る",
+        "勤める",
+        "銀行",
+        "銀行員",
+        "九",
+        "五",
+        "私",
+        "働く",
+        "二",
+        "父",
+        "忙しい",
+        "毎日",
+        "隣"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:18:48.391Z",
+      "updatedAt": "2026-08-06T19:18:48.391Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Coherent conversation about jobs and family occupations; natural flow and zero out-of-vocabulary words.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:48:24.269Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-05.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-05.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-05",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-05.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-05",
+      "curatedAt": "2026-08-06T19:18:48.391Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-06",
+      "number": 6,
+      "title": "Going to the Post Office",
+      "scene": "A woman asks a friend to accompany her to the post office.",
+      "sampleContext": "They coordinate the trip around the man's work schedule.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "手紙を書きました。郵便局へ一緒に行きませんか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "agreeable",
+            "slow"
+          ],
+          "japanese": "ええ、行きましょう。郵便局はどこですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "銀行のそばです。交番の隣です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "いつ行きますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "明日の午前はいかがですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "apologetic",
+            "slow"
+          ],
+          "japanese": "すみません。午前は会社で働きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "では、午後三時に行きましょう。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "はい。三時に銀行のそばで会いましょう。"
+        }
+      ],
+      "listeningQuestions": [
+        "Why does Speaker 1 want to go to the post office?",
+        "Which two places help identify the post office's location?",
+        "When does Speaker 1 first suggest going?",
+        "Why can Speaker 2 not go then?",
+        "What time do they finally choose?",
+        "Where will they meet?"
+      ],
+      "answerKey": [
+        "She has written a letter.",
+        "It is near the bank and next to the police box.",
+        "She first suggests tomorrow morning.",
+        "He will be working at his company.",
+        "They choose three in the afternoon.",
+        "They will meet near the bank."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "I wrote a letter. Would you like to go to the post office together?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, let's go. Where is the post office?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "It is near the bank and next to the police box."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "When shall we go?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "How about tomorrow morning?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Sorry. I will be working at the company in the morning."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Then let's go at three in the afternoon."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Okay. Let's meet near the bank at three."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～語",
+        "～時",
+        "～日",
+        "いかが",
+        "いつ",
+        "すみません",
+        "そば",
+        "どこ",
+        "はい",
+        "一緒",
+        "会社",
+        "銀行",
+        "午後",
+        "午前",
+        "交番",
+        "行く",
+        "三",
+        "手紙",
+        "書く",
+        "働く",
+        "二",
+        "明日",
+        "郵便局",
+        "隣"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:18:52.385Z",
+      "updatedAt": "2026-08-06T19:18:52.385Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Realistic scheduling dialogue with natural negotiation around work hours; no out-of-vocabulary words per evidence.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:48:24.269Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-06.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-06.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-06",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-06.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-06",
+      "curatedAt": "2026-08-06T19:18:52.385Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-07",
+      "number": 7,
+      "title": "Copying Class Papers",
+      "scene": "Two students prepare copies and writing materials for a class.",
+      "sampleContext": "They check exactly which papers and tools are needed before the lesson.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "slow"
+          ],
+          "japanese": "この作文をコピーしてください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "careful",
+            "slow"
+          ],
+          "japanese": "はい。この作文だけですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "clear",
+            "slow"
+          ],
+          "japanese": "いいえ、その問題用紙もコピーしてください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "紙は机の上にありますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "はい。鉛筆の隣にあります。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "checking",
+            "slow"
+          ],
+          "japanese": "ペンとボールペンも取りますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "ボールペンだけ取ってください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "understanding",
+            "slow"
+          ],
+          "japanese": "はい。作文と問題用紙をコピーします。"
+        }
+      ],
+      "listeningQuestions": [
+        "What is Speaker 2 first asked to copy?",
+        "What additional item must also be copied?",
+        "Where is the paper?",
+        "What object is next to the paper?",
+        "Which writing tool should Speaker 2 take?",
+        "Which writing tool is not requested?"
+      ],
+      "answerKey": [
+        "A composition or essay.",
+        "The question sheet.",
+        "It is on the desk.",
+        "A pencil is next to it.",
+        "A ballpoint pen.",
+        "A regular pen is not requested."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Please copy this essay."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Okay. Only this essay?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No. Please copy that question sheet too."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is the paper on the desk?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. It is next to the pencil."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Should I take the pen and the ballpoint pen too?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Please take only the ballpoint pen."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Okay. I will copy the essay and the question sheet."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "いいえ",
+        "この",
+        "コピーする",
+        "する",
+        "その",
+        "はい",
+        "ペン",
+        "ボールペン",
+        "鉛筆",
+        "机",
+        "戸",
+        "在る",
+        "作文",
+        "四",
+        "紙",
+        "取る",
+        "二",
+        "問題",
+        "問題用紙",
+        "有る",
+        "隣"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:20:38.881Z",
+      "updatedAt": "2026-08-06T19:20:38.881Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Plausible task-oriented copying scene with clear, natural instructions; zero out-of-vocabulary words.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:48:24.269Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-07.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-07.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-07",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-07.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-07",
+      "curatedAt": "2026-08-06T19:20:38.881Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-08",
+      "number": 8,
+      "title": "A New Camera",
+      "scene": "Two friends talk about a camera and the family members near it.",
+      "sampleContext": "They are at home looking at a new camera beside members of the family.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "impressed",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "このカメラは新しいですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "はい。父のカメラです。今年の誕生日のカメラです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "カメラのそばの男の人はどなたですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "兄です。兄もカメラが好きです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あの女の子は妹さんですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいえ、姉です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "surprised",
+            "slow"
+          ],
+          "japanese": "本当ですか。小さいですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "amused",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "ええ。でも、姉は大人です。"
+        }
+      ],
+      "listeningQuestions": [
+        "Who owns the new camera?",
+        "For what occasion was the camera given?",
+        "Who is the man near the camera?",
+        "What interest do the father’s son and the father share?",
+        "Who does Speaker 1 think the girl is?",
+        "Who is she actually?",
+        "Why is Speaker 1 surprised?"
+      ],
+      "answerKey": [
+        "Speaker 2's father owns it.",
+        "It was for his birthday this year.",
+        "He is Speaker 2's older brother.",
+        "They both like cameras.",
+        "She thinks the girl is Speaker 2's younger sister.",
+        "She is Speaker 2's older sister.",
+        "She looks small even though she is an adult."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "This camera is new, isn't it?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. It is my father's camera. It was his camera for this year's birthday."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Who is the man near the camera?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "He is my older brother. My brother likes cameras too."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is that girl your younger sister?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, she is my older sister."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Really? She is small."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. But my sister is an adult."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～日",
+        "～年",
+        "あの",
+        "いいえ",
+        "カメラ",
+        "この",
+        "そば",
+        "どなた",
+        "はい",
+        "兄",
+        "好き",
+        "今年",
+        "三",
+        "姉",
+        "女の子",
+        "小さい",
+        "新しい",
+        "人",
+        "大人",
+        "誕生日",
+        "男",
+        "父",
+        "本当",
+        "妹",
+        "妹さん"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:20:43.053Z",
+      "updatedAt": "2026-08-06T19:20:43.053Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Coherent family/camera conversation with a light, natural exchange; slightly quirky but realistic; no vocabulary issues per evidence.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:48:24.269Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-08.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-08.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-08",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-08.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-08",
+      "curatedAt": "2026-08-06T19:20:43.053Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-09",
+      "number": 9,
+      "title": "Finding the Classroom",
+      "scene": "A student asks where the English classroom is located.",
+      "sampleContext": "They are near the school entrance, and one student gives simple directions.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "curious",
+            "slow"
+          ],
+          "japanese": "すみません。英語の教室はどこですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "あちらです。階段のそばです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "checking",
+            "slow"
+          ],
+          "japanese": "赤いドアの教室ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "correcting",
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいえ、青いドアの教室です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "先生はもう教室にいますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。生徒も大勢います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "slightly worried",
+            "slow"
+          ],
+          "japanese": "もう授業ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "reassuring",
+            "slow"
+          ],
+          "japanese": "いいえ。授業は十時からです。"
+        }
+      ],
+      "listeningQuestions": [
+        "What classroom is Speaker 1 looking for?",
+        "What landmark is near the classroom?",
+        "Which door color does Speaker 1 first suggest?",
+        "What is the correct door color?",
+        "Who is already in the classroom?",
+        "Are there only a few students there?",
+        "When does the class begin?"
+      ],
+      "answerKey": [
+        "The English classroom.",
+        "The stairs are near it.",
+        "She first suggests the red door.",
+        "The correct door is blue.",
+        "The teacher and many students are already there.",
+        "No, there are many students.",
+        "It begins at ten."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Excuse me. Where is the English classroom?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It is that way, near the stairs."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is it the classroom with the red door?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, it is the classroom with the blue door."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is the teacher already in the classroom?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. There are also many students."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Has class started already?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No. Class is from ten o'clock."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～語",
+        "～時",
+        "～先生",
+        "あちら",
+        "いいえ",
+        "すみません",
+        "そば",
+        "ドア",
+        "どこ",
+        "はい",
+        "もう",
+        "英語",
+        "階段",
+        "居る",
+        "教室",
+        "授業",
+        "十",
+        "生徒",
+        "青い",
+        "赤い",
+        "先生",
+        "大勢",
+        "二"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:20:47.146Z",
+      "updatedAt": "2026-08-06T19:20:47.146Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Natural direction-asking scene with a realistic correction and reassurance; zero out-of-vocabulary words.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:48:24.269Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-09.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-09.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-09",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-09.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-09",
+      "curatedAt": "2026-08-06T19:20:47.146Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-10",
+      "number": 10,
+      "title": "Morning Study Routine",
+      "scene": "Two friends compare how they study English each morning.",
+      "sampleContext": "They speak casually about newspapers, radio, and daily study habits.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "curious",
+            "slow"
+          ],
+          "japanese": "毎朝、新聞を読みますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。朝御飯を食べて、新聞を読みます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "interested",
+            "slow"
+          ],
+          "japanese": "英語の新聞ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいえ。でも、英語のラジオを聞きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "何時に聞きますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "clear",
+            "slow"
+          ],
+          "japanese": "午前七時に聞きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "私は毎晩、英語のテレビを見て勉強します。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "encouraging",
+            "slow"
+          ],
+          "japanese": "いいですね。毎日、英語を練習しましょう。"
+        }
+      ],
+      "listeningQuestions": [
+        "What does Speaker 2 do after eating breakfast?",
+        "Is the newspaper in English?",
+        "What English-language medium does Speaker 2 use?",
+        "At what time does Speaker 2 listen to it?",
+        "When does Speaker 1 study English?",
+        "What does Speaker 1 watch while studying?",
+        "What shared habit does Speaker 2 encourage?"
+      ],
+      "answerKey": [
+        "He reads a newspaper.",
+        "No, it is not.",
+        "He listens to English radio.",
+        "He listens at seven in the morning.",
+        "She studies every evening.",
+        "She watches English television.",
+        "He encourages practicing English every day."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you read the newspaper every morning?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. I eat breakfast and read the newspaper."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is it an English newspaper?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No. But I listen to English radio."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "What time do you listen?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I listen at seven in the morning."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I watch English television and study every evening."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That is good. Let's practice English every day."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～語",
+        "～時",
+        "～日",
+        "いい",
+        "いいえ",
+        "する",
+        "テレビ",
+        "はい",
+        "ラジオ",
+        "英語",
+        "何",
+        "何～",
+        "見る",
+        "午前",
+        "四",
+        "私",
+        "七",
+        "食べる",
+        "新聞",
+        "朝",
+        "朝御飯",
+        "読む",
+        "二",
+        "聞く",
+        "勉強",
+        "勉強する",
+        "毎朝",
+        "毎日",
+        "毎晩",
+        "練習",
+        "練習する"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:20:51.166Z",
+      "updatedAt": "2026-08-06T19:20:51.166Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Coherent morning-routine comparison, natural progression and level-appropriate; no out-of-vocabulary words.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:48:24.269Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-10.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-10.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-10",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-10.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-10",
+      "curatedAt": "2026-08-06T19:20:51.166Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-11",
+      "number": 11,
+      "title": "Books on the Shelf",
+      "scene": "Two students choose books from a classroom bookshelf.",
+      "sampleContext": "They count the books and decide which ones to read for study.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "本棚に本は何冊ありますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "五冊あります。英語の本は三冊です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "interested",
+            "slow"
+          ],
+          "japanese": "赤い本も英語の本ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいえ、それは漢字の本です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "どの本が一番いいですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "この青い本が一番いいです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "decisive",
+            "slow"
+          ],
+          "japanese": "では、青い本を読みたいです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "私もです。一緒に読みましょう。"
+        }
+      ],
+      "listeningQuestions": [
+        "How many books are on the bookshelf?",
+        "How many of them are English books?",
+        "What subject is the red book about?",
+        "Which book does Speaker 2 recommend most?",
+        "What does Speaker 1 want to do?",
+        "What do the speakers decide to do together?"
+      ],
+      "answerKey": [
+        "There are five books.",
+        "Three are English books.",
+        "It is about kanji.",
+        "Speaker 2 recommends the blue book.",
+        "She wants to read the blue book.",
+        "They decide to read it together."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "How many books are on the bookshelf?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "There are five. Three are English books."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is the red book also an English book?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, that is a kanji book."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Which book is the best?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "This blue book is the best."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Then I want to read the blue book."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Me too. Let's read it together."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～語",
+        "～冊",
+        "～時",
+        "いい",
+        "いいえ",
+        "この",
+        "それ",
+        "どの",
+        "一緒",
+        "一番",
+        "英語",
+        "何",
+        "何～",
+        "漢字",
+        "五",
+        "在る",
+        "三",
+        "私",
+        "青い",
+        "赤い",
+        "読む",
+        "二",
+        "本",
+        "本棚",
+        "有る"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:20:54.700Z",
+      "updatedAt": "2026-08-06T19:20:54.700Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Natural bookshelf discussion with counting and preference; coherent and vocabulary-clean per evidence.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:48:24.269Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-11.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-11.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-11",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-11.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-11",
+      "curatedAt": "2026-08-06T19:20:54.700Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-12",
+      "number": 12,
+      "title": "Hiragana or Katakana",
+      "scene": "A learner asks which Japanese script to use for a word.",
+      "sampleContext": "A classmate gives guidance and suggests a simple writing exercise.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "この言葉は平仮名で書きますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "いいえ、片仮名で書きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "uncertain",
+            "slow"
+          ],
+          "japanese": "カタカナはまだ覚えていません。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "encouraging",
+            "slow"
+          ],
+          "japanese": "では、この例を見てください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "attentive",
+            "slow"
+          ],
+          "japanese": "ああ、この言葉も片仮名ですね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。この言葉をノートに書いてください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "checking",
+            "slow"
+          ],
+          "japanese": "そして、読みますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "positive",
+            "slow"
+          ],
+          "japanese": "ええ。書いて、読んで、覚えましょう。"
+        }
+      ],
+      "listeningQuestions": [
+        "Which script does Speaker 1 first ask about?",
+        "Which script should actually be used?",
+        "What has Speaker 1 not memorized yet?",
+        "What does Speaker 2 ask Speaker 1 to look at?",
+        "Where should Speaker 1 write the word?",
+        "What three actions does Speaker 2 recommend?"
+      ],
+      "answerKey": [
+        "She first asks about hiragana.",
+        "Katakana should be used.",
+        "She has not memorized katakana yet.",
+        "Speaker 2 asks her to look at an example.",
+        "She should write it in her notebook.",
+        "Write it, read it, and memorize it."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Do we write this word in hiragana?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, we write it in katakana."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I have not memorized katakana yet."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Then please look at this example."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Oh, this word is also written in katakana."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. Please write this word in your notebook."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "And then should I read it?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. Let's write it, read it, and memorize it."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "ああ",
+        "いいえ",
+        "カタカナ",
+        "この",
+        "ノート",
+        "はい",
+        "覚える",
+        "居る",
+        "見る",
+        "言葉",
+        "四",
+        "書く",
+        "読む",
+        "二",
+        "平仮名",
+        "片仮名",
+        "例"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:20:58.503Z",
+      "updatedAt": "2026-08-06T19:20:58.503Z",
+      "quality": "good",
+      "qualityDecision": "repair",
+      "pickerSelected": "candidate2",
+      "pickerConfidence": "medium",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "pick",
+        "verdict": "pass",
+        "rationale": "Both read naturally; candidate2 has a clearer referent ('この言葉をノートに書いてください') and avoids repeating 覚える across consecutive turns, giving a slightly smoother instructional progression.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "selectedVersion": "candidate2",
+        "confidence": "medium",
+        "rubricVersion": "generation-pick-v1",
+        "reviewedAt": "2026-07-18T18:50:40.235Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-12.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-12.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-12",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-12.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-12",
+      "curatedAt": "2026-08-06T19:20:58.503Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-13",
+      "number": 13,
+      "title": "Class and Test Schedule",
+      "scene": "Two students review the schedule for an upcoming test.",
+      "sampleContext": "One student has forgotten the date, so the other explains the timing carefully.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "英語のテストはいつですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "clear",
+            "slow"
+          ],
+          "japanese": "明後日の金曜日です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "concerned",
+            "slow"
+          ],
+          "japanese": "授業もありますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。午前は授業で、午後はテストです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "careful",
+            "slow"
+          ],
+          "japanese": "テストは何時間ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "clear",
+            "slow"
+          ],
+          "japanese": "二時間です。一時から三時までです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "determined",
+            "slow"
+          ],
+          "japanese": "では、今晩と明日、勉強します。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "encouraging",
+            "slow"
+          ],
+          "japanese": "私も勉強します。問題例を読みましょう。"
+        }
+      ],
+      "listeningQuestions": [
+        "On what day is the English test?",
+        "How far away is the test?",
+        "What happens in the morning that day?",
+        "What happens in the afternoon?",
+        "How long is the test?",
+        "What are the exact test hours?",
+        "What study material do the speakers plan to read?"
+      ],
+      "answerKey": [
+        "It is on Friday.",
+        "It is the day after tomorrow.",
+        "There is a class in the morning.",
+        "The test is in the afternoon.",
+        "It lasts two hours.",
+        "It is from one to three.",
+        "They plan to read the sample questions."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "When is the English test?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It is on Friday, the day after tomorrow."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is there a class too?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. There is class in the morning and the test in the afternoon."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "How many hours is the test?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Two hours. It is from one to three."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Then I will study tonight and tomorrow."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I will study too. Let's read the sample questions."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～語",
+        "～時",
+        "～時間",
+        "～日",
+        "する",
+        "テスト",
+        "はい",
+        "英語",
+        "何",
+        "何～",
+        "居る",
+        "金曜日",
+        "戸",
+        "午後",
+        "午前",
+        "今晩",
+        "在る",
+        "三",
+        "四",
+        "私",
+        "時間",
+        "授業",
+        "読む",
+        "二",
+        "勉強",
+        "勉強する",
+        "明後日",
+        "明日",
+        "問題",
+        "問題例",
+        "有る",
+        "例"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:01.140Z",
+      "updatedAt": "2026-08-06T19:21:01.140Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Coherent, realistic test-schedule review with clear time details; zero out-of-vocabulary words.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:48:24.269Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-13.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-13.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-13",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-13.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-13",
+      "curatedAt": "2026-08-06T19:21:01.140Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-14",
+      "number": 14,
+      "title": "Morning Clothes",
+      "scene": "Two friends check their clothes and umbrella before leaving in the morning.",
+      "sampleContext": "They are near the entrance getting ready to go outside.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "concerned",
+            "gentle",
+            "slow"
+          ],
+          "japanese": "今朝、コートを着ますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、このコートを着ます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "帽子もかぶってください。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "agreeable",
+            "slow"
+          ],
+          "japanese": "はい。青い帽子はどこですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "玄関の椅子の上にあります。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "checking",
+            "slow"
+          ],
+          "japanese": "傘もありますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "ええ。傘は靴の隣です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "ready",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "ありがとうございます。靴はここですね。では、行きましょう。"
+        }
+      ],
+      "listeningQuestions": [
+        "What will Speaker 2 wear?",
+        "What additional item does Speaker 1 recommend?",
+        "What color is the hat?",
+        "Where is the hat?",
+        "Where is the umbrella?",
+        "What do the speakers decide to do at the end?"
+      ],
+      "answerKey": [
+        "He will wear a coat.",
+        "She recommends a hat.",
+        "The hat is blue.",
+        "It is on the chair at the entrance.",
+        "It is next to the shoes.",
+        "They decide to leave."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Will you wear a coat this morning?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I will wear this coat."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Please put on a hat too."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Okay. Where is the blue hat?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "It is on the chair at the entrance."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is there an umbrella too?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. The umbrella is next to the shoes."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Thank you very much. The shoes are here, right? Then let's go."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "ありがとうございます",
+        "かぶる",
+        "コート",
+        "ここ",
+        "この",
+        "どこ",
+        "はい",
+        "椅子",
+        "靴",
+        "玄関",
+        "行く",
+        "今朝",
+        "在る",
+        "傘",
+        "青い",
+        "着る",
+        "二",
+        "帽子",
+        "有る",
+        "隣"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:08.313Z",
+      "updatedAt": "2026-08-06T19:21:08.313Z",
+      "quality": "okay",
+      "qualityDecision": "repair",
+      "pickerSelected": "candidate1",
+      "pickerConfidence": "medium",
+      "qualityFlags": [
+        "coverage_loss:冷たい",
+        "coverage_loss"
+      ],
+      "qualityReview": {
+        "source": "pick",
+        "verdict": "repair",
+        "rationale": "Both drop the unnatural 冷たい (server flags coverage loss). Candidate1 is more internally coherent; candidate2's added '上着も着ます' on top of a coat is odd and its 'cold morning' title/scene is unsupported by the dialogue.",
+        "flags": [
+          "coverage_loss:冷たい",
+          "coverage_loss"
+        ],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "selectedVersion": "candidate1",
+        "confidence": "medium",
+        "rubricVersion": "generation-pick-v1",
+        "reviewedAt": "2026-07-18T18:50:40.235Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-14.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-14.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-14",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-14.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-14",
+      "curatedAt": "2026-08-06T19:21:08.313Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-15",
+      "number": 15,
+      "title": "Birthday Sweets",
+      "scene": "Two friends choose sweets for a family birthday gathering.",
+      "sampleContext": "They discuss whose birthday it is and which family members will eat the sweets.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "明日は妹の誕生日です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "interested",
+            "slow"
+          ],
+          "japanese": "そうですか。お菓子を食べますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "happy",
+            "slow"
+          ],
+          "japanese": "はい。家族と一緒に食べます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "家族は何人ですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "五人です。父と母と兄と妹と私です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "では、お菓子は五つですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいえ。兄はお菓子が嫌いです。父と母と妹と私で食べます。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "understanding",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい。では、赤いお菓子ですね。"
+        }
+      ],
+      "listeningQuestions": [
+        "Whose birthday is tomorrow?",
+        "With whom will Speaker 1 eat the sweets?",
+        "How many people are in Speaker 1's family?",
+        "Which family member dislikes sweets?",
+        "How many family members will eat the sweets?",
+        "What color sweets does Speaker 2 confirm?"
+      ],
+      "answerKey": [
+        "It is Speaker 1's younger sister's birthday.",
+        "She will eat them with her family.",
+        "There are five people.",
+        "Her older brother dislikes sweets.",
+        "Four family members will eat them.",
+        "Speaker 2 confirms red sweets."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Tomorrow is my younger sister's birthday."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I see. Will you eat sweets?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. I will eat them together with my family."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "How many people are in your family?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "There are five: my father, mother, older brother, younger sister, and me."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Then do you need five sweets?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No. My older brother dislikes sweets. My father, mother, younger sister, and I will eat them."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Okay. Then, red sweets, right?"
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～語",
+        "～日",
+        "いいえ",
+        "お菓子",
+        "はい",
+        "一緒",
+        "何",
+        "何～",
+        "家族",
+        "兄",
+        "嫌い",
+        "戸",
+        "五",
+        "五つ",
+        "私",
+        "食べる",
+        "人",
+        "赤い",
+        "誕生日",
+        "二",
+        "父",
+        "母",
+        "妹",
+        "明日"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:16.098Z",
+      "updatedAt": "2026-08-06T19:21:16.098Z",
+      "quality": "good",
+      "qualityDecision": "repair",
+      "pickerSelected": "candidate2",
+      "pickerConfidence": "medium",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "pick",
+        "verdict": "pass",
+        "rationale": "Candidate2 keeps 五つ (allowed, no coverage loss per evidence) and its closing '赤いお菓子ですね' is a natural confirmation; candidate1 loses 五つ coverage and its final 'お願いしますね' from the non-buying friend reads oddly.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "selectedVersion": "candidate2",
+        "confidence": "medium",
+        "rubricVersion": "generation-pick-v1",
+        "reviewedAt": "2026-07-18T18:50:40.235Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-15.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-15.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-15",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-15.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-15",
+      "curatedAt": "2026-08-06T19:21:16.098Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-16",
+      "number": 16,
+      "title": "A Doctor in the Family",
+      "scene": "Two friends discuss doctors in their families and their work schedules.",
+      "sampleContext": "The speakers compare their mothers' occupations and how busy they are.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "けんさんのお母さんはお医者さんですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。毎日、働いています。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "interested",
+            "slow"
+          ],
+          "japanese": "どこで働いていますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "clear",
+            "slow"
+          ],
+          "japanese": "学校のそばで働いています。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "私の母も医者です。でも、月曜日は働きません。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "月曜日はうちにいますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "はい。でも、いつも忙しいです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "understanding",
+            "slow"
+          ],
+          "japanese": "そうですか。私の母も毎日忙しいです。"
+        }
+      ],
+      "listeningQuestions": [
+        "What is Ken's mother's occupation?",
+        "How often does Ken initially say she works?",
+        "Where does she work?",
+        "What is Speaker 1's mother's occupation?",
+        "On which day does Speaker 1's mother not work?",
+        "Where is Speaker 1's mother on that day?",
+        "What do the two mothers have in common?"
+      ],
+      "answerKey": [
+        "She is a doctor.",
+        "He says she works every day.",
+        "She works near a school.",
+        "She is also a doctor.",
+        "She does not work on Monday.",
+        "She is at home.",
+        "They are both always or regularly busy."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Ken, is your mother a doctor?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. She works every day."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Where does she work?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "She works near a school."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "My mother is also a doctor. But she does not work on Mondays."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is she at home on Mondays?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. But she is always busy."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "I see. My mother is also busy every day."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～日",
+        "いつも",
+        "うち",
+        "お医者さん",
+        "お母さん",
+        "そば",
+        "どこ",
+        "はい",
+        "医者",
+        "学校",
+        "居る",
+        "月曜日",
+        "三",
+        "私",
+        "働く",
+        "二",
+        "母",
+        "忙しい",
+        "毎日"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:19.831Z",
+      "updatedAt": "2026-08-06T19:21:19.831Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Coherent conversation comparing mothers' occupations and schedules; natural and vocabulary-clean per evidence.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:48:24.269Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-16.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-16.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-16",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-16.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-16",
+      "curatedAt": "2026-08-06T19:21:19.831Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-17",
+      "number": 17,
+      "title": "Studying at Home",
+      "scene": "Two classmates plan an evening study session at one student's apartment.",
+      "sampleContext": "They decide where to meet and which study materials to use.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "今晩、私のアパートで勉強しませんか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "いいですね。何を勉強しますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "英語の言葉と漢字を勉強したいです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "辞書と漢字の本はありますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "はい。英語の本もあります。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "宿題も一緒にしますか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "agreeable",
+            "slow"
+          ],
+          "japanese": "はい。作文を書いて、問題に答えましょう。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "ready",
+            "friendly",
+            "slow"
+          ],
+          "japanese": "では、七時に行きます。よろしくお願いします。"
+        }
+      ],
+      "listeningQuestions": [
+        "Where will the speakers study?",
+        "When will they study?",
+        "What two areas does Speaker 1 want to study?",
+        "Which study materials does Speaker 2 ask about?",
+        "What other book is available?",
+        "What two homework tasks will they complete?"
+      ],
+      "answerKey": [
+        "They will study at Speaker 1's apartment.",
+        "They will study tonight at seven.",
+        "English words and kanji.",
+        "A dictionary and a kanji book.",
+        "An English book is also available.",
+        "They will write an essay and answer questions."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Would you like to study at my apartment tonight?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "That sounds good. What will we study?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I want to study English words and kanji."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Do you have a dictionary and a kanji book?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. I also have an English book."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Shall we do the homework together too?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes. Let's write the essay and answer the questions."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Then I will come at seven. Thank you."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～語",
+        "～時",
+        "アパート",
+        "いい",
+        "お願いします",
+        "する",
+        "はい",
+        "よろしく",
+        "一緒",
+        "英語",
+        "何",
+        "何～",
+        "漢字",
+        "言葉",
+        "戸",
+        "行く",
+        "今晩",
+        "在る",
+        "作文",
+        "四",
+        "私",
+        "辞書",
+        "七",
+        "宿題",
+        "書く",
+        "答える",
+        "二",
+        "勉強",
+        "勉強する",
+        "本",
+        "問題",
+        "有る"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:24.637Z",
+      "updatedAt": "2026-08-06T19:21:24.637Z",
+      "quality": "good",
+      "qualityDecision": "repair",
+      "pickerSelected": "candidate1",
+      "pickerConfidence": "medium",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "pick",
+        "verdict": "pass",
+        "rationale": "Both are clean and natural; candidate1's simple question-and-answer about available materials ('辞書と漢字の本はありますか' → 'はい。英語の本もあります') is the most direct, coherent exchange for the level.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "selectedVersion": "candidate1",
+        "confidence": "medium",
+        "rubricVersion": "generation-pick-v1",
+        "reviewedAt": "2026-07-18T18:50:40.235Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-17.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-17.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-17",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-17.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-17",
+      "curatedAt": "2026-08-06T19:21:24.637Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-18",
+      "number": 18,
+      "title": "Older Brother and Sister",
+      "scene": "A woman introduces her older brother and sister.",
+      "sampleContext": "The speakers are looking at the woman’s family members and speaking calmly.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "こちらは私の兄です。そして、こちらは私の姉です。私の兄弟は二人です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "お兄さんは年がいくつですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "二十です。姉は十九です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "お姉さんも学生ですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "いいえ、姉は会社員です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "では、お兄さんは学生ですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "はい、兄は学生です。"
+        }
+      ],
+      "listeningQuestions": [
+        "How many siblings does Speaker 1 have, and who are they?",
+        "Which sibling is twenty years old?",
+        "How old is the older sister?",
+        "Which sibling is a company employee?",
+        "What does the older brother do?"
+      ],
+      "answerKey": [
+        "She has two siblings: an older brother and an older sister.",
+        "The older brother is twenty.",
+        "She is nineteen.",
+        "The older sister is a company employee.",
+        "He is a student."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "This is my older brother. And this is my older sister. I have two siblings."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "How old is your older brother?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "He is twenty. My older sister is nineteen."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is your older sister also a student?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "No, my older sister is a company employee."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Then, is your older brother a student?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, my older brother is a student."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～年",
+        "いいえ",
+        "いくつ",
+        "お兄さん",
+        "お姉さん",
+        "こちら",
+        "はい",
+        "会社",
+        "会社員",
+        "学生",
+        "九",
+        "兄",
+        "兄弟",
+        "姉",
+        "私",
+        "十",
+        "人",
+        "二",
+        "二人",
+        "年"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:28.089Z",
+      "updatedAt": "2026-08-06T19:21:28.089Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Coherent, realistic family introduction with level-appropriate grammar and no vocabulary issues; minor phrasing like 「年がいくつですか」 is acceptable for beginner listening.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:53:59.295Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-18.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-18.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-18",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-18.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-18",
+      "curatedAt": "2026-08-06T19:21:28.089Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-19",
+      "number": 19,
+      "title": "The House by the Pond",
+      "scene": "Two friends talk about a house where several relatives gather.",
+      "sampleContext": "The speakers are looking toward a family house and its nearby pond.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "あっちの家は、おじいさんとおばあさんの家ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、そうです。二人います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "interested",
+            "slow"
+          ],
+          "japanese": "家のそばに池がありますね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。おじいさんは毎朝、池へ行きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "おじさんとおばさんもこの家に来ますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、日曜日に来ます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "cheerful",
+            "slow"
+          ],
+          "japanese": "では、日曜日は大勢ですね。"
+        }
+      ],
+      "listeningQuestions": [
+        "Whose house is the one over there?",
+        "How many people usually live there?",
+        "What is located near the house?",
+        "Who goes to the pond every morning?",
+        "Which relatives come on Sunday?"
+      ],
+      "answerKey": [
+        "It is the grandfather and grandmother’s house.",
+        "Two people live there.",
+        "A pond is near the house.",
+        "The grandfather goes to the pond every morning.",
+        "The uncle and aunt come on Sunday."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Is that house over there your grandfather and grandmother’s house?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, it is. The two of them live there."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "There is a pond near the house."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. Grandfather goes to the pond every morning."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do your uncle and aunt also come to this house?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, they come on Sundays."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Then there are many people there on Sundays."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～日",
+        "あっち",
+        "いえ",
+        "おじいさん",
+        "おじさん",
+        "おばあさん",
+        "おばさん",
+        "この",
+        "そば",
+        "はい",
+        "家",
+        "居る",
+        "戸",
+        "行く",
+        "在る",
+        "人",
+        "大勢",
+        "池",
+        "二",
+        "二人",
+        "日曜日",
+        "毎朝",
+        "有る",
+        "来る"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:36.434Z",
+      "updatedAt": "2026-08-06T19:21:36.434Z",
+      "quality": "good",
+      "qualityDecision": "repair",
+      "pickerSelected": "candidate1",
+      "pickerConfidence": "high",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "pick",
+        "verdict": "pass",
+        "rationale": "Fixes the unnatural 「二人がいます」 to natural 「二人います」 while keeping the coherent, level-appropriate dialogue intact; evidence shows zero out-of-vocabulary items. Candidate2 is identical, so candidate1 is selected as the equivalent fix.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "selectedVersion": "candidate1",
+        "confidence": "high",
+        "rubricVersion": "generation-pick-v1",
+        "reviewedAt": "2026-07-18T18:55:36.895Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-19.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-19.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-19",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-19.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-19",
+      "curatedAt": "2026-08-06T19:21:36.434Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-20",
+      "number": 20,
+      "title": "Asking a Police Officer",
+      "scene": "A woman asks a police officer where the post office is.",
+      "sampleContext": "Speaker 1 sounds polite and slightly unsure while asking for directions.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "polite",
+            "curious",
+            "slow"
+          ],
+          "japanese": "すみません、おまわりさん。郵便局はどこですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "こっちです。交番の隣です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "この角から行きますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "いいえ、あの角からあちらへ行ってください。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "careful",
+            "slow"
+          ],
+          "japanese": "郵便局は銀行の隣ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "clear",
+            "slow"
+          ],
+          "japanese": "いいえ、銀行の隣ではありません。交番の隣です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "grateful",
+            "slow"
+          ],
+          "japanese": "はい、ありがとうございます。"
+        }
+      ],
+      "listeningQuestions": [
+        "Whom does Speaker 1 ask for help?",
+        "Which corner should Speaker 1 use?",
+        "In which direction should she go from that corner?",
+        "Is the post office next to the bank?",
+        "What building is next to the post office?"
+      ],
+      "answerKey": [
+        "She asks a police officer.",
+        "She should use the corner over there, not this corner.",
+        "She should go that way.",
+        "No, it is not next to the bank.",
+        "The police box is next to the post office."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Excuse me, officer. Where is the post office?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It is this way. It is next to the police box."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do I go from this corner?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, please go that way from the corner over there."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is the post office next to the bank?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, it is not next to the bank. It is next to the police box."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "All right. Thank you very much."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "あちら",
+        "あの",
+        "ありがとうございます",
+        "いいえ",
+        "おまわりさん",
+        "こっち",
+        "この",
+        "すみません",
+        "どこ",
+        "はい",
+        "角",
+        "銀行",
+        "交番",
+        "行く",
+        "在る",
+        "書く",
+        "有る",
+        "郵便局",
+        "隣"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:40.287Z",
+      "updatedAt": "2026-08-06T19:21:40.287Z",
+      "quality": "good",
+      "qualityDecision": "repair",
+      "pickerSelected": "candidate1",
+      "pickerConfidence": "high",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "pick",
+        "verdict": "pass",
+        "rationale": "Natural, realistic direction-asking exchange with clear turn-taking; authoritative evidence confirms the out-of-vocabulary issue (分かる) is resolved with zero OOV items. Candidate2 differs only trivially in a tag and punctuation, so candidate1 is selected.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "selectedVersion": "candidate1",
+        "confidence": "high",
+        "rubricVersion": "generation-pick-v1",
+        "reviewedAt": "2026-07-18T18:55:36.895Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-20.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-20.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-20",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-20.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-20",
+      "curatedAt": "2026-08-06T19:21:40.287Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-21",
+      "number": 21,
+      "title": "An Inexpensive Radio Cassette Player",
+      "scene": "Two friends talk about an old radio cassette player.",
+      "sampleContext": "Speaker 1 is looking at the device and asking how it is used.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "このラジオカセは新しいですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "いいえ、古いです。でも、安いです。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "interested",
+            "slow"
+          ],
+          "japanese": "ラジオを毎朝聞きますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい、朝御飯の時に聞きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "テレビも朝に見ますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "matter_of_fact",
+            "slow"
+          ],
+          "japanese": "いいえ、朝は忙しいですから、見ません。"
+        }
+      ],
+      "listeningQuestions": [
+        "Is the radio cassette player new or old?",
+        "What positive point does Speaker 2 mention about it?",
+        "When does Speaker 2 listen to the radio?",
+        "Does Speaker 2 watch television in the morning?",
+        "Why does Speaker 2 not watch television then?"
+      ],
+      "answerKey": [
+        "It is old.",
+        "It is inexpensive.",
+        "Speaker 2 listens during breakfast every morning.",
+        "No, Speaker 2 does not.",
+        "Because Speaker 2 is busy in the morning."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Is this radio cassette player new?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, it is old. But it is inexpensive."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you listen to the radio every morning?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, I listen during breakfast."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do you also watch television in the morning?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No, I am busy in the morning, so I do not watch it."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～時",
+        "いいえ",
+        "この",
+        "テレビ",
+        "はい",
+        "ラジオ",
+        "ラジオカセ",
+        "安い",
+        "見る",
+        "古い",
+        "新しい",
+        "朝",
+        "朝御飯",
+        "二",
+        "聞く",
+        "忙しい",
+        "毎朝"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:45.480Z",
+      "updatedAt": "2026-08-06T19:21:45.480Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Natural, coherent everyday exchange about a radio cassette player; level-appropriate and clean per authoritative vocabulary evidence.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:53:59.295Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-21.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-21.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-21",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-21.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-21",
+      "curatedAt": "2026-08-06T19:21:45.480Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-22",
+      "number": 22,
+      "title": "A Question in Class",
+      "scene": "Two students discuss asking their teacher a question.",
+      "sampleContext": "The speakers are in a classroom where many foreign students are learning kana.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "observant",
+            "slow"
+          ],
+          "japanese": "このクラスは外国人の生徒が大勢いますね。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "はい。先生は平仮名と片仮名を教えます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "thoughtful",
+            "slow"
+          ],
+          "japanese": "私は先生に質問したいです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "何の質問ですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "この片仮名の言葉の意味です。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "encouraging",
+            "slow"
+          ],
+          "japanese": "では、先生に聞きましょう。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "hopeful",
+            "slow"
+          ],
+          "japanese": "先生は答えますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "reassuring",
+            "slow"
+          ],
+          "japanese": "はい、答えますよ。"
+        }
+      ],
+      "listeningQuestions": [
+        "What kind of students are numerous in the class?",
+        "What two writing systems does the teacher teach?",
+        "Whom does Speaker 1 want to ask a question?",
+        "What is Speaker 1’s question about?",
+        "What does Speaker 2 suggest doing?",
+        "Does Speaker 2 think the teacher will answer?"
+      ],
+      "answerKey": [
+        "There are many foreign students.",
+        "The teacher teaches hiragana and katakana.",
+        "She wants to ask the teacher.",
+        "It is about the meaning of a katakana word.",
+        "He suggests asking the teacher.",
+        "Yes, he thinks the teacher will answer."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "There are many foreign students in this class."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. The teacher teaches hiragana and katakana."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "I want to ask the teacher a question."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "What is your question about?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "It is about the meaning of this katakana word."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Then let’s ask the teacher."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Will the teacher answer?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, the teacher will."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～先生",
+        "カタカナ",
+        "クラス",
+        "この",
+        "する",
+        "はい",
+        "意味",
+        "何",
+        "何～",
+        "外国人",
+        "居る",
+        "教える",
+        "言葉",
+        "戸",
+        "四",
+        "私",
+        "質問",
+        "質問する",
+        "人",
+        "生徒",
+        "先生",
+        "大勢",
+        "答える",
+        "二",
+        "聞く",
+        "平仮名",
+        "片仮名"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:49.888Z",
+      "updatedAt": "2026-08-06T19:21:49.888Z",
+      "quality": "good",
+      "qualityDecision": "repair",
+      "pickerSelected": "candidate1",
+      "pickerConfidence": "medium",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "pick",
+        "verdict": "pass",
+        "rationale": "OOV word 今 is removed per authoritative evidence, and 質問 repetition is reduced to a natural level. Candidate1 preserves a richer, coherent question-answer flow (asking about the meaning of a katakana word) that reads naturally for the level, whereas candidate2 is thinner in content.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "selectedVersion": "candidate1",
+        "confidence": "medium",
+        "rubricVersion": "generation-pick-v1",
+        "reviewedAt": "2026-07-18T18:55:36.895Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-22.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-22.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-22",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-22.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-22",
+      "curatedAt": "2026-08-06T19:21:49.888Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-23",
+      "number": 23,
+      "title": "A Busy Working Couple",
+      "scene": "Two friends talk about a bank employee and her husband's work.",
+      "sampleContext": "Speaker 1 asks politely about Speaker 2 and his wife.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "friendly",
+            "curious",
+            "slow"
+          ],
+          "japanese": "奥さんは銀行員ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい、銀行員です。私は会社員です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "二人は毎日仕事ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "matter_of_fact",
+            "slow"
+          ],
+          "japanese": "はい、毎日です。銀行で働きます。私は会社で働きます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "gentle",
+            "slow"
+          ],
+          "japanese": "奥さんは今月、忙しいですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "tired",
+            "slow"
+          ],
+          "japanese": "はい、忙しいです。私も毎日忙しいです。"
+        }
+      ],
+      "listeningQuestions": [
+        "What is Speaker 2's wife's occupation?",
+        "What is Speaker 2's occupation?",
+        "Where does his wife work?",
+        "Do both people work every day?",
+        "Who is busy every day?"
+      ],
+      "answerKey": [
+        "She is a bank employee.",
+        "He is a company employee.",
+        "She works at a bank.",
+        "Yes, both of them work every day.",
+        "Speaker 2 is busy every day."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Is your wife a bank employee?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, she is a bank employee. I am a company employee."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Do both of you work every day?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, every day. She works at a bank. I work at a company."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Is your wife busy this month?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, she is busy. I am also busy every day."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～月",
+        "～日",
+        "はい",
+        "奥さん",
+        "会社",
+        "会社員",
+        "銀行",
+        "銀行員",
+        "今月",
+        "仕事",
+        "私",
+        "人",
+        "働く",
+        "二",
+        "二人",
+        "忙しい",
+        "毎日"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:54.702Z",
+      "updatedAt": "2026-08-06T19:21:54.702Z",
+      "quality": "good",
+      "qualityDecision": "repair",
+      "pickerSelected": "candidate2",
+      "pickerConfidence": "medium",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "pick",
+        "verdict": "pass",
+        "rationale": "Resolves the naturalness flaw: Speaker 2 no longer refers to his own wife as 奥さん (both 奥さん occurrences are Speaker 1's polite usage), using natural subject drop instead. Dialogue flow is coherent and level-appropriate. Candidate1 fixes the same issue but has slightly blunter phrasing (「二人は忙しいです」).",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "selectedVersion": "candidate2",
+        "confidence": "medium",
+        "rubricVersion": "generation-pick-v1",
+        "reviewedAt": "2026-07-18T18:55:36.895Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-23.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-23.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-23",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-23.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-23",
+      "curatedAt": "2026-08-06T19:21:54.702Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-24",
+      "number": 24,
+      "title": "A Cold Drink",
+      "scene": "A woman chooses between two drinks without naming them.",
+      "sampleContext": "Speaker 1 offers one item, but Speaker 2 does not like it cold.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "offering",
+            "slow"
+          ],
+          "japanese": "これは冷たいです。飲みますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "hesitant",
+            "slow"
+          ],
+          "japanese": "いいえ。冷たいですから、嫌です。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "helpful",
+            "slow"
+          ],
+          "japanese": "では、あれを飲みますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "checking",
+            "slow"
+          ],
+          "japanese": "あれは冷たくないですか。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "reassuring",
+            "slow"
+          ],
+          "japanese": "はい、冷たくないです。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "pleased",
+            "slow"
+          ],
+          "japanese": "じゃあ、あれをお願いします。"
+        }
+      ],
+      "listeningQuestions": [
+        "Why does Speaker 2 refuse the first item?",
+        "Which item does Speaker 1 offer next?",
+        "What does Speaker 2 check about the second item?",
+        "Is the second item cold?",
+        "Which item does Speaker 2 finally request?"
+      ],
+      "answerKey": [
+        "Because it is cold and Speaker 2 dislikes that.",
+        "Speaker 1 offers the one over there.",
+        "Speaker 2 checks whether it is cold.",
+        "No, it is not cold.",
+        "Speaker 2 requests the one over there."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "This is cold. Will you drink it?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "No. I dislike it because it is cold."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Then, will you drink that one over there?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Is that one not cold?"
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Yes, it is not cold."
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Then, that one, please."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "あれ",
+        "いいえ",
+        "お願いします",
+        "これ",
+        "する",
+        "はい",
+        "飲む",
+        "嫌",
+        "四",
+        "冷たい"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:21:59.666Z",
+      "updatedAt": "2026-08-06T19:21:59.666Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Natural, realistic drink-offer exchange; the negative-question answer pattern 「はい、冷たくないです」 is correct Japanese and good listening practice, with no vocabulary issues.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:53:59.295Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-24.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-24.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-24",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-24.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-24",
+      "curatedAt": "2026-08-06T19:21:59.666Z"
+    },
+    {
+      "id": "set-03-20260718T184423Z-dnt2e2-convo-25",
+      "number": 25,
+      "title": "Teaching at a Family Home",
+      "scene": "Two friends talk about a teacher who teaches children at home on Sundays.",
+      "sampleContext": "Speaker 1 asks about the teacher’s work outside school.",
+      "text": [
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "先生は毎日、学校で教えますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "calm",
+            "slow"
+          ],
+          "japanese": "はい。でも、日曜日は家庭で子供に教えます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "interested",
+            "slow"
+          ],
+          "japanese": "どなたの家ですか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "friendly",
+            "slow"
+          ],
+          "japanese": "友達の家です。子供が二人います。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "curious",
+            "slow"
+          ],
+          "japanese": "何を教えますか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "clear",
+            "slow"
+          ],
+          "japanese": "平仮名と片仮名を教えます。"
+        },
+        {
+          "speaker": "Speaker 1",
+          "tags": [
+            "checking",
+            "slow"
+          ],
+          "japanese": "友達が先生に頼みましたか。"
+        },
+        {
+          "speaker": "Speaker 2",
+          "tags": [
+            "affirming",
+            "slow"
+          ],
+          "japanese": "はい、先月頼みました。"
+        }
+      ],
+      "listeningQuestions": [
+        "Where does the teacher usually teach?",
+        "On which day does the teacher teach children in a home setting?",
+        "Whose house does the teacher visit?",
+        "How many children are in that house?",
+        "What does the teacher teach there?",
+        "When did the friend ask the teacher?"
+      ],
+      "answerKey": [
+        "The teacher usually teaches at school.",
+        "The teacher teaches there on Sunday.",
+        "The teacher visits a friend’s house.",
+        "There are two children.",
+        "The teacher teaches hiragana and katakana.",
+        "The friend asked the teacher last month."
+      ],
+      "englishTranslation": [
+        {
+          "speaker": "Speaker 1",
+          "english": "Does the teacher teach at school every day?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes. But on Sundays, the teacher teaches children in a family home."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Whose house is it?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "It is a friend’s house. There are two children."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "What does the teacher teach?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "The teacher teaches hiragana and katakana."
+        },
+        {
+          "speaker": "Speaker 1",
+          "english": "Did the friend ask the teacher?"
+        },
+        {
+          "speaker": "Speaker 2",
+          "english": "Yes, the friend asked last month."
+        }
+      ],
+      "declaredNonVocabularyTerms": [],
+      "vocabularyUsed": [
+        "～月",
+        "～先生",
+        "～日",
+        "いえ",
+        "カタカナ",
+        "どなた",
+        "はい",
+        "何",
+        "何～",
+        "家",
+        "家庭",
+        "学校",
+        "居る",
+        "教える",
+        "戸",
+        "子供",
+        "人",
+        "先月",
+        "先生",
+        "二",
+        "二人",
+        "日曜日",
+        "平仮名",
+        "片仮名",
+        "毎日",
+        "友達",
+        "頼む"
+      ],
+      "outOfVocabularyAudit": [],
+      "vocabularyReferences": [],
+      "simplerReplacementSuggestions": [],
+      "status": "audio_ready",
+      "createdAt": "2026-08-06T19:22:46.118Z",
+      "updatedAt": "2026-08-06T19:22:46.118Z",
+      "quality": "good",
+      "qualityDecision": "pass",
+      "qualityFlags": [],
+      "qualityReview": {
+        "source": "triage",
+        "verdict": "pass",
+        "rationale": "Coherent, realistic conversation about a teacher's weekend tutoring; natural flow, level-appropriate grammar, and clean vocabulary evidence.",
+        "flags": [],
+        "judgeModel": {
+          "id": "claude:fable",
+          "provider": "claude",
+          "model": "fable",
+          "label": "Claude Fable",
+          "source": "configured",
+          "resolvedModel": "claude-fable-5"
+        },
+        "rubricVersion": "generation-triage-v1",
+        "reviewedAt": "2026-07-18T18:53:59.295Z"
+      },
+      "audioFileName": "set-03-20260718T184423Z-dnt2e2-convo-25.wav",
+      "audioUrl": "/curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-25.wav",
+      "sourceRunId": "set-03-20260718T184423Z-dnt2e2",
+      "sourceConversationId": "convo-25",
+      "setNumber": 3,
+      "curatedAudioPath": "curated/audio/set-03/set-03-20260718T184423Z-dnt2e2-convo-25.wav",
+      "curatedId": "set-03-20260718T184423Z-dnt2e2-convo-25",
+      "curatedAt": "2026-08-06T19:22:46.118Z"
+    }
+  ],
+  "createdAt": "2026-08-06T11:18:27.724Z",
+  "updatedAt": "2026-08-06T19:22:46.118Z"
+}
